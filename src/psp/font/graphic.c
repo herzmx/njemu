@@ -16,7 +16,7 @@
 	gryph data
 ------------------------------------------------------*/
 
-static const u8 ALIGN_DATA graphic_font[] = {
+static const UINT8 ALIGN_DATA graphic_font[] = {
 	0x10,0x0c,0x00,0xd0,0x9f,0x00,0xe9,0xef,0x06,0x68,0x1f,0x07,0x60,0x0f,0x00,0x60,
 	0x0f,0x00,0x60,0x0f,0x00,0x60,0x0f,0x00,0x60,0x0f,0x00,0x60,0x0f,0x00,0x60,0x0f,
 	0x00,0x60,0x0f,0x00,0x30,0x09,0x00,0x00,0xd9,0x00,0x00,0xd9,0x00,0x00,0xd9,0x00,
@@ -73,19 +73,19 @@ static const int ALIGN_DATA graphic_font_pos[NUM_FONTS] = {
 	0x000000,0x000027,0x00004e,0x000078,0x00009c,0x0000e4,0x000111,0x000153,0x000195,0x0001f0,0x00024b,0x000263,0x00027b,0x0002c9
 };
 
-static const s8 ALIGN_DATA graphic_font_width[NUM_FONTS] = {
+static const INT8 ALIGN_DATA graphic_font_width[NUM_FONTS] = {
 	 6, 6,14,12,12,10,12,12,14,14, 8, 8,12,12
 };
 
-static const s8 ALIGN_DATA graphic_font_height[NUM_FONTS] = {
+static const INT8 ALIGN_DATA graphic_font_height[NUM_FONTS] = {
 	13,13, 6, 6,12, 9,11,11,13,13, 6, 6,13,13
 };
 
-static const s8 ALIGN_DATA graphic_font_skipx[NUM_FONTS] = {
+static const INT8 ALIGN_DATA graphic_font_skipx[NUM_FONTS] = {
 	 5, 4, 0, 1, 2, 3, 2, 2, 1, 1, 4, 4, 2, 3
 };
 
-static const s8 ALIGN_DATA graphic_font_skipy[NUM_FONTS] = {
+static const INT8 ALIGN_DATA graphic_font_skipy[NUM_FONTS] = {
 	 1, 1, 4, 4, 1, 3, 2, 1, 1, 1, 4, 4, 0, 0
 };
 
@@ -96,7 +96,7 @@ static const s8 ALIGN_DATA graphic_font_skipy[NUM_FONTS] = {
 	shadow data
 ------------------------------------------------------*/
 
-static const u8 ALIGN_DATA graphic_font_shadow[] = {
+static const UINT8 ALIGN_DATA graphic_font_shadow[] = {
 	0x00,0x11,0x01,0x00,0x10,0x53,0x24,0x00,0x20,0x96,0x58,0x02,0x41,0xc9,0x9c,0x14,
 	0x51,0xda,0x9c,0x15,0x41,0xc9,0x7b,0x14,0x30,0xa8,0x48,0x01,0x20,0x97,0x37,0x00,
 	0x20,0x97,0x27,0x00,0x20,0x97,0x27,0x00,0x20,0x97,0x27,0x00,0x20,0x97,0x27,0x00,
@@ -181,19 +181,19 @@ static const int ALIGN_DATA graphic_font_shadow_pos[NUM_FONTS] = {
 	0x000000,0x000040,0x000080,0x0000c0,0x000100,0x000178,0x0001c0,0x000222,0x00028a,0x00031a,0x0003aa,0x0003d2,0x0003ff,0x000468
 };
 
-static const s8 ALIGN_DATA graphic_font_shadow_width[NUM_FONTS] = {
+static const INT8 ALIGN_DATA graphic_font_shadow_width[NUM_FONTS] = {
 	 8, 8,16,16,16,12,14,16,18,18,10,10,14,14
 };
 
-static const s8 ALIGN_DATA graphic_font_shadow_height[NUM_FONTS] = {
+static const INT8 ALIGN_DATA graphic_font_shadow_height[NUM_FONTS] = {
 	16,16, 8, 8,15,12,14,13,16,16, 8, 9,15,15
 };
 
-static const s8 ALIGN_DATA graphic_font_shadow_skipx[NUM_FONTS] = {
+static const INT8 ALIGN_DATA graphic_font_shadow_skipx[NUM_FONTS] = {
 	 5, 5, 1, 1, 2, 3, 2, 2, 1, 1, 4, 4, 3, 3
 };
 
-static const s8 ALIGN_DATA graphic_font_shadow_skipy[NUM_FONTS] = {
+static const INT8 ALIGN_DATA graphic_font_shadow_skipy[NUM_FONTS] = {
 	 1, 1, 5, 5, 1, 3, 2, 2, 1, 1, 5, 4, 1, 1
 };
 
@@ -204,7 +204,7 @@ static const s8 ALIGN_DATA graphic_font_shadow_skipy[NUM_FONTS] = {
 	functions
 ------------------------------------------------------*/
 
-int graphic_font_get_gryph(struct font_t *font, u16 code)
+int graphic_font_get_gryph(struct font_t *font, UINT16 code)
 {
 	if (code < NUM_FONTS)
 	{
@@ -220,7 +220,7 @@ int graphic_font_get_gryph(struct font_t *font, u16 code)
 }
 
 #if PSP_VIDEO_32BPP
-int graphic_font_get_shadow(struct font_t *font, u16 code)
+int graphic_font_get_shadow(struct font_t *font, UINT16 code)
 {
 	if (code < NUM_FONTS)
 	{
@@ -236,7 +236,7 @@ int graphic_font_get_shadow(struct font_t *font, u16 code)
 }
 #endif
 
-int graphic_font_get_pitch(u16 code)
+int graphic_font_get_pitch(UINT16 code)
 {
 	return 14;
 }

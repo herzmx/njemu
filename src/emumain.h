@@ -10,7 +10,6 @@
 #define EMUMAIN_H
 
 #include "psp/psp.h"
-#include "include/osd_cpu.h"
 #include "include/cpuintrf.h"
 #include "include/memory.h"
 #include "zip/zfile.h"
@@ -49,6 +48,13 @@ extern char cache_parent_name[16];
 extern char cache_dir[MAX_PATH];
 #endif
 
+#if (EMU_SYSTEM == MVS)
+extern int TICKS_PER_FRAME;
+extern float FPS;
+#else
+#define TICKS_PER_FRAME		16683
+#endif
+
 extern int option_showfps;
 extern int option_autoframeskip;
 extern int option_frameskip;
@@ -66,7 +72,7 @@ extern int machine_init_type;
 extern int machine_screen_type;
 extern int machine_sound_type;
 
-extern u32 frames_displayed;
+extern UINT32 frames_displayed;
 extern int fatal_error;
 
 #ifdef ADHOC
@@ -78,7 +84,7 @@ void emu_main(void);
 
 void autoframeskip_reset(void);
 
-u8 skip_this_frame(void);
+UINT8 skip_this_frame(void);
 void update_screen(void);
 
 void fatalerror(const char *text, ...);

@@ -36,56 +36,56 @@ int scanline2;
 #define cps2_other_mask			(((~0x07ff) & 0x3ffff) >> 1)
 #define cps2_palette_mask		(((~0x07ff) & 0x3ffff) >> 1)
 
-static u16 *cps_scroll1;
-static u16 *cps_scroll2;
-static u16 *cps_scroll3;
-static u16 *cps_other;
-static u16 *cps2_palette;
-static u16 ALIGN_DATA cps2_old_palette[cps2_palette_size >> 1];
+static UINT16 *cps_scroll1;
+static UINT16 *cps_scroll2;
+static UINT16 *cps_scroll3;
+static UINT16 *cps_other;
+static UINT16 *cps2_palette;
+static UINT16 ALIGN_DATA cps2_old_palette[cps2_palette_size >> 1];
 
-static u8  cps_layer_enabled[4];		/* Layer enabled [Y/N] */
-static s16 cps_scroll1x, cps_scroll1y;
-static s16 cps_scroll2x, cps_scroll2y;
-static s16 cps_scroll3x, cps_scroll3y;
-static u8  *cps_pen_usage[3];			/* sprites pen usage */
+static UINT8  cps_layer_enabled[4];		/* Layer enabled [Y/N] */
+static INT16 cps_scroll1x, cps_scroll1y;
+static INT16 cps_scroll2x, cps_scroll2y;
+static INT16 cps_scroll3x, cps_scroll3y;
+static UINT8  *cps_pen_usage[3];			/* sprites pen usage */
 
 #define cps2_obj_size			0x2000
 #define cps2_max_obj			(cps2_obj_size >> 3)
-static u16 ALIGN_DATA cps2_buffered_palette[1*32*16];
+static UINT16 ALIGN_DATA cps2_buffered_palette[1*32*16];
 
 struct cps2_object_t
 {
-	s16 sx;
-	s16 sy;
-	u16 z;
-	s16 pri;
-	u32 code;
-	u16 attr;
+	INT16 sx;
+	INT16 sy;
+	UINT16 z;
+	INT16 pri;
+	UINT32 code;
+	UINT16 attr;
 };
 
 static struct cps2_object_t ALIGN_DATA cps2_object[cps2_max_obj];
 static struct cps2_object_t *cps2_last_object;
 
-static u16 cps2_object_xoffs;
-static u16 cps2_object_yoffs;
+static UINT16 cps2_object_xoffs;
+static UINT16 cps2_object_yoffs;
 
 struct cps_scroll2_t
 {
-	u16 value;
-	s16 start;
-	s16 end;
+	UINT16 value;
+	INT16 start;
+	INT16 end;
 };
 
 static struct cps_scroll2_t ALIGN_DATA scroll2[224];
-static u16 cps_scroll2_blocks;
+static UINT16 cps_scroll2_blocks;
 
-static s16 cps2_scanline_start;
-static s16 cps2_scanline_end;
-static u32 cps2_scroll3_base;
-static u32 cps2_kludge;
+static INT16 cps2_scanline_start;
+static INT16 cps2_scanline_end;
+static UINT32 cps2_scroll3_base;
+static UINT32 cps2_kludge;
 
-static u16 ALIGN_DATA video_clut16[65536];
-u16 ALIGN_PSPDATA video_palette[cps2_palette_size >> 1];
+static UINT16 ALIGN_DATA video_clut16[65536];
+UINT16 ALIGN_PSPDATA video_palette[cps2_palette_size >> 1];
 
 
 /* CPS1 output port */
@@ -182,6 +182,145 @@ WRITE16_HANDLER( cps1_output_w )
 	CPS2 ビデオ描画処理
 ******************************************************************************/
 
+#if !USE_CACHE
+
+/*------------------------------------------------------
+	GFXデコード
+------------------------------------------------------*/
+
+static void unshuffle(UINT64 *buf, int len)
+{
+	int i;
+	UINT64 t;
+
+	if (len == 2) return;
+
+	len /= 2;
+
+	unshuffle(buf, len);
+	unshuffle(buf + len, len);
+
+	for (i = 0; i < len / 2; i++)
+	{
+		t = buf[len / 2 + i];
+		buf[len / 2 + i] = buf[len + i];
+		buf[len + i] = t;
+	}
+}
+
+
+static void cps2_gfx_decode(void)
+{
+	UINT32 i, j, k, size;
+	UINT32 *tile, data;
+	UINT8 *gfx = memory_region_gfx1;
+
+	for (i = 0; i < memory_length_gfx1; i += 0x200000)
+		unshuffle((UINT64 *)&memory_region_gfx1[i], 0x200000 / 8);
+
+	for (i = 0; i < memory_length_gfx1 / 4; i++)
+	{
+		UINT32 src = gfx[4 * i] + (gfx[4 * i + 1] << 8) + (gfx[4 * i + 2] << 16) + (gfx[4 * i + 3] << 24);
+		UINT32 dw = 0;
+
+		for (j = 0; j < 8; j++)
+		{
+			int n = 0;
+			UINT32 mask = (0x80808080 >> j) & src;
+
+			if (mask & 0x000000ff) n |= 1;
+			if (mask & 0x0000ff00) n |= 2;
+			if (mask & 0x00ff0000) n |= 4;
+			if (mask & 0xff000000) n |= 8;
+
+			dw |= n << (j * 4);
+		}
+
+		data = ((dw & 0x0000000f) >>  0) | ((dw & 0x000000f0) <<  4)
+			 | ((dw & 0x00000f00) <<  8) | ((dw & 0x0000f000) << 12)
+			 | ((dw & 0x000f0000) >> 12) | ((dw & 0x00f00000) >>  8)
+			 | ((dw & 0x0f000000) >>  4) | ((dw & 0xf0000000) >>  0);
+
+		gfx[4 * i + 0] = data >>  0;
+		gfx[4 * i + 1] = data >>  8;
+		gfx[4 * i + 2] = data >> 16;
+		gfx[4 * i + 3] = data >> 24;
+	}
+
+	for (i = 0; i < gfx_total_elements[TILE08]; i++)
+	{
+		int count = 0;
+		UINT32 offset = (0x20000 + i) << 6;
+
+		tile = (UINT32 *)&memory_region_gfx1[offset];
+
+		for (j = 0; j < 8; j++)
+		{
+			tile++;
+			data = *tile++;
+			for (k = 0; k < 8; k++)
+			{
+				if ((data & 0x0f) == 0x0f)
+					count++;
+				data >>= 4;
+			}
+		}
+		if (count == 0)
+			gfx_pen_usage[TILE08][i] = SPRITE_OPAQUE;
+		else if (count != 8*8)
+			gfx_pen_usage[TILE08][i] = SPRITE_TRANSPARENT;
+	}
+
+	for (i = 0; i < gfx_total_elements[TILE16]; i++)
+	{
+		int count = 0;
+		UINT32 offset = i << 7;
+
+		tile = (UINT32 *)&memory_region_gfx1[offset];
+
+		for (j = 0; j < 2*16; j++)
+		{
+			data = *tile++;
+			for (k = 0; k < 8; k++)
+			{
+				if ((data & 0x0f) == 0x0f)
+					count++;
+				data >>= 4;
+			}
+		}
+		if (count == 0)
+			gfx_pen_usage[TILE16][i] = SPRITE_OPAQUE;
+		else if (count != 2*16*8)
+			gfx_pen_usage[TILE16][i] = SPRITE_TRANSPARENT;
+	}
+
+	for (i = 0; i < gfx_total_elements[TILE32]; i++)
+	{
+		int count  = 0;
+		UINT32 offset = (0x4000 + i) << 9;
+
+		tile = (UINT32 *)&memory_region_gfx1[offset];
+
+		for (j = 0; j < 4*32; j++)
+		{
+			data = *tile++;
+			for (k = 0; k < 8; k++)
+			{
+				if ((data & 0x0f) == 0x0f)
+					count++;
+				data >>= 4;
+			}
+		}
+		if (count == 0)
+			gfx_pen_usage[TILE32][i] = SPRITE_OPAQUE;
+		else if (count != 4*32*8)
+			gfx_pen_usage[TILE32][i] = SPRITE_TRANSPARENT;
+	}
+}
+
+#endif
+
+
 /*------------------------------------------------------
 	カラーテーブル作成
 ------------------------------------------------------*/
@@ -198,7 +337,7 @@ static void cps2_init_tables(void)
 			{
 				for (b = 0; b < 16; b++)
 				{
-					u16 pen;
+					UINT16 pen;
 					int r2, g2, b2, bright2;
 					float fr, fg, fb;
 
@@ -235,9 +374,9 @@ static void cps2_init_tables(void)
 	CPS1ベースオフセット取得
 ------------------------------------------------------*/
 
-static u16 *cps1_base(int offset, int address_mask)
+static UINT16 *cps1_base(int offset, int address_mask)
 {
-	u32 base = (cps1_port(offset) << 7) & address_mask;
+	UINT32 base = (cps1_port(offset) << 7) & address_mask;
 
 	return &cps1_gfxram[base];
 }
@@ -250,15 +389,21 @@ static u16 *cps1_base(int offset, int address_mask)
 int cps2_video_init(void)
 {
 	cps2_kludge = driver->kludge;
-#if !RELEASE
-	cps2_scroll3_base = (driver->kludge & (CPS2_KLUDGE_SSF2 | CPS2_KLUDGE_SSF2T | CPS2_KLUDGE_HSF2D)) ? 0x0000 : 0x4000;
-#else
 	cps2_scroll3_base = (driver->kludge & (CPS2_KLUDGE_SSF2 | CPS2_KLUDGE_SSF2T)) ? 0x0000 : 0x4000;
-#endif
 
 	cps_pen_usage[TILE08] = gfx_pen_usage[TILE08] - 0x20000;
 	cps_pen_usage[TILE16] = gfx_pen_usage[TILE16];
 	cps_pen_usage[TILE32] = gfx_pen_usage[TILE32] - 0x4000;
+
+#if !USE_CACHE
+	ui_popup_reset(POPUP_MENU);
+	ui_popup(TEXT(DECODING_GFX));
+	ui_show_popup(1);
+	video_flip_screen(0);
+	ui_popup_reset(POPUP_GAME);
+
+	cps2_gfx_decode();
+#endif
 
 	cps2_init_tables();
 
@@ -317,8 +462,8 @@ void  cps2_video_reset(void)
 
 static void cps2_build_palette_normal(void)
 {
-	u32 offset;
-	u16 palette;
+	UINT32 offset;
+	UINT16 palette;
 
 	cps2_palette = cps1_base(CPS1_PALETTE_BASE, cps2_palette_mask);
 
@@ -344,8 +489,8 @@ static void cps2_build_palette_normal(void)
 
 static void cps2_build_palette_delay(void)
 {
-	u32 offset;
-	u16 palette;
+	UINT32 offset;
+	UINT16 palette;
 
 	cps2_palette = cps1_base(CPS1_PALETTE_BASE, cps2_palette_mask);
 
@@ -443,12 +588,12 @@ static struct cps2_object_t *object1;
 
 static void cps2_render_object(void)
 {
-	s16 x, y, sx, sy, nx, ny, nsx, nsy, pri;
-	u16 attr, z;
-	u32 code, ncode;
-	s16 xoffs = 64 - cps2_object_xoffs;
-	s16 yoffs = 16 - cps2_object_yoffs;
-	u8 *pen_usage = cps_pen_usage[TILE16];
+	INT16 x, y, sx, sy, nx, ny, nsx, nsy, pri;
+	UINT16 attr, z;
+	UINT32 code, ncode;
+	INT16 xoffs = 64 - cps2_object_xoffs;
+	INT16 yoffs = 16 - cps2_object_yoffs;
+	UINT8 *pen_usage = cps_pen_usage[TILE16];
 
 	object1 = cps2_object;
 
@@ -475,12 +620,12 @@ static void cps2_render_object(void)
 
 void cps2_scan_object_callback(void)
 {
-	s16 x, y, sx, sy, nx, ny, nsx, nsy;
-	u16 attr;
-	u32 code, ncode;
-	s16 xoffs = 64 - cps2_object_xoffs;
-	s16 yoffs = 16 - cps2_object_yoffs;
-	u8 *pen_usage = cps_pen_usage[TILE16];
+	INT16 x, y, sx, sy, nx, ny, nsx, nsy;
+	UINT16 attr;
+	UINT32 code, ncode;
+	INT16 xoffs = 64 - cps2_object_xoffs;
+	INT16 yoffs = 16 - cps2_object_yoffs;
+	UINT8 *pen_usage = cps_pen_usage[TILE16];
 	struct cps2_object_t *object = object1;
 
 	while (object < cps2_last_object)
@@ -505,14 +650,14 @@ void cps2_scan_object_callback(void)
 #define scroll1_offset(col, row) (((row) & 0x1f) + (((col) & 0x3f) << 5) + (((row) & 0x20) << 6)) << 1
 
 #define SCAN_SCROLL1(blit_func)												\
-	s16 x, y, sx, sy;														\
-	u32 offs, code;															\
-	s16 logical_col = cps_scroll1x >> 3;									\
-	s16 logical_row = cps_scroll1y >> 3;									\
-	s16 scroll_col  = cps_scroll1x & 0x07;									\
-	s16 scroll_row  = cps_scroll1y & 0x07;									\
-	s16 min_x, max_x, min_y, max_y;											\
-	u8  *pen_usage = cps_pen_usage[TILE08];									\
+	INT16 x, y, sx, sy;														\
+	UINT32 offs, code;														\
+	INT16 logical_col = cps_scroll1x >> 3;									\
+	INT16 logical_row = cps_scroll1y >> 3;									\
+	INT16 scroll_col  = cps_scroll1x & 0x07;								\
+	INT16 scroll_row  = cps_scroll1y & 0x07;								\
+	INT16 min_x, max_x, min_y, max_y;										\
+	UINT8  *pen_usage = cps_pen_usage[TILE08];								\
 																			\
 	min_x = ( 64 + scroll_col) >> 3;										\
 	max_x = (447 + scroll_col) >> 3;										\
@@ -568,14 +713,14 @@ void cps2_scan_scroll1_callback(void)
 #define scroll2_offset(col, row) (((row) & 0x0f) + (((col) & 0x3f) << 4) + (((row) & 0x30) << 6)) << 1
 
 #define SCAN_SCROLL2(blit_func)												\
-	u16 block;																\
-	s16 x, y, sx, sy;														\
-	u32 offs, code;															\
-	s16 logical_col, scroll_col;											\
-	s16 logical_row = cps_scroll2y >> 4;									\
-	s16 scroll_row = cps_scroll2y & 0x0f;									\
-	s16 min_x, max_x, min_y, max_y;											\
-	u8  *pen_usage = cps_pen_usage[TILE16];									\
+	UINT16 block;															\
+	INT16 x, y, sx, sy;														\
+	UINT32 offs, code;														\
+	INT16 logical_col, scroll_col;											\
+	INT16 logical_row = cps_scroll2y >> 4;									\
+	INT16 scroll_row = cps_scroll2y & 0x0f;									\
+	INT16 min_x, max_x, min_y, max_y;										\
+	UINT8  *pen_usage = cps_pen_usage[TILE16];								\
 																			\
 	for (block = 0; block < cps_scroll2_blocks; block++)					\
 	{																		\
@@ -652,7 +797,7 @@ void cps2_scan_scroll2_callback(void)
 
 static void cps2_check_scroll2_distort(int distort)
 {
-	u16 line, block = 0;
+	UINT16 line, block = 0;
 
 	line = cps2_scanline_start;
 	scroll2[0].start = line;
@@ -660,7 +805,7 @@ static void cps2_check_scroll2_distort(int distort)
 
 	if (distort)
 	{
-		u16 otheroffs = cps1_port(CPS1_ROWSCROLL_OFFS);
+		UINT16 otheroffs = cps1_port(CPS1_ROWSCROLL_OFFS);
 
 		scroll2[0].value = cps_scroll2x + cps_other[(line + otheroffs) & 0x3ff];
 
@@ -674,7 +819,7 @@ static void cps2_check_scroll2_distort(int distort)
 
 		if (distort)
 		{
-			u16 value, prev_value;
+			UINT16 value, prev_value;
 
 			prev_value = scroll2[0].value;
 
@@ -737,15 +882,15 @@ static void cps2_check_scroll2_distort(int distort)
 #define scroll3_offset(col, row) (((row) & 0x07) + (((col) & 0x3f) << 3) + (((row) & 0x38) << 6)) << 1
 
 #define SCAN_SCROLL3(blit_func)												\
-	s16 x, y, sx, sy;														\
-	u32 offs, code;															\
-	u32 base = cps2_scroll3_base;											\
-	s16 logical_col = cps_scroll3x >> 5;									\
-	s16 logical_row = cps_scroll3y >> 5;									\
-	s16 scroll_col  = cps_scroll3x & 0x1f;									\
-	s16 scroll_row  = cps_scroll3y & 0x1f;									\
-	s16 min_x, max_x, min_y, max_y;											\
-	u8  *pen_usage = cps_pen_usage[TILE32];									\
+	INT16 x, y, sx, sy;														\
+	UINT32 offs, code;														\
+	UINT32 base = cps2_scroll3_base;										\
+	INT16 logical_col = cps_scroll3x >> 5;									\
+	INT16 logical_row = cps_scroll3y >> 5;									\
+	INT16 scroll_col  = cps_scroll3x & 0x1f;								\
+	INT16 scroll_row  = cps_scroll3y & 0x1f;								\
+	INT16 min_x, max_x, min_y, max_y;										\
+	UINT8  *pen_usage = cps_pen_usage[TILE32];								\
 																			\
 	min_x = ( 64 + scroll_col) >> 5;										\
 	max_x = (447 + scroll_col) >> 5;										\
@@ -769,7 +914,6 @@ static void cps2_check_scroll2_distort(int distort)
 			switch (cps2_kludge)											\
 			{																\
 			case CPS2_KLUDGE_SSF2T:											\
-			case CPS2_KLUDGE_HSF2D:											\
 				if (code < 0x5600) code += 0x4000;							\
 				break;														\
 																			\
@@ -839,11 +983,11 @@ static void cps2_render_layer(int layer)
 
 void cps2_screenrefresh(int start, int end)
 {
-	u16 layer_ctrl = cps1_port(CPS2_LAYER_CONTROL);
-	u16 video_ctrl = cps1_port(CPS1_VIDEO_CONTROL);
-	u16 pri_ctrl   = cps2_port(CPS2_OBJ_PRI);
+	UINT16 layer_ctrl = cps1_port(CPS2_LAYER_CONTROL);
+	UINT16 video_ctrl = cps1_port(CPS1_VIDEO_CONTROL);
+	UINT16 pri_ctrl   = cps2_port(CPS2_OBJ_PRI);
 	int i, priority, prev_pri;
-	u8  layer[4], pri[4] = {0,};
+	UINT8  layer[4], pri[4] = {0,};
 
 	if (start < FIRST_VISIBLE_LINE) start = FIRST_VISIBLE_LINE;
 	if (end > LAST_VISIBLE_LINE) end = LAST_VISIBLE_LINE;
@@ -930,11 +1074,11 @@ void cps2_screenrefresh(int start, int end)
 
 void cps2_objram_latch(void)
 {
-	u16 *base = (u16 *)cps2_objram[cps2_objram_bank];
-	u16 *end  = base + (cps2_obj_size >> 1);
+	UINT16 *base = (UINT16 *)cps2_objram[cps2_objram_bank];
+	UINT16 *end  = base + (cps2_obj_size >> 1);
 	struct cps2_object_t *object = cps2_object;
-	s16 prev_pri = -1;
-	u16 zvalue = 0;
+	INT16 prev_pri = -1;
+	UINT16 zvalue = 0;
 
 	cps2_has_mask = 0;
 

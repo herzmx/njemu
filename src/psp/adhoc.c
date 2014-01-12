@@ -14,6 +14,9 @@
 #include <pspnet_adhocctl.h>
 #include <pspnet_adhocmatching.h>
 #include <pspwlan.h>
+#ifndef KERNEL_MODE
+#include "psputility_netmodules.h"              //AHMAN
+#endif
 
 #define NUM_ENTRIES			32
 
@@ -207,7 +210,7 @@ static void DisplayPspList(int top, int rows)
 		{
 			if ((top + i) >= max) break;
 
-			sceNetEtherNtostr((u8 *)psplist[top + i].mac, temp);
+			sceNetEtherNtostr((UINT8 *)psplist[top + i].mac, temp);
 
 			if ((top + i) == pos)
 			{
@@ -279,6 +282,8 @@ static void matchingCallback(int unk1, int event, char *mac2, int optLen, char *
 
 int pspSdkLoadAdhocModules(void)
 {
+// AHMAN
+#ifdef KERNEL_MODE
 	int modID;
 
 	modID = pspSdkLoadStartModule("flash0:/kd/ifhandle.prx", PSP_MEMORY_PARTITION_KERNEL);
@@ -319,6 +324,10 @@ int pspSdkLoadAdhocModules(void)
 
 	sceKernelDcacheWritebackAll();
 	sceKernelIcacheInvalidateAll();
+#else
+        sceUtilityLoadNetModule(PSP_NET_MODULE_COMMON);         // AHMAN
+        sceUtilityLoadNetModule(PSP_NET_MODULE_ADHOC);          // AHMAN
+#endif
 
 	return 0;
 }
@@ -354,7 +363,8 @@ int adhocInit(const char *matchingData)
 {
 	struct productStruct product;
 	int error = 0, state = 0;
-	char mac[20], buf[256];
+	unsigned char mac[20];
+	char buf[256];
 
 	video_set_mode(32);
 
@@ -524,7 +534,8 @@ static void adhocDisconnect(void)
 int adhocReconnect(char *ssid)
 {
 	int error = 0, state = 1;
-	char mac[20], buf[256];
+	unsigned char mac[20];
+	char buf[256];
 
 	adhoc_init_progress(6, TEXT(DISCONNECTING));
 
@@ -627,7 +638,7 @@ int adhocSelect(void)
 	int currentState = PSP_LISTING;
 	int prev_max = 0;
 	int update = 1;
-	char mac[16];
+	unsigned char mac[16];		//AHMAN
 	char name[64];
 	char temp[64];
 	char ssid[10];
@@ -699,7 +710,7 @@ int adhocSelect(void)
 			if (update)
 			{
 				msg_screen_init(WP_LOGO, ICON_SYSTEM, title);
-				sceNetEtherNtostr((u8 *)mac, temp);
+				sceNetEtherNtostr((UINT8 *)mac, temp);
 				msg_printf(TEXT(WAITING_FOR_x_TO_ACCEPT_THE_CONNECTION), temp);
 				msg_printf(TEXT(TO_CANCEL_PRESS_CROSS));
 				update = 0;
@@ -735,7 +746,7 @@ int adhocSelect(void)
 			if (update)
 			{
 				msg_screen_init(WP_LOGO, ICON_SYSTEM, title);
-				sceNetEtherNtostr((u8 *)mac, temp);
+				sceNetEtherNtostr((UINT8 *)mac, temp);
 				msg_printf(TEXT(x_HAS_REQUESTED_A_CONNECTION), temp);
 				msg_printf(TEXT(TO_ACCEPT_THE_CONNECTION_PRESS_CIRCLE_TO_CANCEL_PRESS_CIRCLE));
 				update = 0;
@@ -796,7 +807,7 @@ int adhocSelect(void)
 
 	if (Server) sceWlanGetEtherAddr(mac);
 
-	sceNetEtherNtostr((u8 *)mac, temp);
+	sceNetEtherNtostr((UINT8 *)mac, temp);
 
 	ssid[0] = temp[ 9];
 	ssid[1] = temp[10];
@@ -831,7 +842,7 @@ int adhocSend(void *buffer, int length)
 
 int adhocRecv(void *buffer, int length)
 {
-	int port = 0;
+	UINT16 port = 0;
 	char mac[6];
 
 	if (sceNetAdhocPdpRecv(pdpId, mac, &port, buffer, &length, 0, 1) < 0)
@@ -858,7 +869,7 @@ int adhocSendBlocking(void *buffer, int length)
 
 int adhocRecvBlocking(void *buffer, int length)
 {
-	int port = 0;
+	UINT16 port = 0;
 	char mac[6];
 
 	if (sceNetAdhocPdpRecv(pdpId, mac, &port, buffer, &length, ADHOC_TIMEOUT, 0) < 0)
@@ -873,7 +884,7 @@ int adhocRecvBlocking(void *buffer, int length)
 
 int adhocRecvBlockingTimeout(void *buffer, int length, int timeout)
 {
-	int port = 0;
+	UINT16 port = 0;
 	char mac[6];
 
 	if (sceNetAdhocPdpRecv(pdpId, mac, &port, buffer, &length, timeout, 0) < 0)
@@ -891,7 +902,7 @@ int adhocSendRecvAck(void *buffer, int length)
 	int ack_data  = 0;
 	int tempLen   = length;
 	int sentCount = 0;
-	u8 *buf = (u8 *)buffer;
+	UINT8 *buf = (UINT8 *)buffer;
 
 	do
 	{
@@ -922,7 +933,7 @@ int adhocRecvSendAck(void *buffer, int length)
 {
 	int tempLen   = length;
 	int rcvdCount = 0;
-	u8 *buf = (u8 *)buffer;
+	UINT8 *buf = (UINT8 *)buffer;
 
 	do
 	{

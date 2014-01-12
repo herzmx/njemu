@@ -22,8 +22,8 @@ enum
 	NUM_WALLPAPERS
 };
 
-extern u8 *wallpaper[NUM_WALLPAPERS];
-extern u32 wallpaper_size[NUM_WALLPAPERS];
+extern UINT8 *wallpaper[NUM_WALLPAPERS];
+extern UINT32 wallpaper_size[NUM_WALLPAPERS];
 
 void set_wallpaper(void);
 void load_wallpaper(void);

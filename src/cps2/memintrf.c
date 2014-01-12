@@ -13,9 +13,9 @@
 #define Z80_AMASK 0x0000ffff
 
 #define READ_BYTE(mem, offset)			mem[offset ^ 1]
-#define READ_WORD(mem, offset)			*(u16 *)&mem[offset]
+#define READ_WORD(mem, offset)			*(UINT16 *)&mem[offset]
 #define WRITE_BYTE(mem, offset, data)	mem[offset ^ 1] = data
-#define WRITE_WORD(mem, offset, data)	*(u16 *)&mem[offset] = data
+#define WRITE_WORD(mem, offset, data)	*(UINT16 *)&mem[offset] = data
 
 #define str_cmp(s1, s2)		strnicmp(s1, s2, strlen(s2))
 
@@ -31,39 +31,43 @@ enum
 
 #define MAX_CPU1ROM		8
 #define MAX_CPU2ROM		8
+#define MAX_GFX1ROM		32
 #define MAX_SND1ROM		8
-#define MAX_USR1ROM		8
 
 
 /******************************************************************************
 	グローバル変数
 ******************************************************************************/
 
-u8 *memory_region_cpu1;
-u8 *memory_region_cpu2;
-u8 *memory_region_gfx1;
-u8 *memory_region_sound1;
-u8 *memory_region_user1;
+UINT8 *memory_region_cpu1;
+UINT8 *memory_region_cpu2;
+UINT8 *memory_region_gfx1;
+UINT8 *memory_region_sound1;
+UINT8 *memory_region_user1;
 
-u32 memory_length_cpu1;
-u32 memory_length_cpu2;
-u32 memory_length_gfx1;
-u32 memory_length_sound1;
-u32 memory_length_user1;
+UINT32 memory_length_cpu1;
+UINT32 memory_length_cpu2;
+UINT32 memory_length_gfx1;
+UINT32 memory_length_sound1;
+UINT32 memory_length_user1;
 
-u32 gfx_total_elements[3];
-u8 *gfx_pen_usage[3];
+UINT32 gfx_total_elements[3];
+UINT8 *gfx_pen_usage[3];
 
-u8  ALIGN_DATA cps1_ram[0x10000];
-u8  ALIGN_DATA cps2_ram[0x4000 + 2];
-u16 ALIGN_DATA cps1_gfxram[0x30000 >> 1];
-u16 ALIGN_DATA cps1_output[0x100 >> 1];
+UINT8  ALIGN_DATA cps1_ram[0x10000];
+UINT8  ALIGN_DATA cps2_ram[0x4000 + 2];
+UINT16 ALIGN_DATA cps1_gfxram[0x30000 >> 1];
+UINT16 ALIGN_DATA cps1_output[0x100 >> 1];
 
-u16 ALIGN_DATA cps2_objram[2][0x2000 >> 1];
-u16 ALIGN_DATA cps2_output[0x10 >> 1];
+UINT16 ALIGN_DATA cps2_objram[2][0x2000 >> 1];
+UINT16 ALIGN_DATA cps2_output[0x10 >> 1];
 
-u8 *qsound_sharedram1;
-u8 *qsound_sharedram2;
+UINT8 *qsound_sharedram1;
+UINT8 *qsound_sharedram2;
+
+#if !USE_CACHE
+char cache_parent_name[16];
+#endif
 
 
 /******************************************************************************
@@ -72,20 +76,28 @@ u8 *qsound_sharedram2;
 
 static struct rom_t cpu1rom[MAX_CPU1ROM];
 static struct rom_t cpu2rom[MAX_CPU2ROM];
+#if !USE_CACHE
+static struct rom_t gfx1rom[MAX_GFX1ROM];
+#endif
 static struct rom_t snd1rom[MAX_SND1ROM];
-static struct rom_t usr1rom[MAX_USR1ROM];
 
 static int num_cpu1rom;
 static int num_cpu2rom;
+#if !USE_CACHE
+static int num_gfx1rom;
+#endif
 static int num_snd1rom;
-static int num_usr1rom;
 
-static u8 *static_ram1;
-static u8 *static_ram2;
-static u8 *static_ram3;
-static u8 *static_ram4;
-static u8 *static_ram5;
-static u8 *static_ram6;
+static UINT8 *static_ram1;
+static UINT8 *static_ram2;
+static UINT8 *static_ram3;
+static UINT8 *static_ram4;
+static UINT8 *static_ram5;
+static UINT8 *static_ram6;
+
+#if !RELEASE
+static int phoenix_edition;
+#endif
 
 
 /******************************************************************************
@@ -98,7 +110,7 @@ static u8 *static_ram6;
 
 static int load_rom_cpu1(void)
 {
-	int i;
+	int i, res;
 	char fname[32], *parent;
 
 	if ((memory_region_cpu1 = memalign(MEM_ALIGN, memory_length_cpu1)) == NULL)
@@ -112,9 +124,13 @@ static int load_rom_cpu1(void)
 
 	for (i = 0; i < num_cpu1rom; )
 	{
-		if (file_open(game_name, parent, cpu1rom[i].crc, fname) == -1)
+		strcpy(fname, cpu1rom[i].name);
+		if ((res = file_open(game_name, parent, cpu1rom[i].crc, fname)) < 0)
 		{
-			error_crc("CPU1");
+			if (res == -1)
+				error_file(fname);
+			else
+				error_crc(fname);
 			return 0;
 		}
 
@@ -135,7 +151,7 @@ static int load_rom_cpu1(void)
 
 static int load_rom_cpu2(void)
 {
-	int i;
+	int i, res;
 	char fname[32], *parent;
 
 	if ((memory_region_cpu2 = memalign(MEM_ALIGN, memory_length_cpu2)) == NULL)
@@ -149,9 +165,13 @@ static int load_rom_cpu2(void)
 
 	for (i = 0; i < num_cpu2rom; )
 	{
-		if (file_open(game_name, parent, cpu2rom[i].crc, fname) == -1)
+		strcpy(fname, cpu2rom[i].name);
+		if ((res = file_open(game_name, parent, cpu2rom[i].crc, fname)) < 0)
 		{
-			error_crc("CPU2");
+			if (res == -1)
+				error_file(fname);
+			else
+				error_crc(fname);
 			return 0;
 		}
 
@@ -172,6 +192,11 @@ static int load_rom_cpu2(void)
 
 static int load_rom_gfx1(void)
 {
+#if !USE_CACHE
+	int i, res;
+	char fname[32], *parent;
+#endif
+
 	gfx_total_elements[TILE08] = (memory_length_gfx1 - 0x800000) >> 6;
 	gfx_total_elements[TILE16] = memory_length_gfx1 >> 7;
 	gfx_total_elements[TILE32] = (memory_length_gfx1 - 0x800000) >> 9;
@@ -195,6 +220,7 @@ static int load_rom_gfx1(void)
 		return 0;
 	}
 
+#if USE_CACHE
 	memory_length_gfx1 = driver->cache_size;
 
 	if (cache_start() == 0)
@@ -204,6 +230,34 @@ static int load_rom_gfx1(void)
 		Loop = LOOP_BROWSER;
 		return 0;
 	}
+#else
+	memset(gfx_pen_usage[TILE08], 0, gfx_total_elements[TILE08]);
+	memset(gfx_pen_usage[TILE16], 0, gfx_total_elements[TILE16]);
+	memset(gfx_pen_usage[TILE32], 0, gfx_total_elements[TILE32]);
+
+	memory_region_gfx1 = (UINT8 *)PSP2K_MEM_TOP;
+
+	parent = strlen(parent_name) ? parent_name : NULL;
+
+	for (i = 0; i < num_gfx1rom; )
+	{
+		strcpy(fname, gfx1rom[i].name);
+		if ((res = file_open(game_name, parent, gfx1rom[i].crc, fname)) < 0)
+		{
+			if (res == -1)
+				error_file(fname);
+			else
+				error_crc(fname);
+			return 0;
+		}
+
+		msg_printf(TEXT(LOADING), fname);
+
+		i = rom_load(gfx1rom, memory_region_gfx1, i, num_gfx1rom);
+
+		file_close();
+	}
+#endif
 
 	return 1;
 }
@@ -215,7 +269,7 @@ static int load_rom_gfx1(void)
 
 static int load_rom_sound1(void)
 {
-	int i;
+	int i, res;
 	char fname[32], *parent;
 
 	if ((memory_region_sound1 = memalign(MEM_ALIGN, memory_length_sound1)) == NULL)
@@ -229,9 +283,13 @@ static int load_rom_sound1(void)
 
 	for (i = 0; i < num_snd1rom; )
 	{
-		if (file_open(game_name, parent_name, snd1rom[i].crc, fname) == -1)
+		strcpy(fname, snd1rom[i].name);
+		if ((res = file_open(game_name, parent, snd1rom[i].crc, fname)) < 0)
 		{
-			error_crc("SOUND1");
+			if (res == -1)
+				error_file(fname);
+			else
+				error_crc(fname);
 			return 0;
 		}
 
@@ -247,39 +305,19 @@ static int load_rom_sound1(void)
 
 
 /*--------------------------------------------------------
-	USER1 (MC68000 ROM xor table)
+	USER1 (MC68000 ROM decrypt region)
 --------------------------------------------------------*/
 
 static int load_rom_user1(void)
 {
 	if (memory_length_user1)
 	{
-		int i;
-		char fname[32], *parent;
-
 		if ((memory_region_user1 = memalign(MEM_ALIGN, memory_length_user1)) == NULL)
 		{
 			error_memory("REGION_USER1");
 			return 0;
 		}
 		memset(memory_region_user1, 0, memory_length_user1);
-
-		parent = strlen(parent_name) ? parent_name : NULL;
-
-		for (i = 0; i < num_usr1rom; )
-		{
-			if (file_open(game_name, parent, usr1rom[i].crc, fname) == -1)
-			{
-				error_crc("USER1");
-				return 0;
-			}
-
-			msg_printf(TEXT(LOADING), fname);
-
-			i = rom_load(usr1rom, memory_region_user1, i, num_usr1rom);
-
-			file_close();
-		}
 	}
 
 	return 1;
@@ -300,8 +338,10 @@ static int load_rom_info(const char *game_name)
 
 	num_cpu1rom = 0;
 	num_cpu2rom = 0;
+#if !USE_CACHE
+	num_gfx1rom = 0;
+#endif
 	num_snd1rom = 0;
-	num_usr1rom = 0;
 
 	machine_driver_type  = 0;
 	machine_input_type   = 0;
@@ -339,13 +379,6 @@ static int load_rom_info(const char *game_name)
 
 					if (stricmp(name, game_name) == 0)
 					{
-#if RELEASE
-						if (stricmp(name, "hsf2d") == 0)
-						{
-							fclose(fp);
-							return 1;
-						}
-#endif
 						if (str_cmp(parent, "cps2") == 0)
 							parent_name[0] = '\0';
 						else
@@ -388,7 +421,11 @@ static int load_rom_info(const char *game_name)
 					else if (strcmp(type, "GFX1") == 0)
 					{
 						sscanf(size, "%x", &memory_length_gfx1);
+#if USE_CACHE
 						region = REGION_SKIP;
+#else
+						region = REGION_GFX1;
+#endif
 					}
 					else if (strcmp(type, "SOUND1") == 0)
 					{
@@ -398,7 +435,7 @@ static int load_rom_info(const char *game_name)
 					else if (strcmp(type, "USER1") == 0)
 					{
 						sscanf(size, "%x", &memory_length_user1);
-						region = REGION_USER1;
+						region = REGION_SKIP;
 					}
 					else
 					{
@@ -407,10 +444,14 @@ static int load_rom_info(const char *game_name)
 				}
 				else if (str_cmp(&buf[1], "ROM(") == 0)
 				{
-					char *type, *offset, *length, *crc;
+					char *type, *name, *offset, *length, *crc;
 
 					strtok(&buf[1], " ");
 					type   = strtok(NULL, " ,");
+					if (type[0] != '1')
+						name = strtok(NULL, " ,");
+					else
+						name = NULL;
 					offset = strtok(NULL, " ,");
 					length = strtok(NULL, " ,");
 					crc    = strtok(NULL, " ");
@@ -424,6 +465,7 @@ static int load_rom_info(const char *game_name)
 						sscanf(crc, "%x", &cpu1rom[num_cpu1rom].crc);
 						cpu1rom[num_cpu1rom].group = 0;
 						cpu1rom[num_cpu1rom].skip = 0;
+						if (name) strcpy(cpu1rom[num_cpu1rom].name, name);
 						num_cpu1rom++;
 						break;
 
@@ -434,8 +476,22 @@ static int load_rom_info(const char *game_name)
 						sscanf(crc, "%x", &cpu2rom[num_cpu2rom].crc);
 						cpu2rom[num_cpu2rom].group = 0;
 						cpu2rom[num_cpu2rom].skip = 0;
+						if (name) strcpy(cpu2rom[num_cpu2rom].name, name);
 						num_cpu2rom++;
 						break;
+
+#if !USE_CACHE
+					case REGION_GFX1:
+						sscanf(type, "%x", &gfx1rom[num_gfx1rom].type);
+						sscanf(offset, "%x", &gfx1rom[num_gfx1rom].offset);
+						sscanf(length, "%x", &gfx1rom[num_gfx1rom].length);
+						sscanf(crc, "%x", &gfx1rom[num_gfx1rom].crc);
+						gfx1rom[num_gfx1rom].group = 0;
+						gfx1rom[num_gfx1rom].skip = 0;
+						if (name) strcpy(gfx1rom[num_gfx1rom].name, name);
+						num_gfx1rom++;
+						break;
+#endif
 
 					case REGION_SOUND1:
 						sscanf(type, "%x", &snd1rom[num_snd1rom].type);
@@ -444,27 +500,22 @@ static int load_rom_info(const char *game_name)
 						sscanf(crc, "%x", &snd1rom[num_snd1rom].crc);
 						snd1rom[num_snd1rom].group = 0;
 						snd1rom[num_snd1rom].skip = 0;
+						if (name) strcpy(snd1rom[num_snd1rom].name, name);
 						num_snd1rom++;
-						break;
-
-					case REGION_USER1:
-						sscanf(type, "%x", &usr1rom[num_usr1rom].type);
-						sscanf(offset, "%x", &usr1rom[num_usr1rom].offset);
-						sscanf(length, "%x", &usr1rom[num_usr1rom].length);
-						sscanf(crc, "%x", &usr1rom[num_usr1rom].crc);
-						usr1rom[num_usr1rom].group = 0;
-						usr1rom[num_usr1rom].skip = 0;
-						num_usr1rom++;
 						break;
 					}
 				}
 				else if (str_cmp(&buf[1], "ROMX(") == 0)
 				{
-					char *type, *offset, *length, *crc;
+					char *type, *name, *offset, *length, *crc;
 					char *group, *skip;
 
 					strtok(&buf[1], " ");
 					type   = strtok(NULL, " ,");
+					if (type[0] != '1')
+						name = strtok(NULL, " ,");
+					else
+						name = NULL;
 					offset = strtok(NULL, " ,");
 					length = strtok(NULL, " ,");
 					crc    = strtok(NULL, " ,");
@@ -480,6 +531,7 @@ static int load_rom_info(const char *game_name)
 						sscanf(crc, "%x", &cpu1rom[num_cpu1rom].crc);
 						sscanf(group, "%x", &cpu1rom[num_cpu1rom].group);
 						sscanf(skip, "%x", &cpu1rom[num_cpu1rom].skip);
+						if (name) strcpy(cpu1rom[num_cpu1rom].name, name);
 						num_cpu1rom++;
 						break;
 
@@ -490,8 +542,22 @@ static int load_rom_info(const char *game_name)
 						sscanf(crc, "%x", &cpu2rom[num_cpu2rom].crc);
 						sscanf(group, "%x", &cpu2rom[num_cpu2rom].group);
 						sscanf(skip, "%x", &cpu2rom[num_cpu2rom].skip);
+						if (name) strcpy(cpu2rom[num_cpu2rom].name, name);
 						num_cpu2rom++;
 						break;
+
+#if !USE_CACHE
+					case REGION_GFX1:
+						sscanf(type, "%x", &gfx1rom[num_gfx1rom].type);
+						sscanf(offset, "%x", &gfx1rom[num_gfx1rom].offset);
+						sscanf(length, "%x", &gfx1rom[num_gfx1rom].length);
+						sscanf(crc, "%x", &gfx1rom[num_gfx1rom].crc);
+						sscanf(group, "%x", &gfx1rom[num_gfx1rom].group);
+						sscanf(skip, "%x", &gfx1rom[num_gfx1rom].skip);
+						if (name) strcpy(gfx1rom[num_gfx1rom].name, name);
+						num_gfx1rom++;
+						break;
+#endif
 
 					case REGION_SOUND1:
 						sscanf(type, "%x", &snd1rom[num_snd1rom].type);
@@ -500,17 +566,8 @@ static int load_rom_info(const char *game_name)
 						sscanf(crc, "%x", &snd1rom[num_snd1rom].crc);
 						sscanf(group, "%x", &snd1rom[num_snd1rom].group);
 						sscanf(skip, "%x", &snd1rom[num_snd1rom].skip);
+						if (name) strcpy(snd1rom[num_snd1rom].name, name);
 						num_snd1rom++;
-						break;
-
-					case REGION_USER1:
-						sscanf(type, "%x", &usr1rom[num_usr1rom].type);
-						sscanf(offset, "%x", &usr1rom[num_usr1rom].offset);
-						sscanf(length, "%x", &usr1rom[num_usr1rom].length);
-						sscanf(crc, "%x", &usr1rom[num_usr1rom].crc);
-						sscanf(group, "%x", &usr1rom[num_usr1rom].group);
-						sscanf(skip, "%x", &usr1rom[num_usr1rom].skip);
-						num_usr1rom++;
 						break;
 					}
 				}
@@ -551,7 +608,9 @@ int memory_init(void)
 	gfx_pen_usage[TILE16] = NULL;
 	gfx_pen_usage[TILE32] = NULL;
 
+#if USE_CACHE
 	cache_init();
+#endif
 	pad_wait_clear();
 	video_clear_screen();
 	msg_screen_init(WP_LOGO, ICON_SYSTEM, TEXT(LOAD_ROM));
@@ -583,7 +642,7 @@ int memory_init(void)
 	{
 		cache_parent_name[0] = '\0';
 	}
-#if 1
+#if USE_CACHE
 	else if (!strcmp(game_name, "mpangj"))
 	{
 		// 多分日本語版はBAD DUMP(一部スプライトの欠けあり)
@@ -612,6 +671,32 @@ int memory_init(void)
 		Loop = LOOP_BROWSER;
 		return 0;
 	}
+
+#if !RELEASE
+	if (!strcmp(game_name, "ddtodd")
+	||	!strcmp(game_name, "xmcotad")
+	||	!strcmp(game_name, "avspd")
+	||	!strcmp(game_name, "dstlku1d")
+	||	!strcmp(game_name, "ringdstd")
+	||	!strcmp(game_name, "nwarrd")
+	||	!strcmp(game_name, "sfad")
+	||	!strcmp(game_name, "19xxd")
+	||	!strcmp(game_name, "ddsomud")
+	||	!strcmp(game_name, "megamn2d")
+	||	!strcmp(game_name, "sfz2aad")
+	||	!strcmp(game_name, "spf2xjd")
+	||	!strcmp(game_name, "xmvsfu1d")
+	||	!strcmp(game_name, "batcird")
+	||	!strcmp(game_name, "vsavd")
+	||	!strcmp(game_name, "mvscud")
+	||	!strcmp(game_name, "sfa3d")
+	||	!strcmp(game_name, "hsf2d")
+	||	!strcmp(game_name, "gwingjd")
+	||	!strcmp(game_name, "1944d"))
+		phoenix_edition = 1;
+	else
+		phoenix_edition = 0;
+#endif
 
 	if (parent_name[0])
 		msg_printf(TEXT(ROMSET_x_PARENT_x), game_name, parent_name);
@@ -657,12 +742,12 @@ int memory_init(void)
 	}
 	if (load_rom_gfx1() == 0) return 0;
 
-	static_ram1 = (u8 *)cps1_ram    - 0xff0000;
-	static_ram2 = (u8 *)cps1_gfxram - 0x900000;
-	static_ram3 = (u8 *)cps2_ram    - 0x660000;
-	static_ram4 = (u8 *)cps2_output - 0x400000;
-	static_ram5 = (u8 *)cps2_objram[0];
-	static_ram6 = (u8 *)cps2_objram[1];
+	static_ram1 = (UINT8 *)cps1_ram    - 0xff0000;
+	static_ram2 = (UINT8 *)cps1_gfxram - 0x900000;
+	static_ram3 = (UINT8 *)cps2_ram    - 0x660000;
+	static_ram4 = (UINT8 *)cps2_output - 0x400000;
+	static_ram5 = (UINT8 *)cps2_objram[0];
+	static_ram6 = (UINT8 *)cps2_objram[1];
 
 	qsound_sharedram1 = &memory_region_cpu2[0xc000];
 	qsound_sharedram2 = &memory_region_cpu2[0xf000];
@@ -679,7 +764,9 @@ int memory_init(void)
 
 void memory_shutdown(void)
 {
+#if USE_CACHE
 	cache_shutdown();
+#endif
 
 	if (gfx_pen_usage[TILE08]) free(gfx_pen_usage[TILE08]);
 	if (gfx_pen_usage[TILE16]) free(gfx_pen_usage[TILE16]);
@@ -687,11 +774,13 @@ void memory_shutdown(void)
 
 	if (memory_region_cpu1)   free(memory_region_cpu1);
 	if (memory_region_cpu2)   free(memory_region_cpu2);
+#if USE_CACHE
 	if (memory_region_gfx1)   free(memory_region_gfx1);
+#endif
 	if (memory_region_sound1) free(memory_region_sound1);
 	if (memory_region_user1)  free(memory_region_user1);
 
-#if PSP_VIDEO_32BPP
+#if (USE_CACHE && PSP_VIDEO_32BPP)
 	GFX_MEMORY = NULL;
 #endif
 }
@@ -705,10 +794,10 @@ void memory_shutdown(void)
 	M68000メモリリード (byte)
 ------------------------------------------------------*/
 
-u8 m68000_read_memory_8(u32 offset)
+UINT8 m68000_read_memory_8(UINT32 offset)
 {
 	int shift;
-	u16 mem_mask;
+	UINT16 mem_mask;
 
 	offset &= M68K_AMASK;
 
@@ -774,7 +863,7 @@ u8 m68000_read_memory_8(u32 offset)
 	M68000リードメモリ (word)
 ------------------------------------------------------*/
 
-u16 m68000_read_memory_16(u32 offset)
+UINT16 m68000_read_memory_16(UINT32 offset)
 {
 	offset &= M68K_AMASK;
 
@@ -837,10 +926,10 @@ u16 m68000_read_memory_16(u32 offset)
 	M68000ライトメモリ (byte)
 ------------------------------------------------------*/
 
-void m68000_write_memory_8(u32 offset, u8 data)
+void m68000_write_memory_8(UINT32 offset, UINT8 data)
 {
 	int shift = (~offset & 1) << 3;
-	u16 mem_mask = ~(0xff << shift);
+	UINT16 mem_mask = ~(0xff << shift);
 
 	offset &= M68K_AMASK;
 
@@ -848,7 +937,7 @@ void m68000_write_memory_8(u32 offset, u8 data)
 	{
 	case 0x40:
 #if !RELEASE
-		if (driver->kludge != CPS2_KLUDGE_HSF2D)
+		if (!phoenix_edition)
 #endif
 			WRITE_BYTE(static_ram4, offset, data);
 		return;
@@ -887,7 +976,7 @@ void m68000_write_memory_8(u32 offset, u8 data)
 				if (offset & 1)
 				{
 					cps2_objram_bank = data & 1;
-					static_ram6 = (u8 *)cps2_objram[cps2_objram_bank ^ 1];
+					static_ram6 = (UINT8 *)cps2_objram[cps2_objram_bank ^ 1];
 				}
 				return;
 			}
@@ -903,7 +992,7 @@ void m68000_write_memory_8(u32 offset, u8 data)
 
 	case 0xff:
 #if !RELEASE
-		if (driver->kludge == CPS2_KLUDGE_HSF2D)
+		if (phoenix_edition)
 		{
 			if (offset >= 0xfffff0)
 			{
@@ -923,7 +1012,7 @@ void m68000_write_memory_8(u32 offset, u8 data)
 	M68000ライトメモリ (word)
 ------------------------------------------------------*/
 
-void m68000_write_memory_16(u32 offset, u16 data)
+void m68000_write_memory_16(UINT32 offset, UINT16 data)
 {
 	offset &= M68K_AMASK;
 
@@ -931,7 +1020,7 @@ void m68000_write_memory_16(u32 offset, u16 data)
 	{
 	case 0x40:
 #if !RELEASE
-		if (driver->kludge != CPS2_KLUDGE_HSF2D)
+		if (!phoenix_edition)
 #endif
 			WRITE_WORD(static_ram4, offset, data);
 		return;
@@ -968,7 +1057,7 @@ void m68000_write_memory_16(u32 offset, u16 data)
 
 			case 0xe0:
 				cps2_objram_bank = data & 1;
-				static_ram6 = (u8 *)cps2_objram[cps2_objram_bank ^ 1];
+				static_ram6 = (UINT8 *)cps2_objram[cps2_objram_bank ^ 1];
 				return;
 			}
 			break;
@@ -983,7 +1072,7 @@ void m68000_write_memory_16(u32 offset, u16 data)
 
 	case 0xff:
 #if !RELEASE
-		if (driver->kludge == CPS2_KLUDGE_HSF2D)
+		if (phoenix_edition)
 		{
 			if (offset >= 0xfffff0)
 			{
@@ -1007,7 +1096,7 @@ void m68000_write_memory_16(u32 offset, u16 data)
 	Z80リードメモリ (byte)
 ------------------------------------------------------*/
 
-u8 z80_read_memory_8(u32 offset)
+UINT8 z80_read_memory_8(UINT32 offset)
 {
 	return memory_region_cpu2[offset & Z80_AMASK];
 }
@@ -1017,7 +1106,7 @@ u8 z80_read_memory_8(u32 offset)
 	Z80ライトメモリ (byte)
 ------------------------------------------------------*/
 
-void z80_write_memory_8(u32 offset, u8 data)
+void z80_write_memory_8(UINT32 offset, UINT8 data)
 {
 	offset &= Z80_AMASK;
 

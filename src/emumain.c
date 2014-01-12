@@ -13,10 +13,10 @@
 #define FRAMESKIP_LEVELS	12
 
 #if (EMU_SYSTEM == MVS)
-#define TICKS_PER_FRAME		16896		// 1000000 / 15625 * RASTER_LINES
-#else
-#define TICKS_PER_FRAME		16682
+#define TICKS_PER_FRAME_MVS	16896		// 1000000 / 15625 * RASTER_LINES
+#define TICKS_PER_FRAME_PSP	16683
 #endif
+
 
 /******************************************************************************
 	グローバル変数
@@ -49,13 +49,18 @@ int machine_input_type;
 int machine_screen_type;
 int machine_sound_type;
 
-u32 frames_displayed;
+UINT32 frames_displayed;
 int fatal_error;
 
 #ifdef ADHOC
 int adhoc_enable;
 int adhoc_server;
 char adhoc_matching[32];
+#endif
+
+#if (EMU_SYSTEM == MVS)
+int TICKS_PER_FRAME;
+float FPS;
 #endif
 
 
@@ -80,7 +85,7 @@ static int snap_no = -1;
 
 static char fatal_error_message[256];
 
-static const u8 skiptable[FRAMESKIP_LEVELS][FRAMESKIP_LEVELS] =
+static const UINT8 skiptable[FRAMESKIP_LEVELS][FRAMESKIP_LEVELS] =
 {
 	{ 0,0,0,0,0,0,0,0,0,0,0,0 },
 	{ 0,0,0,0,0,0,0,0,0,0,0,1 },
@@ -133,7 +138,7 @@ static void show_battery_warning(void)
 
 		if (bat < 10)
 		{
-			static u32 counter = 0;
+			static UINT32 counter = 0;
 
 			counter++;
 			if ((counter % 120) < 80)
@@ -187,7 +192,7 @@ void emu_main(void)
 		sprintf(adhoc_matching, "%s_%s_%s", PBPNAME_STR, game_name, bios[neogeo_bios]);
 #elif (EMU_SYSTEM == NCDZ)
 		const char *region[] = { "JPN", "USA", "EURO" };
-		u8 temp[0x200];
+		UINT8 temp[0x200];
 
 		memory_region_cpu1 = temp;
 		if (!neogeo_check_game())
@@ -243,6 +248,18 @@ void autoframeskip_reset(void)
 	frames_since_last_fps = 0;
 
 	game_speed_percent = 100;
+#if (EMU_SYSTEM == MVS)
+	if (option_vsync)
+	{
+		TICKS_PER_FRAME = TICKS_PER_FRAME_PSP;
+		FPS = 60.0;
+	}
+	else
+	{
+		TICKS_PER_FRAME = TICKS_PER_FRAME_MVS;
+		FPS = MVS_FPS;
+	}
+#endif
 	frames_per_second = FPS;
 
 	frames_displayed = 0;
@@ -255,7 +272,7 @@ void autoframeskip_reset(void)
 	フレームスキップテーブル
 --------------------------------------------------------*/
 
-u8 skip_this_frame(void)
+UINT8 skip_this_frame(void)
 {
 	return skiptable[frameskip][frameskip_counter];
 }
@@ -267,7 +284,7 @@ u8 skip_this_frame(void)
 
 void update_screen(void)
 {
-	u8 skipped_it = skiptable[frameskip][frameskip_counter];
+	UINT8 skipped_it = skiptable[frameskip][frameskip_counter];
 
 	if (!skipped_it)
 	{
@@ -299,9 +316,6 @@ void update_screen(void)
 		{
 			TICKER target = this_frame_base + frameskip_counter * TICKS_PER_FRAME;
 
-#if (EMU_SYSTEM != MVS)
-			sound_thread_locked = 1;
-#endif
 			if (option_vsync && curr < target - 50)
 			{
 				video_flip_screen(1);
@@ -318,9 +332,6 @@ void update_screen(void)
 				}
 				video_flip_screen(0);
 			}
-#if (EMU_SYSTEM != MVS)
-			sound_thread_locked = 0;
-#endif
 		}
 		else
 			video_flip_screen(0);

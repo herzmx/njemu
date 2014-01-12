@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 
-  MVSPSP game list (ver.2.0)
+  MVSPSP game list (ver.2.2.0)
 
 -------------------------------------------------------------------------------
 
@@ -205,41 +205,66 @@ wjammers    Windjammers
 zedblade    Zed Blade
 zupapa      Zupapa!
 
--------------------------------------------------------------------------------
- Following games are not working. (Memory not enough.)
--------------------------------------------------------------------------------
-ROM set     Game title
--------------------------------------------------------------------------------
-svcpcb      SvC Chaos - SNK vs Capcom (JAMMA PCB)
-
--------------------------------------------------------------------------------
- Following games are supported by MAME, but will never support in MVSPSP.
- (I HATE these hack/bootleg games.)
--------------------------------------------------------------------------------
-ROM set     Game title
--------------------------------------------------------------------------------
+kof96ep     The King of Fighters '96 (bootleg)
 kof97pls    The King of Fighters '97 Plus (bootleg)
+kof97pla    The King of Fighters '97 Plus 2003 (bootleg)
+kog         King of Gladiator (KOF'97 bootleg)
 zintrckb    Zintrick (hack / bootleg)
+zintrkcd    Zintrick / Oshidashi Zentrix (CD to MVS Conversion)
+garoubl     Garou - Mark of the Wolves (bootleg)
 mslug3b6    Metal Slug 6 (Metal Slug 3 bootleg)
-cthd2003    Crouching Tiger Hidden Dragon 2003 (The King of Fighters 2001 bootleg)
-ct2k3sp     Crouching Tiger Hidden Dragon 2003 Super Plus (The King of Fighters 2001 bootleg)
+kf2k1pls    The King of Fighters 2001 Plus (set 1 / bootleg)
+kf2k1pa     The King of Fighters 2001 Plus (set 2 / bootleg)
+cthd2003    Crouching Tiger Hidden Dragon 2003 (KOF2001 bootleg / set 1)
+cthd2k3a    Crouching Tiger Hidden Dragon 2003 (KOF2001 bootleg / set 2)
+ct2k3sp     Crouching Tiger Hidden Dragon 2003 Super Plus (KOF2001 bootleg)
+kof2002b    The King of Fighters 2002 (bootleg)
 kf2k2pls    The King of Fighters 2002 Plus (set 1, bootleg)
 kf2k2pla    The King of Fighters 2002 Plus (set 2, bootleg)
+kf2k2plb    The King of Fighters 2002 Plus (set 3 / bootleg)
+kf2k2plc    The King of Fighters 2002 Super (set 4 / bootleg)
 kf2k2mp     The King of Fighters 2002 Magic Plus (bootleg)
 kf2k2mp2    The King of Fighters 2002 Magic Plus II (bootleg)
-kof10th     The King Of Fighters 10th Anniversary (The King of Fighters 2002 bootleg)
-kf2k5uni    The King of Fighters 10th Anniversary 2005 Unique (The King of Fighters 2002 bootleg)
-kf10thep    The King of Fighters 10th Anniversary Extra Plus (The King of Fighters 2002 bootleg)
-kof2k4se    The King of Fighters Special Edition 2004 (The King of Fighters 2002 bootleg)
+kof10th     The King Of Fighters 10th Anniversary (KOF2002 bootleg)
+kf2k5uni    The King of Fighters 10th Anniversary 2005 Unique (KOF2002 bootleg)
+kf10thep    The King of Fighters 10th Anniversary Extra Plus (KOF2002 bootleg)
+kof2k4se    The King of Fighters Special Edition 2004 (KOF2002 bootleg)
+kf2k4pls    The King of Fighters Special Edition 2004 Plus (KOF2002 bootleg)
+mslug5b     Metal Slug 5 (bootleg)
 ms5plus     Metal Slug 5 Plus (bootleg)
-kf2k3bl     The King of Fighters 2003 (bootleg, set 1)
-kf2k3bla    The King of Fighters 2003 (bootleg, set 2)
-kf2k3pl     The King of Fighters 2004 Plus / Hero (The King of Fighters 2003 bootleg)
-kf2k3upl    The King of Fighters 2004 Ultra Plus (The King of Fighters 2003 bootleg)
 svcboot     SvC Chaos - SNK vs Capcom (MVS) (bootleg)
 svcplus     SvC Chaos - SNK vs Capcom Plus (set 1, bootleg)
 svcplusa    SvC Chaos - SNK vs Capcom Plus (set 2, bootleg)
 svcsplus    SvC Chaos - SNK vs Capcom Super Plus (bootleg)
 samsho5b    Samurai Shodown V / Samurai Spirits Zero (bootleg)
+kf2k3bl     The King of Fighters 2003 (bootleg, set 1)
+kf2k3bla    The King of Fighters 2003 (bootleg, set 2)
+kf2k3pl     The King of Fighters 2004 Plus / Hero (KOF2003 bootleg)
+kf2k3upl    The King of Fighters 2004 Ultra Plus (KOF2003 bootleg)
+matrimbl    Matrimelee / Shin Gouketsuji Ichizoku Toukon (bootleg)
 lans2004    Lansquenet 2004 (Shock Troopers - 2nd Squad bootleg)
 ms4plus     Metal Slug 4 Plus (bootleg)
+fr2ch       Idol Mahjong - final romance 2 (CD to MVS Conversion)
+bangbedp    Bang Bead (bootleg?)
+
+diggerma    Digger Man (prototype)
+columnsn    Columns (PD)
+poknight    Poker Night (PD)
+neonopon    Neo No Panepon (beta / PD)
+neopong     Neo Pong (v1.1 / PD)
+frogfest    Frog Feast (PD)
+ltorb1      Jonas Indiana and the Lost Temple of RA (20050717 / PD)
+cnbe        Codename - Blut Engel (2006-01-19 / PD)
+beast       Shadow of the Beast (demo / PD)
+neodemo     Neo-Demo (PD)
+ngem2k      NGEM2K (beta 2006-01-18 / PD)
+neo2500     Neo 2500 Demo (PD)
+syscheck    Neo System Check (ver 1.0b / PD)
+
+-------------------------------------------------------------------------------
+ Following games are not working.
+-------------------------------------------------------------------------------
+ROM set     Game title
+-------------------------------------------------------------------------------
+svcpcb      SvC Chaos - SNK vs Capcom (JAMMA PCB) (PSPÇ≈ÇÕÉÅÉÇÉäïsë´)
+npong10     Neo Pong (v1.0 / PD) (ÉvÉçÉOÉâÉÄÇÃèëÇ´ï˚Ç™ê≥ÇµÇ≠Ç»Ç¢ÇΩÇﬂìÆçÏÇµÇ»Ç¢)

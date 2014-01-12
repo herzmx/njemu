@@ -13,23 +13,23 @@
 	グローバル変数
 ******************************************************************************/
 
-u16 ALIGN_DATA neogeo_vidram16[0x20000 / 2];
-u16 neogeo_vidram16_offset;
-u16 neogeo_vidram16_modulo;
+UINT16 ALIGN_DATA neogeo_vidram16[0x20000 / 2];
+UINT16 neogeo_vidram16_offset;
+UINT16 neogeo_vidram16_modulo;
 
-u16 *neogeo_paletteram16;
-u16 ALIGN_DATA neogeo_palettebank16[2][0x2000 / 2];
-u32 neogeo_palette_index;
+UINT16 *neogeo_paletteram16;
+UINT16 ALIGN_DATA neogeo_palettebank16[2][0x2000 / 2];
+UINT32 neogeo_palette_index;
 
-u16 *video_palette;
-u16 ALIGN_PSPDATA video_palettebank[2][0x2000 / 2];
-u16 ALIGN_DATA video_clut16[0x8000];
+UINT16 *video_palette;
+UINT16 ALIGN_PSPDATA video_palettebank[2][0x2000 / 2];
+UINT16 ALIGN_DATA video_clut16[0x8000];
 
-u8 *gfx_pen_usage[3];
+UINT8 *gfx_pen_usage[3];
 
 int fix_bank;
-u8  *fix_usage;
-u8  *fix_memory;
+UINT8  *fix_usage;
+UINT8  *fix_memory;
 int neogeo_fix_bank_type;
 
 
@@ -37,16 +37,16 @@ int neogeo_fix_bank_type;
 	ローカル変数
 ******************************************************************************/
 
-static u32 no_of_tiles;
-static u32 high_tile;
-static u32 vhigh_tile;
-static u32 vvhigh_tile;
+static UINT32 no_of_tiles;
+static UINT32 high_tile;
+static UINT32 vhigh_tile;
+static UINT32 vvhigh_tile;
 static int next_update_first_line;
 
-static u8 *spr_pen_usage;
-static u16 *sprite_scale = &neogeo_vidram16[0x10000 >> 1];
-static u16 *sprite_yctrl = &neogeo_vidram16[0x10400 >> 1];
-static u16 *sprite_xctrl = &neogeo_vidram16[0x10800 >> 1];
+static UINT8 *spr_pen_usage;
+static UINT16 *sprite_scale = &neogeo_vidram16[0x10000 >> 1];
+static UINT16 *sprite_yctrl = &neogeo_vidram16[0x10400 >> 1];
+static UINT16 *sprite_xctrl = &neogeo_vidram16[0x10800 >> 1];
 
 #include "zoom.c"
 
@@ -61,7 +61,7 @@ static u16 *sprite_xctrl = &neogeo_vidram16[0x10800 >> 1];
 
 static void draw_fix(void)
 {
-	u16 x, y, code, attr;
+	UINT16 x, y, code, attr;
 
 	if (fix_bank && neogeo_fix_bank_type)
 	{
@@ -86,12 +86,12 @@ static void draw_fix(void)
 
 			for (x = 1/8; x < 312/8; x++)
 			{
-				u16 *vram = &neogeo_vidram16[(0xe000 >> 1) + (16 / 8) + (x << 5)];
+				UINT16 *vram = &neogeo_vidram16[(0xe000 >> 1) + (16 / 8) + (x << 5)];
 
 				for (y = 16/8; y < 240/8; y++)
 				{
 					code = *vram++;
-					attr = (code & 0xf000) >> 12;
+					attr = code >> 12;
 					code = (code & 0x0fff) + ((garouoffsets[(y - 2) & 31] ^ 3) << 12);
 
 					if (fix_usage[code])
@@ -103,12 +103,12 @@ static void draw_fix(void)
 		{
 			for (x = 1/8; x < 312/8; x++)
 			{
-				u16 *vram = &neogeo_vidram16[(0xe000 >> 1) + (16 / 8) + (x << 5)];
+				UINT16 *vram = &neogeo_vidram16[(0xe000 >> 1) + (16 / 8) + (x << 5)];
 
 				for (y = 16/8; y < 240/8; y++)
 				{
 					code = *vram++;
-					attr = (code & 0xf000) >> 12;
+					attr = code >> 12;
 					code &= 0x0fff;
 					code += (((neogeo_vidram16[(0xea00 >> 1) + ((y - 1) & 31) + 32 * (x / 6)] >> (5 - (x % 6)) * 2) & 3) ^ 3) << 12;
 
@@ -122,12 +122,12 @@ static void draw_fix(void)
 	{
 		for (x = 1/8; x < 312/8; x++)
 		{
-			u16 *vram = &neogeo_vidram16[(0xe000 >> 1) + (16 / 8) + (x << 5)];
+			UINT16 *vram = &neogeo_vidram16[(0xe000 >> 1) + (16 / 8) + (x << 5)];
 
 			for (y = 16/8; y < 240/8; y++)
 			{
 				code = *vram++;
-				attr = (code & 0xf000) >> 12;
+				attr = code >> 12;
 				code &= 0x0fff;
 
 				if (fix_usage[code])
@@ -168,10 +168,10 @@ static void draw_fix(void)
 static void draw_spr(int min_y, int max_y)
 {
 	int sx = 0, sy = 0, my = 0, zx = 0, zy = 0, rzy = 0;
-	u32 offset, code, attr;
+	UINT32 offset, code, attr;
 	int fullmode = 0, y, sy2;
-	u16 scale, yctrl;
-	u16 *sprite_base;
+	UINT16 scale, yctrl;
+	UINT16 *sprite_base;
 
 	for (offset = 0; offset < 0x300 >> 1; offset++)
 	{
@@ -257,6 +257,7 @@ static void draw_spr(int min_y, int max_y)
 }
 
 
+
 /******************************************************************************
 	MVS ビデオ描画処理
 ******************************************************************************/
@@ -279,7 +280,7 @@ void neogeo_video_init(void)
 				int g1 = (g << 3) | (g >> 2);
 				int b1 = (b << 3) | (b >> 2);
 
-				u16 color = ((r & 1) << 14) | ((r & 0x1e) << 7)
+				UINT16 color = ((r & 1) << 14) | ((r & 0x1e) << 7)
 						  | ((g & 1) << 13) | ((g & 0x1e) << 3)
 						  | ((b & 1) << 12) | ((b & 0x1e) >> 1);
 
@@ -330,11 +331,7 @@ void neogeo_video_reset(void)
 
 	next_update_first_line = FIRST_VISIBLE_LINE;
 
-#if !RELEASE
 	if (neogeo_bios == ASIA_AES || neogeo_bios == DEBUG_BIOS)
-#else
-	if (neogeo_bios == ASIA_AES)
-#endif
 	{
 		fix_bank   = 1;
 		fix_usage  = gfx_pen_usage[1];
@@ -367,6 +364,8 @@ void neogeo_screenrefresh(void)
 	draw_spr(FIRST_VISIBLE_LINE, LAST_VISIBLE_LINE);
 	draw_fix();
 	blit_finish();
+
+	next_update_first_line = FIRST_VISIBLE_LINE;
 }
 
 
@@ -391,9 +390,11 @@ void neogeo_partial_screenrefresh(int current_line)
 
 void neogeo_raster_screenrefresh(void)
 {
-	neogeo_partial_screenrefresh(LAST_VISIBLE_LINE);
+	blit_start(next_update_first_line, LAST_VISIBLE_LINE);
+	draw_spr(next_update_first_line, LAST_VISIBLE_LINE);
 	draw_fix();
 	blit_finish();
+
 	next_update_first_line = FIRST_VISIBLE_LINE;
 }
 

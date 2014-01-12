@@ -13,16 +13,16 @@
 	グローバル変数
 ******************************************************************************/
 
-u8 *wallpaper[NUM_WALLPAPERS];
-u32 wallpaper_size[NUM_WALLPAPERS];
+UINT8 *wallpaper[NUM_WALLPAPERS];
+UINT32 wallpaper_size[NUM_WALLPAPERS];
 
 
 /******************************************************************************
 	ローカル変数
 ******************************************************************************/
 
-static u8 *wp_user[NUM_WALLPAPERS];
-static u32 wp_user_size[NUM_WALLPAPERS];
+static UINT8 *wp_user[NUM_WALLPAPERS];
+static UINT32 wp_user_size[NUM_WALLPAPERS];
 
 #define INCLUDE_WALLPAPER
 
@@ -118,7 +118,7 @@ void load_wallpaper(void)
 			size = ftell(fp);
 			fseek(fp, 0, SEEK_SET);
 
-			if ((wp_user[i] = (u8 *)malloc(size)) != NULL)
+			if ((wp_user[i] = (UINT8 *)malloc(size)) != NULL)
 			{
 				wp_user_size[i] = size;
 				fread(wp_user[i], 1, size, fp);

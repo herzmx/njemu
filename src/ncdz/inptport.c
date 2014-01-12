@@ -14,7 +14,7 @@
 ******************************************************************************/
 
 int option_controller;
-u8 ALIGN_DATA neogeo_port_value[NCDZ_PORT_MAX];
+UINT8 ALIGN_DATA neogeo_port_value[NCDZ_PORT_MAX];
 
 int input_map[MAX_INPUTS];
 int af_interval = 1;
@@ -25,7 +25,7 @@ int analog_sensitivity;	// not used
 	ローカル変数
 ******************************************************************************/
 
-static const u8 hotkey_mask[11] =
+static const UINT8 hotkey_mask[11] =
 {
 //	0xef,	// A
 //	0xdf,	// B
@@ -44,7 +44,7 @@ static const u8 hotkey_mask[11] =
 	0x0f	// A+B+C+D
 };
 
-static u8 ALIGN_DATA input_flag[MAX_INPUTS];
+static UINT8 ALIGN_DATA input_flag[MAX_INPUTS];
 static int ALIGN_DATA af_map1[NCDZ_BUTTON_MAX];
 static int ALIGN_DATA af_map2[NCDZ_BUTTON_MAX];
 static int ALIGN_DATA af_counter[NCDZ_BUTTON_MAX];
@@ -53,9 +53,9 @@ static int input_ui_wait;
 #ifdef ADHOC
 typedef struct
 {
-	u32 buttons;
+	UINT32 buttons;
 	int loop_flag;
-	u16 port_value[3];
+	UINT16 port_value[3];
 } ADHOC_DATA;
 
 static ADHOC_DATA ALIGN_PSPDATA send_data;
@@ -63,7 +63,7 @@ static ADHOC_DATA ALIGN_PSPDATA recv_data;
 static SceUID adhoc_thread;
 static volatile int adhoc_active;
 static volatile int adhoc_update;
-static volatile u32 adhoc_paused;
+static volatile UINT32 adhoc_paused;
 #endif
 
 
@@ -75,7 +75,7 @@ static volatile u32 adhoc_paused;
 	連射フラグを更新
 ------------------------------------------------------*/
 
-static u32 update_autofire(u32 buttons)
+static UINT32 update_autofire(UINT32 buttons)
 {
 	int i;
 
@@ -110,7 +110,7 @@ static u32 update_autofire(u32 buttons)
 	ホットキーフラグを反映
 ------------------------------------------------------*/
 
-static u8 apply_hotkey(u8 value)
+static UINT8 apply_hotkey(UINT8 value)
 {
 	int i, button;
 
@@ -131,7 +131,7 @@ static u8 apply_hotkey(u8 value)
 
 static void update_inputport0(void)
 {
-	u8 value = 0xff;
+	UINT8 value = 0xff;
 
 	if (!option_controller)
 	{
@@ -162,7 +162,7 @@ static void update_inputport0(void)
 
 static void update_inputport1(void)
 {
-	u8 value = 0xff;
+	UINT8 value = 0xff;
 
 	if (option_controller)
 	{
@@ -193,7 +193,7 @@ static void update_inputport1(void)
 
 static void update_inputport2(void)
 {
-	u8 value = 0x0f;
+	UINT8 value = 0x0f;
 
 	if (option_controller)
 	{
@@ -223,7 +223,7 @@ static void update_inputport2(void)
 static int adhoc_update_inputport(SceSize args, void *argp)
 {
 	int i;
-	u32 buttons;
+	UINT32 buttons;
 
 	while (adhoc_active)
 	{
@@ -350,7 +350,7 @@ static int adhoc_update_inputport(SceSize args, void *argp)
 static void adhoc_pause(void)
 {
 	int control, sel = 0;
-	u32 buttons, frame = frames_displayed;
+	UINT32 buttons, frame = frames_displayed;
 	char buf[64];
 	RECT rect = { 140-8, 96-8, 340+8, 176+8 };
 
@@ -567,7 +567,7 @@ void update_inputport(void)
 #endif
 	{
 		int i;
-		u32 buttons;
+		UINT32 buttons;
 
 		buttons = poll_gamepad();
 

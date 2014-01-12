@@ -32,16 +32,16 @@ static volatile int mp3_sleep;
 static int mp3_handle;
 static SceUID mp3_thread;
 
-static u8 mp3_out[2][MP3_BUFFER_SIZE];
-static u8 mp3_in[(2 * MP3_BUFFER_SIZE) + MAD_BUFFER_GUARD];
+static UINT8 mp3_out[2][MP3_BUFFER_SIZE];
+static UINT8 mp3_in[(2 * MP3_BUFFER_SIZE) + MAD_BUFFER_GUARD];
 
 static int mp3_newfile;
 static int mp3_fsize;
 static int mp3_filepos;
 static int mp3_volume;
 
-static u32 mp3_frame;
-static u32 mp3_start_frame;
+static UINT32 mp3_frame;
+static UINT32 mp3_start_frame;
 
 static SceUID mp3_fd = -1;
 
@@ -64,12 +64,12 @@ int option_mp3_volume;
 	MP3サンプルデータの範囲を修正
 --------------------------------------------------------*/
 
-INLINE s16 MP3Limit(mad_fixed_t value)
+INLINE INT16 MP3Limit(mad_fixed_t value)
 {
 	if (value >=  MAD_F_ONE) return 32767;
 	if (value <= -MAD_F_ONE) return -32767;
 
-	return (s16)(value >> (MAD_F_FRACBITS - 15));
+	return (INT16)(value >> (MAD_F_FRACBITS - 15));
 }
 
 
@@ -118,8 +118,8 @@ static int MP3SleepCheck(void)
 static void MP3Update(void)
 {
 	int flip;
-	u8 *GuardPtr;
-	s16 *OutputPtr, *OutputEnd;
+	UINT8 *GuardPtr;
+	INT16 *OutputPtr, *OutputEnd;
 	struct mad_stream Stream;
 	struct mad_frame Frame;
 	struct mad_synth Synth;
@@ -130,8 +130,8 @@ static void MP3Update(void)
 	mad_synth_init(&Synth);
 	mad_timer_reset(&Timer);
 
-	OutputPtr = (s16 *)mp3_out[0];
-	OutputEnd = (s16 *)(mp3_out[0] + MP3_BUFFER_SIZE);
+	OutputPtr = (INT16 *)mp3_out[0];
+	OutputEnd = (INT16 *)(mp3_out[0] + MP3_BUFFER_SIZE);
 	GuardPtr = NULL;
 
 	mp3_filepos = 0;
@@ -143,8 +143,8 @@ static void MP3Update(void)
 	{
 		if (Stream.buffer == NULL || Stream.error == MAD_ERROR_BUFLEN)
 		{
-			u32 ReadSize, Remaining;
-			u8 *ReadStart;
+			UINT32 ReadSize, Remaining;
+			UINT8 *ReadStart;
 
 			if (Stream.next_frame != NULL)
 			{
@@ -226,7 +226,7 @@ static void MP3Update(void)
 				}
 				else
 				{
-					s16 data = MP3Limit(Synth.pcm.samples[0][i]);
+					INT16 data = MP3Limit(Synth.pcm.samples[0][i]);
 
 					*OutputPtr++ = data;
 					*OutputPtr++ = data;
@@ -236,8 +236,8 @@ static void MP3Update(void)
 				{
 					sceAudioOutputPannedBlocking(mp3_handle, mp3_volume, mp3_volume, mp3_out[flip]);
 					flip ^= 1;
-					OutputPtr = (s16 *)mp3_out[flip];
-					OutputEnd = (s16 *)(mp3_out[flip] + MP3_BUFFER_SIZE);
+					OutputPtr = (INT16 *)mp3_out[flip];
+					OutputEnd = (INT16 *)(mp3_out[flip] + MP3_BUFFER_SIZE);
 				}
 			}
 		}
@@ -461,7 +461,7 @@ void mp3_pause(int pause)
 	シーク位置を設定(ステートロード用)
 --------------------------------------------------------*/
 
-void mp3_seek_set(const char *name, u32 frame)
+void mp3_seek_set(const char *name, UINT32 frame)
 {
 	if (mp3_thread >= 0)
 	{
@@ -507,7 +507,7 @@ void mp3_seek_start(void)
 	現在のMP3の再生フレームを取得
 --------------------------------------------------------*/
 
-u32 mp3_get_current_frame(void)
+UINT32 mp3_get_current_frame(void)
 {
 	return mp3_status ? mp3_frame : 0;
 }

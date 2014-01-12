@@ -13,7 +13,7 @@
 	ローカル変数
 ******************************************************************************/
 
-static s32 ALIGN_DATA mixing_buffer[2 * SOUND_SAMPLES];
+static INT32 ALIGN_DATA mixing_buffer[2 * SOUND_SAMPLES];
 
 
 /******************************************************************************
@@ -24,12 +24,12 @@ static s32 ALIGN_DATA mixing_buffer[2 * SOUND_SAMPLES];
 	サウンド更新(ステレオ)
 ------------------------------------------------------*/
 
-static void sound_update_stereo(s16 *buffer)
+static void sound_update_stereo(INT16 *buffer)
 {
 	int length = SOUND_SAMPLES >> (2 - option_samplerate);
-	s32 *src = mixing_buffer;
-	s16 *dst = buffer;
-	s32 lt, rt;
+	INT32 *src = mixing_buffer;
+	INT16 *dst = buffer;
+	INT32 lt, rt;
 
 	(*sound->callback)(src, length);
 
@@ -87,12 +87,12 @@ static void sound_update_stereo(s16 *buffer)
 ------------------------------------------------------*/
 
 #if (EMU_SYSTEM == CPS1)
-static void sound_update_mono(s16 *buffer)
+static void sound_update_mono(INT16 *buffer)
 {
 	int length = SOUND_SAMPLES >> (2 - option_samplerate);
-	s32 *src = mixing_buffer;
-	s16 *dst = buffer;
-	s32 sample;
+	INT32 *src = mixing_buffer;
+	INT16 *dst = buffer;
+	INT32 sample;
 
 	(*sound->callback)(src, length);
 

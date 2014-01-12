@@ -66,6 +66,7 @@ static char **cmdline;
 static int num_items, show_items, rows_item, sel_item, prev_item, top_item;
 static int num_lines, show_lines, rows_line, sel_line, prev_line;
 static int item_sx;
+static int menu_open;
 
 
 /******************************************************************************
@@ -94,8 +95,8 @@ static int cmdlist_get_tag(char *buf)
 
 static char *cmdlist_get_value(char *buf)
 {
-	if (strtok(buf, " =,\r\n") != NULL)
-		return strtok(NULL, " =,\r\t");
+	if (strtok(buf, " =\r\n\t") != NULL)
+		return strtok(NULL, " =\r\n\t");
 
 	return NULL;
 }
@@ -131,7 +132,7 @@ static int check_text_encode(char *buf, int size)
 {
 	int i;
 	int count1, count2, per;
-	u8 *p = (u8 *)buf;
+	UINT8 *p = (UINT8 *)buf;
 
 	count1 = 0;
 	count2 = 0;
@@ -227,14 +228,16 @@ retry:
 				}
 				else if ((p = cmdlist_get_value(linebuf)) != NULL)
 				{
+					char *name2 = strtok(p, ",");
+
 					do
 					{
-						if (stricmp(p, name) == 0)
+						if (stricmp(name2, name) == 0)
 						{
 							found = 1;
 							break;
 						}
-					} while ((p = cmdlist_get_value(linebuf)) != NULL);
+					} while ((name2 = strtok(NULL, ",")) != NULL);
 				}
 				break;
 
@@ -434,6 +437,8 @@ retry:
 		if (item_sx > x) item_sx = x;
 	}
 
+	menu_open = 1;
+
 	return;
 
 error:
@@ -492,7 +497,7 @@ void free_commandlist(void)
 void commandlist(int flag)
 {
 	int x, y, alpha;
-	int update = 1, menu_open = 0, menu_counter = 0;
+	int update = 1, menu_counter = 0;
 #if (EMU_SYSTEM == NCDZ)
 	int mp3_paused = 0;
 #endif

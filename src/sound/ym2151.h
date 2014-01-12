@@ -9,8 +9,8 @@
 #ifndef YM2151_H
 #define YM2151_H
 
-typedef s16 FMSAMPLE;
-typedef s32 FMSAMPLE_MIX;
+typedef INT16 FMSAMPLE;
+typedef INT32 FMSAMPLE_MIX;
 
 typedef void (*FM_IRQHANDLER)(int irq);
 

@@ -13,10 +13,10 @@
 	ローカル変数
 ******************************************************************************/
 
-static u32 pad;
-static u8 pressed_check;
-static u8 pressed_count;
-static u8 pressed_delay;
+static UINT32 pad;
+static UINT8 pressed_check;
+static UINT8 pressed_count;
+static UINT8 pressed_delay;
 static TICKER curr_time;
 static TICKER prev_time;
 
@@ -45,23 +45,16 @@ void pad_init(void)
 	パッドの押下状態取得
 --------------------------------------------------------*/
 
-u32 poll_gamepad(void)
+UINT32 poll_gamepad(void)
 {
 	SceCtrlData paddata;
 
 	sceCtrlPeekBufferPositive(&paddata, 1);
 
-#if (EMU_SYSTEM == MVS)
-	if (!(paddata.Buttons & PSP_CTRL_UP)    && paddata.Ly >= 0xD0) paddata.Buttons |= PSP_CTRL_DOWN;  // DOWN
-	if (!(paddata.Buttons & PSP_CTRL_DOWN)  && paddata.Ly <= 0x30) paddata.Buttons |= PSP_CTRL_UP;    // UP
-	if (!(paddata.Buttons & PSP_CTRL_RIGHT) && paddata.Lx <= 0x30) paddata.Buttons |= PSP_CTRL_LEFT;  // LEFT
-	if (!(paddata.Buttons & PSP_CTRL_LEFT)  && paddata.Lx >= 0xD0) paddata.Buttons |= PSP_CTRL_RIGHT; // RIGHT
-#else
-	if (paddata.Ly >= 0xD0) paddata.Buttons |= PSP_CTRL_DOWN;  // DOWN
-	if (paddata.Ly <= 0x30) paddata.Buttons |= PSP_CTRL_UP;    // UP
-	if (paddata.Lx <= 0x30) paddata.Buttons |= PSP_CTRL_LEFT;  // LEFT
-	if (paddata.Lx >= 0xD0) paddata.Buttons |= PSP_CTRL_RIGHT; // RIGHT
-#endif
+	if (paddata.Ly >= 0xd0) paddata.Buttons |= PSP_CTRL_DOWN;
+	if (paddata.Ly <= 0x30) paddata.Buttons |= PSP_CTRL_UP;
+	if (paddata.Lx <= 0x30) paddata.Buttons |= PSP_CTRL_LEFT;
+	if (paddata.Lx >= 0xd0) paddata.Buttons |= PSP_CTRL_RIGHT;
 #ifdef KERNEL_MODE
 	return paddata.Buttons | home_button;
 #else
@@ -71,22 +64,45 @@ u32 poll_gamepad(void)
 
 
 /*--------------------------------------------------------
-	パッドの押下状態取得(アナログ)
+	パッドの押下状態取得 (MVS / fatfursp専用)
 --------------------------------------------------------*/
 
 #if (EMU_SYSTEM == MVS)
-
-u32 poll_gamepad_analog(void)
+UINT32 poll_gamepad_fatfursp(void)
 {
-	u32 data;
 	SceCtrlData paddata;
 
 	sceCtrlPeekBufferPositive(&paddata, 1);
 
-	if (paddata.Ly >= 0xD0) paddata.Buttons |= PSP_CTRL_DOWN;  // DOWN
-	if (paddata.Ly <= 0x30) paddata.Buttons |= PSP_CTRL_UP;    // UP
-	if (paddata.Lx <= 0x30) paddata.Buttons |= PSP_CTRL_LEFT;  // LEFT
-	if (paddata.Lx >= 0xD0) paddata.Buttons |= PSP_CTRL_RIGHT; // RIGHT
+	if (!(paddata.Buttons & PSP_CTRL_UP)    && paddata.Ly >= 0xd0) paddata.Buttons |= PSP_CTRL_DOWN;
+	if (!(paddata.Buttons & PSP_CTRL_DOWN)  && paddata.Ly <= 0x30) paddata.Buttons |= PSP_CTRL_UP;
+	if (!(paddata.Buttons & PSP_CTRL_RIGHT) && paddata.Lx <= 0x30) paddata.Buttons |= PSP_CTRL_LEFT;
+	if (!(paddata.Buttons & PSP_CTRL_LEFT)  && paddata.Lx >= 0xd0) paddata.Buttons |= PSP_CTRL_RIGHT;
+#ifdef KERNEL_MODE
+	return paddata.Buttons | home_button;
+#else
+	return paddata.Buttons;
+#endif
+}
+#endif
+
+
+/*--------------------------------------------------------
+	パッドの押下状態取得(アナログ)
+--------------------------------------------------------*/
+
+#if (EMU_SYSTEM == MVS)
+UINT32 poll_gamepad_analog(void)
+{
+	UINT32 data;
+	SceCtrlData paddata;
+
+	sceCtrlPeekBufferPositive(&paddata, 1);
+
+	if (paddata.Ly >= 0xd0) paddata.Buttons |= PSP_CTRL_DOWN;
+	if (paddata.Ly <= 0x30) paddata.Buttons |= PSP_CTRL_UP;
+	if (paddata.Lx <= 0x30) paddata.Buttons |= PSP_CTRL_LEFT;
+	if (paddata.Lx >= 0xd0) paddata.Buttons |= PSP_CTRL_RIGHT;
 
 	data  = paddata.Buttons & 0xffff;
 	data |= paddata.Lx << 16;
@@ -98,7 +114,6 @@ u32 poll_gamepad_analog(void)
 	return data;
 #endif
 }
-
 #endif
 
 
@@ -108,7 +123,7 @@ u32 poll_gamepad_analog(void)
 
 void pad_update(void)
 {
-	u32 data;
+	UINT32 data;
 
 	data = poll_gamepad() & PSP_CTRL_ANY;
 
@@ -149,7 +164,7 @@ void pad_update(void)
 	ボタン押下状態の取得
 --------------------------------------------------------*/
 
-int pad_pressed(u32 code)
+int pad_pressed(UINT32 code)
 {
 	return (pad & code) != 0;
 }
@@ -159,7 +174,7 @@ int pad_pressed(u32 code)
 	指定コード以外の全ボタンの押下状態取得
 --------------------------------------------------------*/
 
-int pad_pressed_any(u32 disable_code)
+int pad_pressed_any(UINT32 disable_code)
 {
 	return (pad & (PSP_CTRL_ANY ^ disable_code)) != 0;
 }

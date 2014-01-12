@@ -11,7 +11,7 @@
 
 struct font_t
 {
-	const u8 *data;
+	const UINT8 *data;
 	int width;
 	int height;
 	int pitch;
@@ -101,23 +101,23 @@ extern UI_PALETTE ui_palette[UI_PAL_MAX];
 
 // アルファブレンド処理テーブル
 #if PSP_VIDEO_32BPP
-extern const u8 alpha_blend[16][256][256];
+extern const UINT8 alpha_blend[16][256][256];
 #else
-extern const u8 alpha_blend[16][32][32];
+extern const UINT8 alpha_blend[16][32][32];
 #endif
 
 // ゲーム画面用スモールフォント
-extern const u8 font_s[];
+extern const UINT8 font_s[];
 
 // ダイアログ等の影データ
-extern const u8 shadow[9][8][4];
+extern const UINT8 shadow[9][8][4];
 
 // Shift JIS フォントテーブル
 #if JAPANESE_UI
-extern const u16 sjis_table[];
+extern const UINT16 sjis_table[];
 #else
-extern u8 *jpnfont;
-extern u16 *sjis_table;
+extern UINT8 *jpnfont;
+extern UINT16 *sjis_table;
 #endif
 
 
@@ -126,53 +126,53 @@ extern u16 *sjis_table;
 ------------------------------------------------------*/
 
 // プロポーショナルフォント
-int graphic_font_get_gryph(struct font_t *font, u16 code);
+int graphic_font_get_gryph(struct font_t *font, UINT16 code);
 #if PSP_VIDEO_32BPP
-int graphic_font_get_shadow(struct font_t *font, u16 code);
+int graphic_font_get_shadow(struct font_t *font, UINT16 code);
 #endif
-int graphic_font_get_pitch(u16 code);
+int graphic_font_get_pitch(UINT16 code);
 
-int ascii_14p_get_gryph(struct font_t *font, u16 code);
+int ascii_14p_get_gryph(struct font_t *font, UINT16 code);
 #if PSP_VIDEO_32BPP
-int ascii_14p_get_shadow(struct font_t *font, u16 code);
+int ascii_14p_get_shadow(struct font_t *font, UINT16 code);
 #endif
-int ascii_14p_get_pitch(u16 code);
+int ascii_14p_get_pitch(UINT16 code);
 
 #if JAPANESE_UI || (EMU_SYSTEM != NCDZ)
-int jpn_h14p_get_gryph(struct font_t *font, u16 code);
+int jpn_h14p_get_gryph(struct font_t *font, UINT16 code);
 #if PSP_VIDEO_32BPP
-int jpn_h14p_get_shadow(struct font_t *font, u16 code);
+int jpn_h14p_get_shadow(struct font_t *font, UINT16 code);
 #endif
-int jpn_h14p_get_pitch(u16 code);
+int jpn_h14p_get_pitch(UINT16 code);
 
-int jpn_z14p_get_gryph(struct font_t *font, u16 code);
+int jpn_z14p_get_gryph(struct font_t *font, UINT16 code);
 #if PSP_VIDEO_32BPP
-int jpn_z14p_get_shadow(struct font_t *font, u16 code);
+int jpn_z14p_get_shadow(struct font_t *font, UINT16 code);
 #endif
-int jpn_z14p_get_pitch(u16 code);
+int jpn_z14p_get_pitch(UINT16 code);
 #endif
 
 // アイコン(小)
-int icon_s_get_gryph(struct font_t *font, u16 code);
+int icon_s_get_gryph(struct font_t *font, UINT16 code);
 #if PSP_VIDEO_32BPP
-int icon_s_get_shadow(struct font_t *font, u16 code);
-int icon_s_get_light(struct font_t *font, u16 code);
+int icon_s_get_shadow(struct font_t *font, UINT16 code);
+int icon_s_get_light(struct font_t *font, UINT16 code);
 #endif
 
 // アイコン(大)
-int icon_l_get_gryph(struct font_t *font, u16 code);
+int icon_l_get_gryph(struct font_t *font, UINT16 code);
 #if PSP_VIDEO_32BPP
-int icon_l_get_shadow(struct font_t *font, u16 code);
-int icon_l_get_light(struct font_t *font, u16 code);
+int icon_l_get_shadow(struct font_t *font, UINT16 code);
+int icon_l_get_light(struct font_t *font, UINT16 code);
 #endif
 
 // 等幅フォント
 #ifdef COMMAND_LIST
-int command_font_get_gryph(struct font_t *font, u16 code);
-int ascii_14_get_gryph(struct font_t *font, u16 code);
-int latin1_14_get_gryph(struct font_t *font, u16 code);
-int jpn_h14_get_gryph(struct font_t *font, u16 code);
-int jpn_z14_get_gryph(struct font_t *font, u16 code);
+int command_font_get_gryph(struct font_t *font, UINT16 code);
+int ascii_14_get_gryph(struct font_t *font, UINT16 code);
+int latin1_14_get_gryph(struct font_t *font, UINT16 code);
+int jpn_h14_get_gryph(struct font_t *font, UINT16 code);
+int jpn_z14_get_gryph(struct font_t *font, UINT16 code);
 #endif
 
 // 日本語フォント読み込み
@@ -242,6 +242,8 @@ int ui_light_update(void);
 void create_small_font(void);
 void small_font_print(int sx, int sy, const char *s, int bg);
 void small_font_printf(int x, int y, const char *text, ...);
+
+void debug_font_printf(void *frame, int x, int y, const char *text, ...);
 
 
 /*------------------------------------------------------

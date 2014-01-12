@@ -56,13 +56,12 @@ static CPUINFO cpu[MAX_CPU];
 ******************************************************************************/
 
 static float time_slice;
-static float global_offset;
 static float base_time;
 static float frame_base;
 static float timer_ticks;
 static float timer_left;
 static int active_cpu;
-static u32 current_frame;
+static UINT32 current_frame;
 
 
 /******************************************************************************
@@ -141,7 +140,6 @@ static TIMER_CALLBACK( qsound_interrupt )
 
 void timer_reset(void)
 {
-	global_offset = 0;
 	base_time = 0;
 	frame_base = 0;
 	current_frame = 0;
@@ -162,7 +160,7 @@ void timer_reset(void)
 	cpu[CPU_Z80].icount    = &CZ80.ICount;
 	cpu[CPU_Z80].cycles    = 0;
 	cpu[CPU_Z80].suspended = 0;
-	cpu[CPU_Z80].usec_to_cycles = 3579646.0/1000000.0;
+	cpu[CPU_Z80].usec_to_cycles = 3579545.0/1000000.0;
 	cpu[CPU_Z80].cycles_to_usec = 1000000.0/3579545.0;
 
 	if (machine_sound_type == SOUND_QSOUND)
@@ -276,20 +274,10 @@ void timer_set(int which, float duration, int param, void (*callback)(int param)
 
 
 /*------------------------------------------------------
-	現在のエミュレーション時間を取得 (単位:秒)
-------------------------------------------------------*/
-
-float timer_get_time(void)
-{
-	return global_offset + (getabsolutetime() / 1000000.0);
-}
-
-
-/*------------------------------------------------------
 	現在のフレームを取得
 ------------------------------------------------------*/
 
-u32 timer_getcurrentframe(void)
+UINT32 timer_getcurrentframe(void)
 {
 	return current_frame;
 }
@@ -341,7 +329,6 @@ void timer_update_cpu(void)
 	base_time += time_slice;
 	if (base_time >= 1000000.0)
 	{
-		global_offset += 1.0;
 		base_time -= 1000000.0;
 
 		for (i = 0; i < MAX_TIMER; i++)
@@ -365,7 +352,6 @@ STATE_SAVE( timer )
 {
 	int i;
 
-	state_save_float(&global_offset, 1);
 	state_save_float(&base_time, 1);
 	state_save_long(&current_frame, 1);
 
@@ -384,7 +370,6 @@ STATE_LOAD( timer )
 {
 	int i;
 
-	state_load_float(&global_offset, 1);
 	state_load_float(&base_time, 1);
 	state_load_long(&current_frame, 1);
 

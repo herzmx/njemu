@@ -26,6 +26,7 @@
 
 extern int neogeo_bios;
 extern int neogeo_region;
+extern int neogeo_save_sound_flag;
 
 void neogeo_main(void);
 

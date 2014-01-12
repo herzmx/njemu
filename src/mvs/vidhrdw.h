@@ -12,23 +12,23 @@
 #define FIRST_VISIBLE_LINE		16
 #define LAST_VISIBLE_LINE		239
 
-extern u16 neogeo_vidram16[0x20000 / 2];
-extern u16 neogeo_vidram16_offset;
-extern u16 neogeo_vidram16_modulo;
+extern UINT16 neogeo_vidram16[0x20000 / 2];
+extern UINT16 neogeo_vidram16_offset;
+extern UINT16 neogeo_vidram16_modulo;
 
-extern u16 *neogeo_paletteram16;
-extern u16 neogeo_palettebank16[2][0x2000 / 2];
-extern u32 neogeo_palette_index;
+extern UINT16 *neogeo_paletteram16;
+extern UINT16 neogeo_palettebank16[2][0x2000 / 2];
+extern UINT32 neogeo_palette_index;
 
-extern u16 *video_palette;
-extern u16 video_palettebank[2][0x2000 / 2];
-extern u16 video_clut16[0x8000];
+extern UINT16 *video_palette;
+extern UINT16 video_palettebank[2][0x2000 / 2];
+extern UINT16 video_clut16[0x8000];
 
-extern u8  *gfx_pen_usage[3];
+extern UINT8  *gfx_pen_usage[3];
 
 extern int fix_bank;
-extern u8  *fix_usage;
-extern u8  *fix_memory;
+extern UINT8  *fix_usage;
+extern UINT8  *fix_memory;
 extern int neogeo_fix_bank_type;
 
 void neogeo_video_init(void);

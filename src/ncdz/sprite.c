@@ -16,7 +16,7 @@
 
 #define MAKE_FIX_KEY(code, attr)	(code | (attr << 28))
 #define MAKE_SPR_KEY(code, attr)	(code | ((attr & 0x0f00) << 20))
-#define PSP_UNCACHE_PTR(p)			(((u32)(p)) | 0x40000000)
+#define PSP_UNCACHE_PTR(p)			(((UINT32)(p)) | 0x40000000)
 
 
 /******************************************************************************
@@ -27,9 +27,9 @@ typedef struct sprite_t SPRITE;
 
 struct sprite_t
 {
-	u32 key;
-	u32 used;
-	s32 index;
+	UINT32 key;
+	UINT32 used;
+	INT32 index;
 	SPRITE *next;
 };
 
@@ -47,7 +47,7 @@ static int clip_min_y;
 static int clip_max_y;
 static int clear_texture;
 
-static u16 *scrbitmap;
+static UINT16 *scrbitmap;
 
 
 /*------------------------------------------------------------------------
@@ -63,10 +63,10 @@ static SPRITE ALIGN_DATA *fix_head[FIX_HASH_SIZE];
 static SPRITE ALIGN_DATA fix_data[FIX_TEXTURE_SIZE];
 static SPRITE *fix_free_head;
 
-static u8 *tex_fix;
+static UINT8 *tex_fix;
 static struct Vertex ALIGN_DATA vertices_fix[FIX_MAX_SPRITES * 2];
-static u16 fix_num;
-static u16 fix_texture_num;
+static UINT16 fix_num;
+static UINT16 fix_texture_num;
 static int clear_fix_texture;
 
 
@@ -83,12 +83,12 @@ static SPRITE ALIGN_DATA *spr_head[SPR_HASH_SIZE];
 static SPRITE ALIGN_DATA spr_data[SPR_TEXTURE_SIZE];
 static SPRITE *spr_free_head;
 
-static u8 *tex_spr[3];
+static UINT8 *tex_spr[3];
 static struct Vertex ALIGN_DATA vertices_spr[SPR_MAX_SPRITES * 2];
-static u16 ALIGN_DATA spr_flags[SPR_MAX_SPRITES];
-static u16 spr_num;
-static u16 spr_texture_num;
-static u16 spr_index;
+static UINT16 ALIGN_DATA spr_flags[SPR_MAX_SPRITES];
+static UINT16 spr_num;
+static UINT16 spr_texture_num;
+static UINT16 spr_index;
 static int clear_spr_texture;
 
 
@@ -96,9 +96,9 @@ static int clear_spr_texture;
 	カラールックアップテーブル
 ------------------------------------------------------------------------*/
 
-static u16 *clut;
+static UINT16 *clut;
 
-static const u32 ALIGN_DATA color_table[16] =
+static const UINT32 ALIGN_DATA color_table[16] =
 {
 	0x00000000, 0x10101010, 0x20202020, 0x30303030,
 	0x40404040, 0x50505050, 0x60606060, 0x70707070,
@@ -147,7 +147,7 @@ static void blit_reset_fix_sprite(void)
 	FIXテクスチャからスプライト番号を取得
 ------------------------------------------------------------------------*/
 
-static int fix_get_sprite(u32 key)
+static int fix_get_sprite(UINT32 key)
 {
 	SPRITE *p = fix_head[key & FIX_HASH_MASK];
 
@@ -168,9 +168,9 @@ static int fix_get_sprite(u32 key)
 	FIXテクスチャにスプライトを登録
 ------------------------------------------------------------------------*/
 
-static int fix_insert_sprite(u32 key)
+static int fix_insert_sprite(UINT32 key)
 {
-	u16 hash = key & FIX_HASH_MASK;
+	UINT16 hash = key & FIX_HASH_MASK;
 	SPRITE *p = fix_head[hash];
 	SPRITE *q = fix_free_head;
 
@@ -272,7 +272,7 @@ static void blit_reset_spr_sprite(void)
 	SPRテクスチャからスプライト番号を取得
 ------------------------------------------------------------------------*/
 
-static int spr_get_sprite(u32 key)
+static int spr_get_sprite(UINT32 key)
 {
 	SPRITE *p = spr_head[key & SPR_HASH_MASK];
 
@@ -293,9 +293,9 @@ static int spr_get_sprite(u32 key)
 	SPRテクスチャにスプライトを登録
 ------------------------------------------------------------------------*/
 
-static int spr_insert_sprite(u32 key)
+static int spr_insert_sprite(UINT32 key)
 {
-	u16 hash = key & SPR_HASH_MASK;
+	UINT16 hash = key & SPR_HASH_MASK;
 	SPRITE *p = spr_head[hash];
 	SPRITE *q = spr_free_head;
 
@@ -432,7 +432,7 @@ void blit_reset(void)
 	int i;
 
 	scrbitmap  = video_frame_addr(work_frame, 0, 0);
-	tex_spr[0] = (u8 *)(scrbitmap + BUF_WIDTH * SCR_HEIGHT);
+	tex_spr[0] = (UINT8 *)(scrbitmap + BUF_WIDTH * SCR_HEIGHT);
 	tex_spr[1] = tex_spr[0] + BUF_WIDTH * TEXTURE_HEIGHT;
 	tex_spr[2] = tex_spr[1] + BUF_WIDTH * TEXTURE_HEIGHT;
 	tex_fix    = tex_spr[2] + BUF_WIDTH * TEXTURE_HEIGHT;
@@ -443,7 +443,7 @@ void blit_reset(void)
 	clip_min_y = FIRST_VISIBLE_LINE;
 	clip_max_y = LAST_VISIBLE_LINE;
 
-	clut = (u16 *)PSP_UNCACHE_PTR(&video_palettebank[neogeo_palette_index]);
+	clut = (UINT16 *)PSP_UNCACHE_PTR(&video_palettebank[neogeo_palette_index]);
 
 	blit_clear_all_sprite();
 }
@@ -463,7 +463,7 @@ void blit_start(int start, int end)
 
 	if (start == FIRST_VISIBLE_LINE)
 	{
-		clut = (u16 *)PSP_UNCACHE_PTR(&video_palettebank[neogeo_palette_index]);
+		clut = (UINT16 *)PSP_UNCACHE_PTR(&video_palettebank[neogeo_palette_index]);
 
 		fix_num = 0;
 
@@ -510,17 +510,17 @@ void blit_finish(void)
 	FIXを描画リストに登録
 ------------------------------------------------------------------------*/
 
-void blit_draw_fix(int x, int y, u32 code, u32 attr)
+void blit_draw_fix(int x, int y, UINT32 code, UINT32 attr)
 {
-	s16 idx;
+	INT16 idx;
 	struct Vertex *vertices;
-	u32 key = MAKE_FIX_KEY(code, attr);
+	UINT32 key = MAKE_FIX_KEY(code, attr);
 
 	if ((idx = fix_get_sprite(key)) < 0)
 	{
-		u32 col, tile;
-		u8 *src, *dst, lines = 8;
-		u32 datal, datah;
+		UINT32 col, tile;
+		UINT8 *src, *dst, lines = 8;
+		UINT32 datal, datah;
 
 		if (fix_texture_num == FIX_TEXTURE_SIZE - 1)
 			fix_delete_sprite();
@@ -532,15 +532,15 @@ void blit_draw_fix(int x, int y, u32 code, u32 attr)
 
 		while (lines--)
 		{
-			tile = *(u32 *)(src + 0);
+			tile = *(UINT32 *)(src + 0);
 #if 0
-			*(u32 *)(dst +  0) = ((tile >> 0) & 0x0f0f0f0f) | col;
-			*(u32 *)(dst +  4) = ((tile >> 4) & 0x0f0f0f0f) | col;
+			*(UINT32 *)(dst +  0) = ((tile >> 0) & 0x0f0f0f0f) | col;
+			*(UINT32 *)(dst +  4) = ((tile >> 4) & 0x0f0f0f0f) | col;
 #else
 			datal = ((tile & 0x0000000f) >>  0) | ((tile & 0x000000f0) <<  4) | ((tile & 0x00000f00) <<  8) | ((tile & 0x0000f000) << 12) | col;
 			datah = ((tile & 0x000f0000) >> 16) | ((tile & 0x00f00000) >> 12) | ((tile & 0x0f000000) >>  8) | ((tile & 0xf0000000) >>  4) | col;
-			*(u32 *)(dst +  0) = datal;
-			*(u32 *)(dst +  4) = datah;
+			*(UINT32 *)(dst +  0) = datal;
+			*(UINT32 *)(dst +  4) = datah;
 #endif
 			src += 4;
 			dst += 16;
@@ -591,18 +591,18 @@ void blit_finish_fix(void)
 	SPRを描画リストに登録
 ------------------------------------------------------------------------*/
 
-void blit_draw_spr(int x, int y, int w, int h, u32 code, u32 attr)
+void blit_draw_spr(int x, int y, int w, int h, UINT32 code, UINT32 attr)
 {
-	s16 idx;
+	INT16 idx;
 	struct Vertex *vertices;
-	u32 key;
+	UINT32 key;
 
 	key = MAKE_SPR_KEY(code, attr);
 
 	if ((idx = spr_get_sprite(key)) < 0)
 	{
-		u32 col, tile;
-		u8 *src, *dst, lines = 16;
+		UINT32 col, tile;
+		UINT8 *src, *dst, lines = 16;
 
 		if (spr_texture_num == SPR_TEXTURE_SIZE - 1)
 			spr_delete_sprite();
@@ -614,12 +614,12 @@ void blit_draw_spr(int x, int y, int w, int h, u32 code, u32 attr)
 
 		while (lines--)
 		{
-			tile = *(u32 *)(src + 0);
-			*(u32 *)(dst +  0) = ((tile >> 0) & 0x0f0f0f0f) | col;
-			*(u32 *)(dst +  4) = ((tile >> 4) & 0x0f0f0f0f) | col;
-			tile = *(u32 *)(src + 4);
-			*(u32 *)(dst +  8) = ((tile >> 0) & 0x0f0f0f0f) | col;
-			*(u32 *)(dst + 12) = ((tile >> 4) & 0x0f0f0f0f) | col;
+			tile = *(UINT32 *)(src + 0);
+			*(UINT32 *)(dst +  0) = ((tile >> 0) & 0x0f0f0f0f) | col;
+			*(UINT32 *)(dst +  4) = ((tile >> 4) & 0x0f0f0f0f) | col;
+			tile = *(UINT32 *)(src + 4);
+			*(UINT32 *)(dst +  8) = ((tile >> 0) & 0x0f0f0f0f) | col;
+			*(UINT32 *)(dst + 12) = ((tile >> 4) & 0x0f0f0f0f) | col;
 			src += 8;
 			dst += swizzle_table_8bit[lines];
 		}
@@ -652,7 +652,7 @@ void blit_draw_spr(int x, int y, int w, int h, u32 code, u32 attr)
 void blit_finish_spr(void)
 {
 	int i, total_sprites = 0;
-	u16 flags, *pflags = spr_flags;
+	UINT16 flags, *pflags = spr_flags;
 	struct Vertex *vertices, *vertices_tmp;
 
 	if (!spr_index) return;

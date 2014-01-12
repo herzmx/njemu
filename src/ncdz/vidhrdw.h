@@ -9,20 +9,20 @@
 #ifndef VIDHRDW_H
 #define VIDHRDW_H
 
-extern u16 neogeo_vidram16[0x20000 / 2];
-extern u16 neogeo_vidram16_offset;
-extern u16 neogeo_vidram16_modulo;
+extern UINT16 neogeo_vidram16[0x20000 / 2];
+extern UINT16 neogeo_vidram16_offset;
+extern UINT16 neogeo_vidram16_modulo;
 
-extern u16 *neogeo_paletteram16;
-extern u16 neogeo_palettebank16[2][0x2000 / 2];
-extern u32 neogeo_palette_index;
+extern UINT16 *neogeo_paletteram16;
+extern UINT16 neogeo_palettebank16[2][0x2000 / 2];
+extern UINT32 neogeo_palette_index;
 
-extern u16 *video_palette;
-extern u16 video_palettebank[2][0x2000 / 2];
-extern u16 video_clut16[0x8000];
+extern UINT16 *video_palette;
+extern UINT16 video_palettebank[2][0x2000 / 2];
+extern UINT16 video_clut16[0x8000];
 
-extern u8  video_fix_usage[0x20000 / 32];
-extern u8  video_spr_usage[0x400000 / 128];
+extern UINT8  video_fix_usage[0x20000 / 32];
+extern UINT8  video_spr_usage[0x400000 / 128];
 
 extern int video_enable;
 extern int spr_disable;

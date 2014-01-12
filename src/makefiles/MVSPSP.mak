@@ -9,7 +9,11 @@ VERSION_STR += [AdHoc]
 endif
 
 PSP_EBOOT_ICON = data/mvs.png
+ifdef PSP_SLIM
+PSP_EBOOT_TITLE = $(PBPNAME_STR) $(VERSION_STR) for PSP slim
+else
 PSP_EBOOT_TITLE = $(PBPNAME_STR) $(VERSION_STR)
+endif
 
 
 #------------------------------------------------------------------------------
@@ -64,6 +68,7 @@ COREOBJS = \
 	$(OBJ)/mvs/vidhrdw.o \
 	$(OBJ)/mvs/sprite.o \
 	$(OBJ)/mvs/pd4990a.o \
+	$(OBJ)/mvs/neocrypt.o \
 	$(OBJ)/mvs/biosmenu.o \
 	$(OBJ)/sound/2610intf.o \
 	$(OBJ)/sound/ym2610.o

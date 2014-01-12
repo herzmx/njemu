@@ -16,7 +16,7 @@
 	ローカル変数
 ******************************************************************************/
 
-static int rom_fd;
+static int rom_fd = -1;
 
 
 /******************************************************************************
@@ -27,7 +27,7 @@ static int rom_fd;
 	ZIPファイルからファイルを検索し開く
 --------------------------------------------------------*/
 
-int file_open(const char *fname1, const char *fname2, const u32 crc, char *fname)
+int file_open(const char *fname1, const char *fname2, const UINT32 crc, char *fname)
 {
 	int found = 0;
 	struct zip_find_t file;
@@ -171,21 +171,67 @@ int file_getc(void)
 --------------------------------------------------------*/
 
 #if USE_CACHE && (EMU_SYSTEM == MVS)
-int cachefile_open(const char *fname)
+int cachefile_open(int type)
 {
+	SceUID fd = -1;
 	char path[MAX_PATH];
 
-	sprintf(path, "%s/%s_cache", cache_dir, game_name);
-	zip_open(path);
-	if ((rom_fd = zopen(fname)) != -1)
-		return rom_fd;
+	switch (type)
+	{
+	case CACHE_INFO:
+		if (use_parent_crom && use_parent_srom && use_parent_vrom)
+		{
+			sprintf(path, "%s/%s_cache/cache_info", cache_dir, parent_name);
+			fd = sceIoOpen(path, PSP_O_RDONLY, 0777);
+		}
+		else
+		{
+			sprintf(path, "%s/%s_cache/cache_info", cache_dir, game_name);
+			fd = sceIoOpen(path, PSP_O_RDONLY, 0777);
+		}
+		break;
 
-	sprintf(path, "%s/%s_cache", cache_dir, cache_parent_name);
-	zip_open(path);
-	if ((rom_fd = zopen(fname)) != -1)
-		return rom_fd;
+	case CACHE_CROM:
+		if (use_parent_crom)
+		{
+			sprintf(path, "%s/%s_cache/crom", cache_dir, parent_name);
+			fd = sceIoOpen(path, PSP_O_RDONLY, 0777);
+		}
+		if (fd < 0)
+		{
+			sprintf(path, "%s/%s_cache/crom", cache_dir, game_name);
+			fd = sceIoOpen(path, PSP_O_RDONLY, 0777);
+		}
+		break;
 
-	return -1;
+	case CACHE_SROM:
+		if (use_parent_srom)
+		{
+			sprintf(path, "%s/%s_cache/srom", cache_dir, parent_name);
+			fd = sceIoOpen(path, PSP_O_RDONLY, 0777);
+		}
+		if (fd < 0)
+		{
+			sprintf(path, "%s/%s_cache/srom", cache_dir, game_name);
+			fd = sceIoOpen(path, PSP_O_RDONLY, 0777);
+		}
+		break;
+
+	case CACHE_VROM:
+		if (use_parent_vrom)
+		{
+			sprintf(path, "%s/%s_cache/vrom", cache_dir, parent_name);
+			fd = sceIoOpen(path, PSP_O_RDONLY, 0777);
+		}
+		if (fd < 0)
+		{
+			sprintf(path, "%s/%s_cache/vrom", cache_dir, game_name);
+			fd = sceIoOpen(path, PSP_O_RDONLY, 0777);
+		}
+		break;
+	}
+
+	return fd;
 }
 #endif
 
@@ -194,9 +240,9 @@ int cachefile_open(const char *fname)
 	ROMをロードする
 --------------------------------------------------------*/
 
-int rom_load(struct rom_t *rom, u8 *mem, int idx, int max)
+int rom_load(struct rom_t *rom, UINT8 *mem, int idx, int max)
 {
-	u32 offset, length;
+	UINT32 offset, length;
 
 _continue:
 	offset = rom[idx].offset;

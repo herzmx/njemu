@@ -37,7 +37,7 @@ const char *bios_name[BIOS_MAX] =
 	"Debug MVS (Hack?)"
 };
 
-const u32 bios_crc[BIOS_MAX] =
+const UINT32 bios_crc[BIOS_MAX] =
 {
 	0x9036d879,	// Europe Ver.2
 	0xc7f2fa45,	// Europe Ver.1
@@ -61,7 +61,7 @@ const u32 bios_crc[BIOS_MAX] =
 	0x698ebb7d	// Debug BIOS
 };
 
-const u32 bios_patch_address[BIOS_MAX] =
+const UINT32 bios_patch_address[BIOS_MAX] =
 {
 	0x011c62,	// Europe Ver.2
 	0x011c62,	// Europe Ver.1
@@ -86,8 +86,7 @@ const u32 bios_patch_address[BIOS_MAX] =
 };
 
 
-const u32 sfix_crc = 0x354029fc;
-const u32 lorom_crc = 0xe09e253c;
+const UINT32 sfix_crc = 0x354029fc;
 
 
 /******************************************************************************
@@ -230,10 +229,8 @@ void bios_select(int flag)
 			uifont_print(36, 5, UI_COLOR(UI_PAL_TITLE), TEXT(BIOS_SELECT_MENU));
 			uifont_print(477 - width, 271 - 16, UI_COLOR(UI_PAL_SELECT), TEXT(SELECT_BIOS_AND_PRESS_CIRCLE_BUTTON));
 
-#if !RELEASE
 			if (sel != 0)
 				uifont_print(118, 24, UI_COLOR(UI_PAL_SELECT), FONT_UPTRIANGLE);
-#endif
 
 			for (i = 0; i < rows; i++)
 			{
@@ -253,10 +250,8 @@ void bios_select(int flag)
 				}
 			}
 
-#if !RELEASE
 			if (sel + rows < BIOS_MAX)
 				uifont_print(118, 260, UI_COLOR(UI_PAL_SELECT), FONT_DOWNTRIANGLE);
-#endif
 
 			update  = draw_battery_status(1);
 			update |= ui_show_popup(1);

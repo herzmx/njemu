@@ -23,6 +23,6 @@ int sound_init(void);
 void sound_exit(void);
 void sound_reset(void);
 void sound_mute(int mute);
-void sound_update(s16 *buffer);
+void sound_update(INT16 *buffer);
 
 #endif /* SOUND_INTERFACE_H */

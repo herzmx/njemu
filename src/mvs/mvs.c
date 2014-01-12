@@ -15,6 +15,7 @@
 
 int neogeo_bios;
 int neogeo_region;
+int neogeo_save_sound_flag;
 
 
 /******************************************************************************
@@ -122,9 +123,12 @@ static void neogeo_exit(void)
 			sceIoClose(fd);
 		}
 
+
 #ifdef COMMAND_LIST
 		free_commandlist();
 #endif
+
+		if (neogeo_save_sound_flag) option_sound_enable = 1;
 		save_gamecfg(game_name);
 	}
 

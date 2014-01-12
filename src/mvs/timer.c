@@ -58,8 +58,6 @@ static CPUINFO ALIGN_DATA cpu[MAX_CPU];
 	ƒ[ƒJƒ‹•Ï”
 ******************************************************************************/
 
-#define time_slice	16896	// = 1000000 / 15625 * RASTER_LINES
-
 static int global_offset;
 static int base_time;
 static int frame_base;
@@ -67,6 +65,7 @@ static int timer_ticks;
 static int timer_left;
 static int active_cpu;
 static int scanline;
+static float USECS_PER_SCANLINE;
 
 
 /******************************************************************************
@@ -151,6 +150,11 @@ void timer_reset(void)
 	cpu[CPU_Z80].cycles    = 0;
 	cpu[CPU_Z80].suspended = 0;
 	cpu[CPU_Z80].cycles_per_usec = 4000000 / 1000000;
+
+	if (option_vsync)
+		USECS_PER_SCANLINE = (float)TICKS_PER_FRAME / (float)RASTER_LINES;
+	else
+		USECS_PER_SCANLINE = 64.0;
 }
 
 
@@ -279,7 +283,7 @@ static void timer_update_cpu_normal(void)
 	int i, time;
 
 	frame_base = 0;
-	timer_left = time_slice;
+	timer_left = TICKS_PER_FRAME;
 
 	while (timer_left > 0)
 	{
@@ -314,7 +318,7 @@ static void timer_update_cpu_normal(void)
 
 	neogeo_interrupt();
 
-	base_time += time_slice;
+	base_time += TICKS_PER_FRAME;
 	if (base_time >= 1000000)
 	{
 		global_offset++;
@@ -338,12 +342,15 @@ static void timer_update_cpu_normal(void)
 static void timer_update_cpu_raster(void)
 {
 	int i, time;
+	float timer_left_over = 0;
 
 	frame_base = 0;
 
 	for (scanline = 1; scanline <= RASTER_LINES; scanline++)
 	{
-		timer_left = USECS_PER_SCANLINE;
+		timer_left_over += USECS_PER_SCANLINE;
+		timer_left = (int)timer_left_over;
+		timer_left_over -= timer_left;
 
 		while (timer_left > 0)
 		{
@@ -379,7 +386,7 @@ static void timer_update_cpu_raster(void)
 		neogeo_raster_interrupt(scanline, neogeo_driver_type);
 	}
 
-	base_time += time_slice;
+	base_time += TICKS_PER_FRAME;
 	if (base_time >= 1000000)
 	{
 		global_offset++;

@@ -19,7 +19,7 @@
 #define CPS2_KLUDGE_MMATRIX		0x08
 #define CPS2_KLUDGE_DIMAHOO		0x10
 #define CPS2_KLUDGE_PUZLOOP2	0x20
-#define CPS2_KLUDGE_HSF2D		0x40
+#define PHOENIX_EDITION			0x8000
 
 
 enum
@@ -39,7 +39,7 @@ enum
 	INPTYPE_19xx,
 	INPTYPE_qndream,
 	INPTYPE_batcir,
-	INPTYPE_puzloop2,
+	INPTYPE_pzloop2,
 	INPTYPE_daimahoo,
 	INPTYPE_MAX
 };
@@ -47,7 +47,7 @@ enum
 enum
 {
 	INIT_cps2 = 0,
-	INIT_puzloop2,
+	INIT_pzloop2,
 	INIT_MAX
 };
 
@@ -61,11 +61,13 @@ enum
 struct driver_t
 {
 	const char *name;
-	const u32 cache_size;
-	const u16 kludge;
-	const u16 flags;
-	const u8 inp_eeprom;
-	const u8 inp_eeprom_value[16];
+#if USE_CACHE
+	const UINT32 cache_size;
+#endif
+	const UINT16 kludge;
+	const UINT16 flags;
+	const UINT8 inp_eeprom;
+	const UINT8 inp_eeprom_value[16];
 };
 
 extern struct driver_t CPS2_driver[];
@@ -95,6 +97,6 @@ STATE_SAVE( driver );
 STATE_LOAD( driver );
 #endif
 
-void cps2_decrypt_68k(void);
+void cps2_init_68k(void);
 
 #endif /* CPS2_DRIVER_H */

@@ -15,8 +15,9 @@ willowje,Willow (Japan - English)
 unsquad,U.N. Squadron (US)
 area88,Area 88 (Japan)
 ffight,Final Fight (World)
-ffightu,Final Fight (US 900112)
-ffightua,Final Fight (US 900613)
+ffightu,Final Fight (US)
+ffightua,Final Fight (US 900112)
+ffightub,Final Fight (US 900613)
 ffightj,Final Fight (Japan)
 ffightj1,Final Fight (Japan 900305)
 1941,1941 - Counter Attack (World)
@@ -55,13 +56,15 @@ wonder3,Wonder 3 (Japan 910520)
 kod,The King of Dragons (World 910711)
 kodu,The King of Dragons (US 910910)
 kodj,The King of Dragons (Japan 910805)
-kodb,The King of Dragons (bootleg),GAME_NOTWORK|GAME_BOOTLEG
+kodb,The King of Dragons (bootleg),GAME_BOOTLEG
 captcomm,Captain Commando (World 911014)
 captcomu,Captain Commando (US 910928)
 captcomj,Captain Commando (Japan 911202)
 knights,Knights of the Round (World 911127)
 knightsu,Knights of the Round (US 911127)
 knightsj,Knights of the Round (Japan 911127)
+knightsb,Knights of the Round (bootleg)
+knightsh,Knights of the Round (hack)
 sf2ce,Street Fighter II' - Champion Edition (World 920313)
 sf2ceua,Street Fighter II' - Champion Edition (US 920313)
 sf2ceub,Street Fighter II' - Champion Edition (US 920513)
@@ -73,14 +76,18 @@ sf2red,Street Fighter II' - Champion Edition (Red Wave),GAME_BOOTLEG
 sf2v004,Street Fighter II! - Champion Edition (V004),GAME_NOT_WORK|GAME_BOOTLEG
 sf2accp2,Street Fighter II' - Champion Edition (Accelerator Pt.II),GAME_BOOTLEG
 sf2m1,Street Fighter II' - Champion Edition (M1),GAME_NOT_WORK|GAME_BOOTLEG
-sf2m2,Street Fighter II' - Champion Edition (M2),GAME_NOT_WORK|GAME_BOOTLEG
+sf2m2,Street Fighter II' - Champion Edition (M2),GAME_BOOTLEG
 sf2m3,Street Fighter II' - Champion Edition (M3),GAME_NOT_WORK|GAME_BOOTLEG
 sf2m4,Street Fighter II' - Champion Edition (M4),GAME_BOOTLEG
 sf2m5,Street Fighter II' - Champion Edition (M5),GAME_BOOTLEG
-sf2m6,Street Fighter II' - Champion Edition (M6),GAME_BOOTLEG
+sf2m6,Street Fighter II' - Champion Edition (Subdue the Dragon set 2),GAME_BOOTLEG
 sf2m7,Street Fighter II' - Champion Edition (M7),GAME_BOOTLEG
+sf2m8,Street Fighter II' - Champion Edition (M8),GAME_NOT_WORK|GAME_BOOTLEG
+sf2m13,Street Fighter II' - Champion Edition (M13),GAME_BOOTLEG
+sf2tlona,Street Fighter II' - Champion Edition (Slay the Dragon set 1),GAME_BOOTLEG
+sf2tlonb,Street Fighter II' - Champion Edition (Slay the Dragon set 2),GAME_BOOTLEG
 sf2yyc,Street Fighter II' - Champion Edition (YYC),GAME_BOOTLEG
-sf2koryu,Street Fighter II' - Champion Edition (Kouryu),GAME_BOOTLEG
+sf2koryu,Street Fighter II' - Champion Edition (Subdue the Dragon set 1),GAME_BOOTLEG
 varth,Varth - Operation Thunderstorm (World 920714)
 varthr1,Varth - Operation Thunderstorm (World 920612)
 varthu,Varth - Operation Thunderstorm (US 920612)
@@ -98,9 +105,22 @@ wof,Warriors of Fate (World 921002)
 wofa,Sangokushi II (Asia 921005)
 wofu,Warriors of Fate (US 921031)
 wofj,Tenchi wo Kurau II - Sekiheki no Tatakai (Japan 921031)
+wofb,Warriors of Fate (bootleg),GAME_NOT_WORKING|GAME_BOOTLEG
+wofh,Legend of Three Kingdoms' Heroes (bootleg / set 1),GAME_BOOTLEG
+wofha,Legend of Three Kingdoms' Heroes (bootleg / set 2),GAME_BOOTLEG
+wof3js,Three Sword Masters (bootleg),GAME_BOOTLEG
+wof3sj,Three Holy Swords (bootleg / set 1),GAME_BOOTLEG
+wof3sja,Three Holy Swords (bootleg / set 2),GAME_BOOTLEG
+wofsj,Holy Sword Three Kingdoms (bootleg / set 1),GAME_BOOTLEG
+wofsja,Holy Sword Three Kingdoms (bootleg / set 2),GAME_BOOTLEG
+wofsjb,Holy Sword Three Kingdoms (bootleg / set 3),GAME_BOOTLEG
 dino,Cadillacs and Dinosaurs (World 930201)
 dinou,Cadillacs and Dinosaurs (US 930201)
 dinoj,Cadillacs Kyouryuu-Shinseiki (Japan 930201)
+dinob,Cadillacs and Dinosaurs (bootleg),GAME_BOOTLEG
+dinoh,Cadillacs and Dinosaurs (bootleg / set 1),GAME_BOOTLEG
+dinoha,Cadillacs and Dinosaurs (bootleg / set 2),GAME_BOOTLEG
+dinohb,Cadillacs and Dinosaurs (bootleg / set 3),GAME_BOOTLEG
 punisher,The Punisher (World 930422)
 punishru,The Punisher (US 930422)
 punishrj,The Punisher (Japan 930422)
@@ -110,6 +130,8 @@ mbomberj,Muscle Bomber - The Body Explosion (Japan 930713)
 mbombrd,Muscle Bomber Duo - Ultimate Team Battle (World 931206)
 mbombrdj,Muscle Bomber Duo - Heat Up Warriors (Japan 931206)
 pnickj,Pnickies (Japan 940608)
+pnicku,Pnickies (USA 940608 Loca Test Version)
 pang3,Pang! 3 (Euro 950511)
 pang3j,Pang! 3 (Japan 950511)
-sfzch,Street Fighter ZERO (Japan CPS Changer)
+sfzch,Street Fighter ZERO (Japan 951020 CPS Changer)
+sfach,Street Fighter ALPHA (USA 950727 Publicity)

@@ -33,8 +33,12 @@
 #define EMU_SYSTEM		CPS2
 #define SYSTEM_NAME		"CPS2"
 #define FPS				60.0
+#ifdef PSP_SLIM
+#define USE_CACHE		0
+#else
 #define USE_CACHE		1
-#define CACHE_VERSION	"V20"
+#define CACHE_VERSION	"V22"
+#endif
 #define EEPROM_SIZE		128
 #define GULIST_SIZE		48*1024		// 48KB
 
@@ -45,9 +49,10 @@
 
 #define EMU_SYSTEM		MVS
 #define SYSTEM_NAME		"NEO¥GEO"
-#define FPS				(15625.0 / 264.0)
+#define MVS_FPS			(15625.0 / 264.0)
+#define PSP_FPS			(1000000.0 / 16683.0)
 #define USE_CACHE		1
-#define CACHE_VERSION	"V20"
+#define CACHE_VERSION	"V22"
 #define GULIST_SIZE		300*1024		// 300KB
 
 #elif defined(BUILD_NCDZPSP)

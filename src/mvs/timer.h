@@ -23,14 +23,12 @@
 
 #define SEC_TO_USEC(secs)		(int)((float)(secs) * 1000000.0)
 
-#define USECS_PER_SCANLINE		64		// = 1000000 / 15625
-
 #define SUSPEND_REASON_HALT		0x0001
 #define SUSPEND_REASON_RESET	0x0002
 #define SUSPEND_REASON_SPIN		0x0004
 #define SUSPEND_REASON_TRIGGER	0x0008
 #define SUSPEND_REASON_DISABLE	0x0010
-#define SUSPEND_ANY_REASON		((u32)-1)
+#define SUSPEND_ANY_REASON		((UINT32)-1)
 
 #define TIMER_CALLBACK(name)	void name(int param)
 

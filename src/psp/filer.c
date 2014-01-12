@@ -10,6 +10,7 @@
 #include "zlib/zlib.h"
 
 #define MAX_ENTRY 1024
+#define MAX_GAMES 256
 
 #define GAME_NOT_WORK	0x01
 #define GAME_BOOTLEG	0x02
@@ -62,7 +63,7 @@ static struct zipname_t
 	char zipname[16];
 	char title[128];
 	int flag;
-} zipname[200];
+} zipname[MAX_GAMES];
 
 static int zipname_num;
 
@@ -80,19 +81,19 @@ static int zipname_num;
 --------------------------------------------------------*/
 
 #if PSP_VIDEO_32BPP
-static void title_draw_spr(int sx, int sy, u8 *spr, u32 *palette, int tileno)
+static void title_draw_spr(int sx, int sy, UINT8 *spr, UINT32 *palette, int tileno)
 #else
-static void title_draw_spr(int sx, int sy, u8 *spr, u16 *palette, int tileno)
+static void title_draw_spr(int sx, int sy, UINT8 *spr, UINT16 *palette, int tileno)
 #endif
 {
-	u32 tile, lines = 16;
-	u32 *src = (u32 *)(spr + tileno * 128);
+	UINT32 tile, lines = 16;
+	UINT32 *src = (UINT32 *)(spr + tileno * 128);
 #if PSP_VIDEO_32BPP
-	u32 *dst = (u32 *)video_frame_addr(tex_frame, sx, sy);
-	u32 *pal = &palette[tileno << 4];
+	UINT32 *dst = (UINT32 *)video_frame_addr(tex_frame, sx, sy);
+	UINT32 *pal = &palette[tileno << 4];
 #else
-	u16 *dst = (u16 *)video_frame_addr(tex_frame, sx, sy);
-	u32 *pal = &palette[tileno << 4];
+	UINT16 *dst = (UINT16 *)video_frame_addr(tex_frame, sx, sy);
+	UINT16 *pal = &palette[tileno << 4];
 #endif
 
 	while (lines--)
@@ -128,10 +129,10 @@ static void title_draw_spr(int sx, int sy, u8 *spr, u16 *palette, int tileno)
 static int load_title(const char *path, int number)
 {
 	int i, fd, region, tileno, x, y, found = 0;
-	u8  title_spr[0x1680];
-	u16 palette[0x5a0 >> 1];
+	UINT8  title_spr[0x1680];
+	UINT16 palette[0x5a0 >> 1];
 #if PSP_VIDEO_32BPP
-	u32 palette32[0x5a0 >> 1];
+	UINT32 palette32[0x5a0 >> 1];
 #endif
 	char title_path[MAX_PATH], region_chr[3] = {'j','u','e'};
 
@@ -161,7 +162,7 @@ static int load_title(const char *path, int number)
 
 	zip_close();
 
-	swab((u8 *)palette, (u8 *)palette, 0x5a0);
+	swab((UINT8 *)palette, (UINT8 *)palette, 0x5a0);
 
 	for (i = 0; i < 0x5a0 >> 1; i++)
 	{
@@ -227,11 +228,11 @@ static void check_neocd_bios(void)
 {
 	FILE *fp;
 	char path[MAX_PATH];
-	u8 *temp_mem;
+	UINT8 *temp_mem;
 
 	bios_error = 0;
 
-	if ((temp_mem = (u8 *)malloc(0x80000)) == NULL)
+	if ((temp_mem = (UINT8 *)malloc(0x80000)) == NULL)
 	{
 		bios_error = 1;
 		return;
@@ -303,7 +304,7 @@ static int load_zipname(void)
 	fseek(fp, 0, SEEK_SET);
 
 	zipname_num = 0;
-	while (zipname_num < 200)
+	while (zipname_num < MAX_GAMES)
 	{
 		char *linebuf;
 		char *name;
@@ -841,7 +842,7 @@ void delete_files(const char *dirname, const char *pattern)
 
 #ifdef SAVE_STATE
 
-void find_state_file(u8 *slot)
+void find_state_file(UINT8 *slot)
 {
 	int fd, len;
 	char path[MAX_PATH], pattern[16];
@@ -897,6 +898,7 @@ void file_browser(void)
 	int i, sel = 0, rows = 11, top = 0;
 	int run_emulation = 0, update = 1, prev_sel = 0;
 	char *p;
+	char fw_version[32];
 #if (EMU_SYSTEM == NCDZ)
 	int title_counter = 60, title_image = -1;
 #endif
@@ -929,9 +931,16 @@ void file_browser(void)
 #else
 	ui_fill_frame(draw_frame, UI_PAL_BG2);
 #endif
+
+#ifdef PSP_SLIM
+	draw_dialog(240-184, 136-40, 240+184, 136+40);
+	uifont_print_shadow_center(136-20, 255,255,120, APPNAME_STR " " VERSION_STR " for PSP Slim  by NJ");
+	uifont_print_shadow_center(136+10, 220,220,220, "http://nj-emu.hp.infoseek.co.jp");
+#else
 	draw_dialog(240-176, 136-40, 240+176, 136+40);
 	uifont_print_shadow_center(136-20, 255,255,120, APPNAME_STR " " VERSION_STR "  by NJ");
 	uifont_print_shadow_center(136+10, 220,220,220, "http://nj-emu.hp.infoseek.co.jp");
+#endif
 	video_flip_screen(1);
 
 #if (EMU_SYSTEM != NCDZ)
@@ -945,6 +954,29 @@ void file_browser(void)
 #endif
 	checkStartupDir();
 	getDir(curr_dir);
+
+#ifdef PSP_SLIM
+	if (sceKernelDevkitVersion() < 0x03060010 || kuKernelGetModel() != PSP_MODEL_SLIM_AND_LITE)	//AHMAN
+	{
+#if PSP_VIDEO_32BPP
+		load_background(WP_LOGO);
+		show_background();
+		small_icon_shadow(6, 3, UI_COLOR(UI_PAL_TITLE), ICON_SYSTEM);
+		logo(32, 5, UI_COLOR(UI_PAL_TITLE));
+#else
+		ui_fill_frame(draw_frame, UI_PAL_BG2);
+#endif
+
+		messagebox(MB_PSPVERSIONERROR);
+
+		show_exit_screen();
+#if (EMU_SYSTEM == NCDZ)
+		return;
+#else
+		goto error;
+#endif
+	}
+#endif
 
 #if (EMU_SYSTEM == NCDZ)
 	check_neocd_bios();

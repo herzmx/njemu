@@ -15,7 +15,7 @@
 
 int option_controller;
 int cps1_dipswitch[3];
-u16 ALIGN_DATA cps1_port_value[CPS1_PORT_MAX];
+UINT16 ALIGN_DATA cps1_port_value[CPS1_PORT_MAX];
 
 int ALIGN_DATA input_map[MAX_INPUTS];
 int input_max_players;
@@ -28,7 +28,7 @@ int af_interval = 1;
 	ローカル変数
 ******************************************************************************/
 
-static u8 ALIGN_DATA input_flag[MAX_INPUTS];
+static UINT8 ALIGN_DATA input_flag[MAX_INPUTS];
 static int ALIGN_DATA af_map1[CPS1_BUTTON_MAX];
 static int ALIGN_DATA af_map2[CPS1_BUTTON_MAX];
 static int ALIGN_DATA af_counter[CPS1_BUTTON_MAX];
@@ -39,9 +39,9 @@ static int service_switch;
 #ifdef ADHOC
 typedef struct
 {
-	u32 buttons;
+	UINT32 buttons;
 	int loop_flag;
-	u16 port_value[6];
+	UINT16 port_value[6];
 } ADHOC_DATA;
 
 static ADHOC_DATA ALIGN_PSPDATA send_data;
@@ -49,7 +49,7 @@ static ADHOC_DATA ALIGN_PSPDATA recv_data;
 static SceUID adhoc_thread;
 static volatile int adhoc_active;
 static volatile int adhoc_update;
-static volatile u32 adhoc_paused;
+static volatile UINT32 adhoc_paused;
 #endif
 
 
@@ -61,7 +61,7 @@ static volatile u32 adhoc_paused;
 	連射フラグを更新
 ------------------------------------------------------*/
 
-static u32 update_autofire(u32 buttons)
+static UINT32 update_autofire(UINT32 buttons)
 {
 	int i;
 
@@ -98,7 +98,7 @@ static u32 update_autofire(u32 buttons)
 
 static void update_inputport0(void)
 {
-	u16 value = 0xffff;
+	UINT16 value = 0xffff;
 
 	switch (machine_input_type)
 	{
@@ -118,6 +118,37 @@ static void update_inputport0(void)
 			if (input_flag[P1_BUTTON6]) value &= ~0x8080;
 		}
 		break;
+
+#if !RELEASE
+	case INPTYPE_wofh:
+	case INPTYPE_wofsj:
+		if (option_controller == INPUT_PLAYER1)
+		{
+			if (input_flag[P1_COIN])    value &= ~0x0100;
+			if (input_flag[P1_START])   value &= ~0x1000;
+		}
+		else if (option_controller == INPUT_PLAYER2)
+		{
+			if (input_flag[P1_COIN])    value &= ~0x0200;
+			if (input_flag[P1_START])   value &= ~0x2000;
+		}
+		else if (option_controller == INPUT_PLAYER3)
+		{
+			if (input_flag[P1_RIGHT])   value &= ~0x0001;
+			if (input_flag[P1_LEFT])    value &= ~0x0002;
+			if (input_flag[P1_DOWN])    value &= ~0x0004;
+			if (input_flag[P1_UP])      value &= ~0x0008;
+			if (input_flag[P1_BUTTON1]) value &= ~0x0010;
+			if (input_flag[P1_BUTTON2]) value &= ~0x0020;
+			if (input_flag[P1_COIN])    value &= ~0x0040;
+			if (input_flag[P1_START])   value &= ~0x0080;
+		}
+		if (input_flag[SERV_COIN])
+		{
+			value &= ~0x0400;
+		}
+		break;
+#endif
 
 	default:
 		if (option_controller == INPUT_PLAYER1)
@@ -142,6 +173,10 @@ static void update_inputport0(void)
 	case INPTYPE_forgottn:
 	case INPTYPE_mercs:
 	case INPTYPE_sfzch:
+#if !RELEASE
+	case INPTYPE_wofh:
+	case INPTYPE_wofsj:
+#endif
 		break;
 
 	case INPTYPE_ghouls:
@@ -202,7 +237,7 @@ static void update_inputport0(void)
 
 static void update_inputport1(void)
 {
-	u16 value = 0xffff;
+	UINT16 value = 0xffff;
 
 	switch (machine_input_type)
 	{
@@ -216,6 +251,12 @@ static void update_inputport1(void)
 	case INPTYPE_rockmanj:
 	case INPTYPE_sf2:
 	case INPTYPE_sf2j:
+#if !RELEASE
+	case INPTYPE_knightsh:
+	case INPTYPE_wofh:
+	case INPTYPE_wof3js:
+	case INPTYPE_dinoh:
+#endif
 		if (option_controller == INPUT_PLAYER1)
 		{
 			if (input_flag[P1_RIGHT])   value &= ~0x0001;
@@ -370,7 +411,7 @@ static void update_inputport1(void)
 
 static void update_inputport2(void)
 {
-	u16 value = 0xffff;
+	UINT16 value = 0xffff;
 
 	switch (machine_input_type)
 	{
@@ -382,6 +423,11 @@ static void update_inputport2(void)
 	case INPTYPE_dino:
 	case INPTYPE_captcomm:
 	case INPTYPE_slammast:
+#if !RELEASE
+	case INPTYPE_knightsh:
+	case INPTYPE_wof3js:
+	case INPTYPE_dinoh:
+#endif
 		if (option_controller == INPUT_PLAYER3)
 		{
 			if (input_flag[P1_RIGHT])   value &= ~0x0101;
@@ -427,7 +473,7 @@ static void update_inputport2(void)
 
 static void update_inputport3(void)
 {
-	u16 value = 0xffff;
+	UINT16 value = 0xffff;
 
 	switch (machine_input_type)
 	{
@@ -494,12 +540,12 @@ static void forgottn_update_dial(void)
 }
 
 
-u16 forgottn_read_dial0(void)
+UINT16 forgottn_read_dial0(void)
 {
 	return input_analog_value[0];
 }
 
-u16 forgottn_read_dial1(void)
+UINT16 forgottn_read_dial1(void)
 {
 	return input_analog_value[1];
 }
@@ -509,9 +555,9 @@ u16 forgottn_read_dial1(void)
 	入力ボタンを画面方向に合わせて調整
 ------------------------------------------------------*/
 
-static u32 adjust_input(u32 buttons)
+static UINT32 adjust_input(UINT32 buttons)
 {
-	u32 buttons2;
+	UINT32 buttons2;
 
 	if (!cps_flip_screen && machine_screen_type != SCREEN_VERTICAL)
 		return buttons;
@@ -585,7 +631,7 @@ static u32 adjust_input(u32 buttons)
 static int adhoc_update_inputport(SceSize args, void *argp)
 {
 	int i;
-	u32 buttons;
+	UINT32 buttons;
 
 	while (adhoc_active)
 	{
@@ -726,7 +772,7 @@ static int adhoc_update_inputport(SceSize args, void *argp)
 static void adhoc_pause(void)
 {
 	int control, sel = 0;
-	u32 buttons, frame = frames_displayed;
+	UINT32 buttons, frame = frames_displayed;
 	char buf[64];
 	RECT rect = { 140-8, 96-8, 340+8, 176+8 };
 
@@ -855,6 +901,13 @@ void input_init(void)
 	case INPTYPE_knights:
 	case INPTYPE_wof:
 	case INPTYPE_dino:
+#if !RELEASE
+	case INPTYPE_knightsh:
+	case INPTYPE_wofh:
+	case INPTYPE_wof3js:
+	case INPTYPE_wofsj:
+	case INPTYPE_dinoh:
+#endif
 		input_max_players = 3;
 		break;
 
@@ -883,6 +936,12 @@ void input_init(void)
 	case INPTYPE_megaman:
 	case INPTYPE_rockmanj:
 	case INPTYPE_slammast:
+#if !RELEASE
+	case INPTYPE_knightsh:
+	case INPTYPE_wofh:
+	case INPTYPE_wof3js:
+	case INPTYPE_dinoh:
+#endif
 		input_max_buttons = 3;
 		break;
 
@@ -1020,7 +1079,7 @@ void update_inputport(void)
 #endif
 	{
 		int i, serv_switch = 0;
-		u32 buttons;
+		UINT32 buttons;
 
 		buttons = poll_gamepad();
 

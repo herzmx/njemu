@@ -9,12 +9,12 @@
 #ifndef MEMORY_H
 #define MEMORY_H
 
-#define READ8_HANDLER(name) 	u8 name(u32 offset)
-#define WRITE8_HANDLER(name) 	void name(u32 offset, u8 data)
-#define READ16_HANDLER(name)	u16 name(u32 offset, u16 mem_mask)
-#define WRITE16_HANDLER(name)	void name(u32 offset, u16 data, u16 mem_mask)
-#define READ32_HANDLER(name)	u32 name(u32 offset)
-#define WRITE32_HANDLER(name)	void name(u32 offset, u32 data)
+#define READ8_HANDLER(name) 	UINT8 name(UINT32 offset)
+#define WRITE8_HANDLER(name) 	void name(UINT32 offset, UINT8 data)
+#define READ16_HANDLER(name)	UINT16 name(UINT32 offset, UINT16 mem_mask)
+#define WRITE16_HANDLER(name)	void name(UINT32 offset, UINT16 data, UINT16 mem_mask)
+#define READ32_HANDLER(name)	UINT32 name(UINT32 offset)
+#define WRITE32_HANDLER(name)	void name(UINT32 offset, UINT32 data)
 
 /* ----- 16/32-bit memory accessing ----- */
 #define COMBINE_DATA(varptr)		(*(varptr) = (*(varptr) & mem_mask) | (data & ~mem_mask))

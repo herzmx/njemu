@@ -80,7 +80,7 @@ void show_background(void)
 
 int draw_battery_status(int draw)
 {
-	static u32 counter = 0;
+	static UINT32 counter = 0;
 	static int prev_bat = 0, prev_charging = 0;
 	int width, icon, update = 0;
 	int bat = scePowerGetBatteryLifePercent();
@@ -445,7 +445,7 @@ void msg_screen_clear(void)
 	テキストカラー設定
 --------------------------------------------------------*/
 
-void msg_set_text_color(u32 color)
+void msg_set_text_color(UINT32 color)
 {
 	text_r = (color >>  0) & 0xff;
 	text_g = (color >>  8) & 0xff;
@@ -634,6 +634,16 @@ static UI_MESSAGEBOX *messagebox_init(int number)
 		MB_SET_TEXT(SELECT, CONFIRM_OR_CANCEL)
 		MB_END
 		break;
+
+#ifdef PSP_SLIM
+	case MB_PSPVERSIONERROR:
+		MB_SET_TYPE(MBT_OKONLY)
+		MB_SET_TEXT(WARNING, THIS_PROGRAM_REQUIRES_PSP2000)
+		MB_SET_BLANK()
+		MB_SET_TEXT(SELECT, PRESS_ANY_BUTTON)
+		MB_END
+		break;
+#endif
 
 #ifdef SAVE_STATE
 	case MB_STARTSAVESTATE:

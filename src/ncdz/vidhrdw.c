@@ -13,20 +13,20 @@
 	グローバル変数
 ******************************************************************************/
 
-u16 ALIGN_DATA neogeo_vidram16[0x20000 / 2];
-u16 neogeo_vidram16_offset;
-u16 neogeo_vidram16_modulo;
+UINT16 ALIGN_DATA neogeo_vidram16[0x20000 / 2];
+UINT16 neogeo_vidram16_offset;
+UINT16 neogeo_vidram16_modulo;
 
-u16 *neogeo_paletteram16;
-u16 ALIGN_DATA neogeo_palettebank16[2][0x2000 / 2];
-u32 neogeo_palette_index;
+UINT16 *neogeo_paletteram16;
+UINT16 ALIGN_DATA neogeo_palettebank16[2][0x2000 / 2];
+UINT32 neogeo_palette_index;
 
-u16 *video_palette;
-u16 ALIGN_PSPDATA video_palettebank[2][0x2000 / 2];
-u16 ALIGN_DATA video_clut16[0x8000];
+UINT16 *video_palette;
+UINT16 ALIGN_PSPDATA video_palettebank[2][0x2000 / 2];
+UINT16 ALIGN_DATA video_clut16[0x8000];
 
-u8 video_fix_usage[0x20000 / 32];
-u8 video_spr_usage[0x400000 / 128];
+UINT8 video_fix_usage[0x20000 / 32];
+UINT8 video_spr_usage[0x400000 / 128];
 
 int video_enable;
 int spr_disable;
@@ -37,12 +37,12 @@ int fix_disable;
 	ローカル変数
 ******************************************************************************/
 
-static u32 no_of_tiles;
+static UINT32 no_of_tiles;
 static int next_update_first_line;
 
-static u16 *sprite_scale = &neogeo_vidram16[0x10000 >> 1];
-static u16 *sprite_yctrl = &neogeo_vidram16[0x10400 >> 1];
-static u16 *sprite_xctrl = &neogeo_vidram16[0x10800 >> 1];
+static UINT16 *sprite_scale = &neogeo_vidram16[0x10000 >> 1];
+static UINT16 *sprite_yctrl = &neogeo_vidram16[0x10400 >> 1];
+static UINT16 *sprite_xctrl = &neogeo_vidram16[0x10800 >> 1];
 
 #include "zoom.c"
 
@@ -66,11 +66,11 @@ static void patch_vram_crsword2(void);
 
 static void draw_fix(void)
 {
-	u16 x, y, code, attr;
+	UINT16 x, y, code, attr;
 
 	for (x = 1/8; x < 312/8; x++)
 	{
-		u16 *vram = &neogeo_vidram16[(0xe000 >> 1) + (16 / 8) + (x << 5)];
+		UINT16 *vram = &neogeo_vidram16[(0xe000 >> 1) + (16 / 8) + (x << 5)];
 
 		for (y = 16/8; y < 240/8; y++)
 		{
@@ -108,13 +108,13 @@ static void draw_fix(void)
 			blit_draw_spr(sx, sy2, zx + 1, zy, code, attr);		\
 	}
 
-static void draw_spr(u32 start, u32 end, int min_y, int max_y)
+static void draw_spr(UINT32 start, UINT32 end, int min_y, int max_y)
 {
 	int sx = 0, sy = 0, my = 0, zx = 0, zy = 0, rzy = 0;
-	u32 offset, code, attr;
+	UINT32 offset, code, attr;
 	int fullmode = 0, y, sy2;
-	u16 scale, yctrl;
-	u16 *sprite_base;
+	UINT16 scale, yctrl;
+	UINT16 *sprite_base;
 
 	for (offset = start; offset < end; offset++)
 	{
@@ -204,7 +204,7 @@ static void draw_spr(u32 start, u32 end, int min_y, int max_y)
 	SPRスプライト描画 (プライオリティあり/ssrpg専用)
 ------------------------------------------------------*/
 
-static void draw_spr_prio(void)
+static void draw_spr_prio(int min_y, int max_y)
 {
 	int start = 0, end = 0x300 >> 1;
 
@@ -221,10 +221,9 @@ static void draw_spr_prio(void)
 
     do
 	{
-		draw_spr(start, end, FIRST_VISIBLE_LINE, LAST_VISIBLE_LINE);
+		draw_spr(start, end, min_y, max_y);
 		end = start;
 		start = 0;
-
 	} while (end != 0);
 }
 
@@ -251,7 +250,7 @@ void neogeo_video_init(void)
 				int g1 = (g << 3) | (g >> 2);
 				int b1 = (b << 3) | (b >> 2);
 
-				u16 color = ((r & 1) << 14) | ((r & 0x1e) << 7)
+				UINT16 color = ((r & 1) << 14) | ((r & 0x1e) << 7)
 						  | ((g & 1) << 13) | ((g & 0x1e) << 3)
 						  | ((b & 1) << 12) | ((b & 0x1e) >> 1);
 
@@ -317,33 +316,42 @@ void neogeo_video_reset(void)
 
 void neogeo_screenrefresh(void)
 {
-	blit_start(FIRST_VISIBLE_LINE, LAST_VISIBLE_LINE);
-
 	if (video_enable)
 	{
+		blit_start(FIRST_VISIBLE_LINE, LAST_VISIBLE_LINE);
+
 		if (!spr_disable)
 		{
-			if (NGH_NUMBER(0x0085))
+			if (NGH_NUMBER(NGH_ssrpg))
 			{
-				draw_spr_prio();
+				draw_spr_prio(FIRST_VISIBLE_LINE, LAST_VISIBLE_LINE);
 			}
 			else
 			{
 				switch (neogeo_ngh)
 				{
-				case 0x0054: patch_vram_crsword2(); break;
-				case 0x0204: patch_vram_adkworld(); break;
-				case 0x0240: patch_vram_rbff2(); break;
+				case NGH_crsword2: patch_vram_crsword2(); break;
+				case NGH_adkworld: patch_vram_adkworld(); break;
+				case NGH_rbff2: patch_vram_rbff2(); break;
 				}
 
 				draw_spr(0, 0x300 >> 1, FIRST_VISIBLE_LINE, LAST_VISIBLE_LINE);
 			}
 		}
 
-		if (!fix_disable) draw_fix();
+		if (!fix_disable)
+		{
+			draw_fix();
+		}
+
+		blit_finish();
+	}
+	else
+	{
+		video_clear_frame(draw_frame);
 	}
 
-	blit_finish();
+	next_update_first_line = FIRST_VISIBLE_LINE;
 }
 
 
@@ -353,31 +361,65 @@ void neogeo_screenrefresh(void)
 
 void neogeo_partial_screenrefresh(int current_line)
 {
-	if (!spr_disable)
+	if (current_line >= FIRST_VISIBLE_LINE && current_line <= LAST_VISIBLE_LINE)
 	{
-		if (current_line >= next_update_first_line)
+		if (video_enable)
 		{
-			blit_start(next_update_first_line, current_line);
-			draw_spr(0, 0x300 >> 1, next_update_first_line, current_line);
-		}
-	}
+			if (!spr_disable)
+			{
+				if (current_line >= next_update_first_line)
+				{
+					blit_start(next_update_first_line, current_line);
 
-	next_update_first_line = current_line + 1;
+					if (NGH_NUMBER(NGH_ssrpg))
+					{
+						draw_spr_prio(next_update_first_line, current_line);
+					}
+					else
+					{
+						switch (neogeo_ngh)
+						{
+						case NGH_crsword2: patch_vram_crsword2(); break;
+						case NGH_adkworld: patch_vram_adkworld(); break;
+						case NGH_rbff2: patch_vram_rbff2(); break;
+						}
+
+						draw_spr(0, 0x300 >> 1, next_update_first_line, current_line);
+					}
+				}
+			}
+		}
+
+		next_update_first_line = current_line + 1;
+	}
 }
 
 
 void neogeo_raster_screenrefresh(void)
 {
-	if (!video_enable)
+	if (video_enable)
 	{
-		blit_start(FIRST_VISIBLE_LINE, LAST_VISIBLE_LINE);
+		if (!spr_disable)
+		{
+			neogeo_partial_screenrefresh(LAST_VISIBLE_LINE);
+		}
+		else
+		{
+			blit_start(FIRST_VISIBLE_LINE, LAST_VISIBLE_LINE);
+		}
+
+		if (!fix_disable)
+		{
+			draw_fix();
+		}
+
 		blit_finish();
-		return;
+	}
+	else
+	{
+		video_clear_frame(draw_frame);
 	}
 
-	neogeo_partial_screenrefresh(LAST_VISIBLE_LINE);
-	if (!fix_disable) draw_fix();
-	blit_finish();
 	next_update_first_line = FIRST_VISIBLE_LINE;
 }
 
@@ -450,12 +492,12 @@ int neogeo_loading_screenrefresh(int flag, int draw)
 
 static void patch_vram_rbff2(void)
 {
-	u16 offs;
+	UINT16 offs;
 
 	for (offs = 0; offs < ((0x300 >> 1) << 6) ; offs += 2)
 	{
-		u16 tileno  = neogeo_vidram16[offs];
-		u16 tileatr = neogeo_vidram16[offs + 1];
+		UINT16 tileno  = neogeo_vidram16[offs];
+		UINT16 tileatr = neogeo_vidram16[offs + 1];
 
 		if (tileno == 0x7a00 && (tileatr == 0x4b00 || tileatr == 0x1400))
 		{
@@ -472,12 +514,12 @@ static void patch_vram_rbff2(void)
 
 static void patch_vram_adkworld(void)
 {
-	u16 offs;
+	UINT16 offs;
 
 	for (offs = 0; offs < ((0x300 >> 1) << 6) ; offs += 2)
 	{
-		u16 tileno  = neogeo_vidram16[offs];
-		u16 tileatr = neogeo_vidram16[offs + 1];
+		UINT16 tileno  = neogeo_vidram16[offs];
+		UINT16 tileatr = neogeo_vidram16[offs + 1];
 
 		if ((tileno == 0x14c0 || tileno == 0x1520) && tileatr == 0x0000)
 			neogeo_vidram16[offs] = 0x0000;
@@ -491,12 +533,12 @@ static void patch_vram_adkworld(void)
 
 static void patch_vram_crsword2(void)
 {
-	u16 offs;
+	UINT16 offs;
 
 	for (offs = 0; offs < ((0x300 >> 1) << 6) ; offs += 2)
 	{
-		u16 tileno  = neogeo_vidram16[offs];
-		u16 tileatr = neogeo_vidram16[offs + 1];
+		UINT16 tileno  = neogeo_vidram16[offs];
+		UINT16 tileatr = neogeo_vidram16[offs + 1];
 
 		if (tileno == 0x52a0 && tileatr == 0x0000)
 			neogeo_vidram16[offs] = 0x0000;

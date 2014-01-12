@@ -9,6 +9,7 @@
 #------------------------------------------------------------------------------
 
 TARGET = romcnv_cps2
+UNIX = 1
 
 
 #------------------------------------------------------------------------------
@@ -16,41 +17,21 @@ TARGET = romcnv_cps2
 #------------------------------------------------------------------------------
 
 VERSION_MAJOR = 2
-VERSION_MINOR = 0
+VERSION_MINOR = 2
+VERSION_BUILD = 0
 
 EXENAME_STR = $(TARGET)
-VERSION_STR = $(VERSION_MAJOR).$(VERSION_MINOR)
+VERSION_STR = $(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_BUILD)
 
+ifdef UNIX
+FINAL_TARGET = $(TARGET)
+else
+WIN32 = 1
 FINAL_TARGET = $(TARGET).exe
+endif
 EXTRA_TARGETS = maketree $(FINAL_TARGET)
 
 OBJ = obj_cps2
-
-#------------------------------------------------------------------------------
-# Optimize
-#------------------------------------------------------------------------------
-
-ARCH = -march=pentiumpro
-
-ifdef ATHLON
-ARCH = -march=athlon -m3dnow
-endif
-
-ifdef ATHLONXP
-ARCH = -march=athlon-xp -m3dnow
-endif
-
-ifdef P3
-ARCH = -march=pentium3
-endif
-
-ifdef P4
-ARCH = -march=pentium4 -msse2
-endif
-
-ifdef PM
-ARCH = -march=pentium3 -msse2
-endif
 
 
 #------------------------------------------------------------------------------
@@ -61,8 +42,13 @@ AR = ar
 CC = gcc
 LD = gcc
 
+ifdef WIN32
 MD = mkdir.exe
 RM = rm.exe
+else
+MD = mkdir
+RM = rm
+endif
 
 
 #------------------------------------------------------------------------------
@@ -91,6 +77,7 @@ OBJDIRS = \
 
 OBJS = \
 	$(OBJ)/cps2/romcnv.o \
+	$(OBJ)/common.o \
 	$(OBJ)/unzip.o \
 	$(OBJ)/zip.o \
 	$(OBJ)/zfile.o \
@@ -101,15 +88,15 @@ OBJS = \
 # Compiler Flags
 #------------------------------------------------------------------------------
 
-CFLAGS = $(ARCH) -O3
+CFLAGS = -O2
 
 
 #------------------------------------------------------------------------------
 # Compiler Defines
 #------------------------------------------------------------------------------
 
+ifdef WIN32
 CDEFS = \
-	-DLSB_FIRST \
 	-DCRLF=3 \
 	-DWINVER=0x0400 \
 	-D_WIN32_WINNT=0x0500 \
@@ -123,20 +110,44 @@ CDEFS = \
 	-DVERSION_MAJOR=$(VERSION_MAJOR) \
 	-DVERSION_MINOR=$(VERSION_MINOR) \
 	$(addprefix -I,$(INCDIR))
+else
+CDEFS = \
+	-DCRLF=3 \
+	-DINLINE='static __inline' \
+	-Dinline=__inline \
+	-D__inline__=__inline \
+	-DEXENAME_STR='"$(EXENAME_STR)"' \
+	-DVERSION_STR='"$(VERSION_STR)"' \
+	-DVERSION_MAJOR=$(VERSION_MAJOR) \
+	-DVERSION_MINOR=$(VERSION_MINOR) \
+	$(addprefix -I,$(INCDIR))
+endif
+
+ifdef UNIX
+CDEFS += -DUNIX=1
+endif
 
 
 #---------------------------------------------------------------------
 # Linker Flags
 #---------------------------------------------------------------------
 
-LDFLAGS = -s -mconsole -mno-cygwin
+LDFLAGS = -s
+
+ifdef WIN32
+LDFLAGS += -mconsole -mno-cygwin
+endif
 
 
 #------------------------------------------------------------------------------
 # Library
 #------------------------------------------------------------------------------
 
+LIBS =
+
+ifdef WIN32
 LIBS = -luser32 -lcomdlg32 -lshell32
+endif
 
 
 #------------------------------------------------------------------------------

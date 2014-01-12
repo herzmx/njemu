@@ -12,16 +12,17 @@
 #define Z80_AMASK 0x0000ffff
 
 #define READ_BYTE(mem, offset)			mem[offset ^ 1]
-#define READ_WORD(mem, offset)			*(u16 *)&mem[offset]
+#define READ_WORD(mem, offset)			*(UINT16 *)&mem[offset]
 #define WRITE_BYTE(mem, offset, data)	mem[offset ^ 1] = data
-#define WRITE_WORD(mem, offset, data)	*(u16 *)&mem[offset] = data
+#define WRITE_WORD(mem, offset, data)	*(UINT16 *)&mem[offset] = data
 
 #define READ_MIRROR_BYTE(mem, offset, amask)			mem[(offset & amask) ^ 1]
-#define READ_MIRROR_WORD(mem, offset, amask)			*(u16 *)&mem[offset & amask]
+#define READ_MIRROR_WORD(mem, offset, amask)			*(UINT16 *)&mem[offset & amask]
 #define WRITE_MIRROR_BYTE(mem, offset, data, amask)		mem[(offset & amask) ^ 1] = data
-#define WRITE_MIRROR_WORD(mem, offset, data, amask)		*(u16 *)&mem[offset & amask] = data
+#define WRITE_MIRROR_WORD(mem, offset, data, amask)		*(UINT16 *)&mem[offset & amask] = data
 
 #define str_cmp(s1, s2)		strnicmp(s1, s2, strlen(s2))
+
 
 enum
 {
@@ -30,9 +31,13 @@ enum
 	REGION_GFX1,
 	REGION_GFX2,
 	REGION_GFX3,
+	REGION_GFX4,
 	REGION_SOUND1,
 	REGION_SOUND2,
 	REGION_USER1,
+#if !RELEASE
+	REGION_USER2,
+#endif
 	REGION_SKIP
 };
 
@@ -43,35 +48,47 @@ enum
 #define MAX_SND1ROM		8
 #define MAX_SND2ROM		8
 #define MAX_USR1ROM		1
+#define MAX_USR2ROM		1
 
 
 /******************************************************************************
 	グローバル変数
 ******************************************************************************/
 
-u8 *memory_region_cpu1;
-u8 *memory_region_cpu2;
-u8 *memory_region_gfx1;
-u8 *memory_region_gfx2;
-u8 *memory_region_gfx3;
-u8 *memory_region_sound1;
-u8 *memory_region_sound2;
-u8 *memory_region_user1;
+UINT8 *memory_region_cpu1;
+UINT8 *memory_region_cpu2;
+UINT8 *memory_region_gfx1;
+UINT8 *memory_region_gfx2;
+UINT8 *memory_region_gfx3;
+UINT8 *memory_region_sound1;
+UINT8 *memory_region_sound2;
+UINT8 *memory_region_user1;
+#if !RELEASE
+UINT8 *memory_region_user2;
+#endif
 
-u32 memory_length_cpu1;
-u32 memory_length_cpu2;
-u32 memory_length_gfx1;
-u32 memory_length_gfx2;
-u32 memory_length_gfx3;
-u32 memory_length_sound1;
-u32 memory_length_sound2;
-u32 memory_length_user1;
+UINT32 memory_length_cpu1;
+UINT32 memory_length_cpu2;
+UINT32 memory_length_gfx1;
+UINT32 memory_length_gfx2;
+UINT32 memory_length_gfx3;
+UINT32 memory_length_sound1;
+UINT32 memory_length_sound2;
+UINT32 memory_length_user1;
+#if !RELEASE
+UINT32 memory_length_user2;
+#endif
 
-u8 ALIGN_DATA neogeo_memcard[0x800];
-u8 ALIGN_DATA neogeo_ram[0x10000];
-u16 ALIGN_DATA neogeo_sram16[0x8000];
+UINT8 ALIGN_DATA neogeo_memcard[0x800];
+UINT8 ALIGN_DATA neogeo_ram[0x10000];
+UINT16 ALIGN_DATA neogeo_sram16[0x8000];
 
 int neogeo_machine_mode;
+
+#ifdef PSP_SLIM
+UINT32 psp2k_mem_offset;
+UINT32 psp2k_mem_left;
+#endif
 
 
 /******************************************************************************
@@ -85,6 +102,9 @@ static struct rom_t gfx3rom[MAX_GFX3ROM];
 static struct rom_t snd1rom[MAX_SND1ROM];
 static struct rom_t snd2rom[MAX_SND2ROM];
 static struct rom_t usr1rom[MAX_USR1ROM];
+#if !RELEASE
+static struct rom_t usr2rom[MAX_USR2ROM];
+#endif
 
 static int num_cpu1rom;
 static int num_cpu2rom;
@@ -93,26 +113,33 @@ static int num_gfx3rom;
 static int num_snd1rom;
 static int num_snd2rom;
 static int num_usr1rom;
+#if !RELEASE
+static int num_usr2rom;
+#endif
 
 static int encrypt_cpu1;
+static int encrypt_cpu2;
 static int encrypt_snd1;
-static int encrypt_gfx;
+static int encrypt_gfx2;
+static int encrypt_gfx3;
 static int encrypt_usr1;
 
-static u32 bios_amask;
+static UINT32 bios_amask;
 
-static u8 *neogeo_sram;
+static UINT8 *neogeo_sram;
 
 int disable_sound;
-static int neogeo_save_sound_flag;
+int use_parent_crom;
+int use_parent_srom;
+int use_parent_vrom;
 
 
 /******************************************************************************
 	プロトタイプ
 ******************************************************************************/
 
-static u16 (*neogeo_protection_16_r)(u32 offset, u16 mem_mask);
-static void (*neogeo_protection_16_w)(u32 offset, u16 data, u16 mem_mask);
+static UINT16 (*neogeo_protection_16_r)(UINT32 offset, UINT16 mem_mask);
+static void (*neogeo_protection_16_w)(UINT32 offset, UINT16 data, UINT16 mem_mask);
 
 
 /****************************************************************************
@@ -123,16 +150,16 @@ static void (*neogeo_protection_16_w)(u32 offset, u16 data, u16 mem_mask);
 	Decode sprite (SPR)
 ------------------------------------------------------*/
 
-static void neogeo_decode_spr(u8 *mem, u32 length, u8 *usage)
+static void neogeo_decode_spr(UINT8 *mem, UINT32 length, UINT8 *usage)
 {
-	u32 tileno, numtiles = length / 128;
+	UINT32 tileno, numtiles = length / 128;
 
 	for (tileno = 0; tileno < numtiles; tileno++)
 	{
-		u8 swap[128];
-		u8 *gfxdata;
+		UINT8 swap[128];
+		UINT8 *gfxdata;
 		int x,y;
-		u32 pen;
+		UINT32 pen;
 		int opaque = 0;
 
 		gfxdata = &mem[128 * tileno];
@@ -141,7 +168,7 @@ static void neogeo_decode_spr(u8 *mem, u32 length, u8 *usage)
 
 		for (y = 0;y < 16;y++)
 		{
-			u32 dw, data;
+			UINT32 dw, data;
 
 			dw = 0;
 			for (x = 0;x < 8;x++)
@@ -206,12 +233,16 @@ static void neogeo_decode_spr(u8 *mem, u32 length, u8 *usage)
 	opaque += (tile >> 4) != 0;		\
 }
 
-static void neogeo_decode_fix(u8 *mem, u32 length, u8 *usage)
+#if !RELEASE
+void neogeo_decode_fix(UINT8 *mem, UINT32 length, UINT8 *usage)
+#else
+static void neogeo_decode_fix(UINT8 *mem, UINT32 length, UINT8 *usage)
+#endif
 {
-	u32 i, j;
-	u8 tile, opaque;
-	u8 *p, buf[32];
-	u32 *gfx = (u32 *)mem;
+	UINT32 i, j;
+	UINT8 tile, opaque;
+	UINT8 *p, buf[32];
+	UINT32 *gfx = (UINT32 *)mem;
 
 	for (i = 0; i < length; i += 32)
 	{
@@ -232,19 +263,82 @@ static void neogeo_decode_fix(u8 *mem, u32 length, u8 *usage)
 			*usage = (opaque == 64) ? 1 : 2;
 		else
 			*usage = 0;
-		*usage++;
+		usage++;
 	}
 
 	for (i = 0; i < length/4; i++)
 	{
-		u32 dw = gfx[i];
-		u32 data = ((dw & 0x0000000f) >>  0) | ((dw & 0x000000f0) <<  4)
+		UINT32 dw = gfx[i];
+		UINT32 data = ((dw & 0x0000000f) >>  0) | ((dw & 0x000000f0) <<  4)
 				 | ((dw & 0x00000f00) <<  8) | ((dw & 0x0000f000) << 12)
 				 | ((dw & 0x000f0000) >> 12) | ((dw & 0x00f00000) >>  8)
 				 | ((dw & 0x0f000000) >>  4) | ((dw & 0xf0000000) >>  0);
 		gfx[i] = data;
 	}
 }
+
+
+/******************************************************************************
+	PSP-2000用メモリ管理
+******************************************************************************/
+
+#ifdef PSP_SLIM
+
+#define MEMORY_IS_PSP2K(mem)	((UINT32)mem >= PSP2K_MEM_TOP)
+
+/*--------------------------------------------------------
+	拡張された領域からメモリを確保
+--------------------------------------------------------*/
+
+static void *psp2k_mem_alloc(UINT32 size)
+{
+	UINT8 *mem = NULL;
+
+	if (size <= psp2k_mem_left)
+	{
+		psp2k_mem_offset -= size;
+		mem = (UINT8 *)psp2k_mem_offset;
+		psp2k_mem_left -= size;
+	}
+	return mem;
+}
+
+
+/*--------------------------------------------------------
+	拡張された領域へメモリを移動
+--------------------------------------------------------*/
+
+static void *psp2k_mem_move(void *mem, UINT32 size)
+{
+	if (!mem) return NULL;
+
+	if (size <= psp2k_mem_left)
+	{
+		psp2k_mem_offset -= size;
+		psp2k_mem_left   -= size;
+
+		memcpy((UINT8 *)psp2k_mem_offset, mem, size);
+		free(mem);
+
+		mem = (UINT8 *)psp2k_mem_offset;
+	}
+	return mem;
+}
+
+
+/*--------------------------------------------------------
+	メモリ範囲を確認してfree()
+--------------------------------------------------------*/
+
+static void psp2k_mem_free(void *mem)
+{
+	if (!mem || MEMORY_IS_PSP2K(mem))
+		return;	// 拡張メモリは解放しない(フリーズする)
+
+	free(mem);
+}
+
+#endif
 
 
 /******************************************************************************
@@ -257,6 +351,9 @@ static void neogeo_decode_fix(u8 *mem, u32 length, u8 *usage)
 
 static int load_rom_cpu1(void)
 {
+	int i, res;
+	char fname[32], *parent;
+
 	if ((memory_region_cpu1 = memalign(MEM_ALIGN, memory_length_cpu1)) == NULL)
 	{
 		error_memory("REGION_CPU1");
@@ -264,37 +361,88 @@ static int load_rom_cpu1(void)
 	}
 	memset(memory_region_cpu1, 0, memory_length_cpu1);
 
-	if (encrypt_cpu1)
+	parent = strlen(parent_name) ? parent_name : NULL;
+
+	for (i = 0; i < num_cpu1rom; )
 	{
-		msg_printf(TEXT(LOADING_DECRYPTED_CPU1_ROM));
-		if (cachefile_open("prom") == -1)
+		strcpy(fname, cpu1rom[i].name);
+		if ((res = file_open(game_name, parent, cpu1rom[i].crc, fname)) < 0)
 		{
-			error_file("CPU1");
+			if (res == -1)
+				error_file(fname);
+			else
+				error_crc(fname);
 			return 0;
 		}
-		file_read(memory_region_cpu1, memory_length_cpu1);
+
+		msg_printf(TEXT(LOADING), fname);
+
+		i = rom_load(cpu1rom, memory_region_cpu1, i, num_cpu1rom);
+
 		file_close();
 	}
-	else
+
+	if (encrypt_cpu1)
 	{
-		int i;
-		char fname[32], *parent;
+		res = 1;
 
-		parent = strlen(parent_name) ? parent_name : NULL;
-
-		for (i = 0; i < num_cpu1rom; )
+		switch (machine_init_type)
 		{
-			if (file_open(game_name, parent, cpu1rom[i].crc, fname) == -1)
-			{
-				error_crc("CPU1");
-				return 0;
-			}
+		case INIT_kof99:    kof99_decrypt_68k();          break;
+		case INIT_garou:    garou_decrypt_68k();          break;
+		case INIT_garouo:   garouo_decrypt_68k();         break;
+		case INIT_mslug3:   mslug3_decrypt_68k();         break;
+		case INIT_kof2000:  kof2000_decrypt_68k();        break;
 
-			msg_printf(TEXT(LOADING), fname);
+		case INIT_kof98:    res = kof98_decrypt_68k();    break;
+		case INIT_kof2002:  res = kof2002_decrypt_68k();  break;
+		case INIT_mslug5:   res = mslug5_decrypt_68k();   break;
+		case INIT_svchaosa: res = svcchaos_px_decrypt();  break;
+		case INIT_samsho5:  res = samsho5_decrypt_68k();  break;
+		case INIT_kof2003:  res = kof2003_decrypt_68k();  break;
+		case INIT_samsh5sp: res = samsh5p_decrypt_68k();  break;
+		case INIT_matrim:   res = matrim_decrypt_68k();   break;
 
-			i = rom_load(cpu1rom, memory_region_cpu1, i, num_cpu1rom);
+		case INIT_ms5pcb:   res = mslug5_decrypt_68k();   break;
+		case INIT_svcpcb:   res = svcchaos_px_decrypt();  break;
+		case INIT_kf2k3pcb: res = kf2k3pcb_decrypt_68k(); break;
 
-			file_close();
+#if !RELEASE
+		case INIT_kof96ep:  kof96ep_px_decrypt();         break;
+		case INIT_cthd2k3a: res = cthd2k3a_px_decrypt();  break;
+		case INIT_kof2002b: res = kof2002_decrypt_68k();  break;
+		case INIT_kf2k2pls: res = kof2002_decrypt_68k();  break;
+		case INIT_kf2k2plc: res = kof2002_decrypt_68k();  break;
+		case INIT_kf2k2mp:  res = kf2k2mp_px_decrypt();   break;
+		case INIT_kf2k2mp2: res = kf2k2mp2_px_decrypt();  break;
+		case INIT_svcboot:  res = svcboot_px_decrypt();   break;
+		case INIT_svcplus:  res = svcplus_px_decrypt();   break;
+		case INIT_svcplusa: res = svcplusa_px_decrypt();  break;
+		case INIT_svcsplus: res = svcsplus_px_decrypt();  break;
+		case INIT_samsho5b: res = samsho5b_px_decrypt();  break;
+		case INIT_kf2k3bl:  res = kf2k3bl_px_decrypt();   break;
+		case INIT_kf2k3pl:  res = kf2k3pl_px_decrypt();   break;
+		case INIT_kf2k3upl: kf2k3upl_px_decrypt();        break;
+		case INIT_kog:      res = kog_px_decrypt();       break;
+		case INIT_kof10th:  res = kof10th_px_decrypt();   break;
+		case INIT_kf10thep: res = kf10thep_px_decrypt();  break;
+		case INIT_kf2k5uni: res = kf2k5uni_px_decrypt();  break;
+		case INIT_kof2k4se: res = kof2k4se_px_decrypt();  break;
+		case INIT_kf2k4pls: res = kf2k4pls_px_decrypt();  break;
+		case INIT_lans2004: res = lans2004_px_decrypt();  break;
+		case INIT_matrimbl: res = kof2002_decrypt_68k();  break;
+#endif
+
+		default: res = 0;
+		}
+
+		if (res == 0)
+		{
+			msg_printf(TEXT(COULD_NOT_ALLOCATE_MEMORY_FOR_DECRYPT_ROM));
+			msg_printf(TEXT(PRESS_ANY_BUTTON2));
+			pad_wait_press(PAD_WAIT_INFINITY);
+			Loop = LOOP_BROWSER;
+			return 0;
 		}
 	}
 
@@ -309,7 +457,7 @@ static int load_rom_cpu1(void)
 
 static int load_rom_cpu2(void)
 {
-	int i;
+	int i, res;
 	char fname[32], *parent;
 
 	if ((memory_region_cpu2 = memalign(MEM_ALIGN, memory_length_cpu2)) == NULL)
@@ -319,13 +467,17 @@ static int load_rom_cpu2(void)
 	}
 	memset(memory_region_cpu2, 0, memory_length_cpu2);
 
-	parent = strlen(parent_name) ? parent_name : NULL;
+	parent = strlen(parent_name) ? parent_name : (char *)"neogeo";
 
 	for (i = 0; i < num_cpu2rom; )
 	{
-		if (file_open(game_name, parent, cpu2rom[i].crc, fname) == -1)
+		strcpy(fname, cpu2rom[i].name);
+		if ((res = file_open(game_name, parent, cpu2rom[i].crc, fname)) < 0)
 		{
-			error_crc("CPU2");
+			if (res == -1)
+				error_file(fname);
+			else
+				error_crc(fname);
 			return 0;
 		}
 
@@ -335,6 +487,20 @@ static int load_rom_cpu2(void)
 
 		file_close();
 	}
+
+#if !RELEASE
+	if (encrypt_cpu2)
+	{
+		switch (machine_init_type)
+		{
+		case INIT_cthd2003: cthd2003_mx_decrypt(); break;
+		case INIT_cthd2k3a: cthd2003_mx_decrypt(); break;
+		case INIT_ct2k3sp:  cthd2003_mx_decrypt(); break;
+		case INIT_kf2k5uni: kf2k5uni_mx_decrypt(); break;
+		case INIT_matrimbl: matrimbl_mx_decrypt(); break;
+		}
+	}
+#endif
 
 	memcpy(memory_region_cpu2, &memory_region_cpu2[0x10000], 0x10000);
 
@@ -347,6 +513,7 @@ static int load_rom_cpu2(void)
 
 static int load_rom_gfx1(void)
 {
+	int res;
 	char fname[32];
 
 	if ((memory_region_gfx1 = memalign(MEM_ALIGN, memory_length_gfx1)) == NULL)
@@ -356,16 +523,14 @@ static int load_rom_gfx1(void)
 	}
 	memset(memory_region_gfx1, 0, memory_length_gfx1);
 
-	if ((gfx_pen_usage[0] = memalign(MEM_ALIGN, memory_length_gfx1 / 32)) == NULL)
-	{
-		error_memory("GFX_PEN_USAGE (sfix)");
-		return 0;
-	}
-
 	msg_printf(TEXT(LOADING_SFIX));
-	if (file_open(game_name, "neogeo", sfix_crc, fname) == -1)
+	strcpy(fname, "sfix.sfx");
+	if ((res = file_open(game_name, "neogeo", sfix_crc, fname)) < 0)
 	{
-		error_crc("sfix.sfx");
+		if (res == -1)
+			error_crc(fname);
+		else
+			error_crc(fname);
 		return 0;
 	}
 	file_read(memory_region_gfx1, memory_length_gfx1);
@@ -389,35 +554,35 @@ static int load_rom_gfx2(void)
 	}
 	memset(memory_region_gfx2, 0, memory_length_gfx2);
 
-	if ((gfx_pen_usage[1] = memalign(MEM_ALIGN, memory_length_gfx2 / 32)) == NULL)
+	if (encrypt_gfx2)
 	{
-		error_memory("GFX_PEN_USAGE (fix)");
-		return 0;
-	}
+		SceUID fd;
 
-	if (encrypt_gfx)
-	{
 		msg_printf(TEXT(LOADING_DECRYPTED_GFX2_ROM));
-		if (cachefile_open("srom") == -1)
+		if ((fd = cachefile_open(CACHE_SROM)) < 0)
 		{
-			error_file("GFX2");
+			error_file("cache/srom");
 			return 0;
 		}
-		file_read(memory_region_gfx2, memory_length_gfx2);
-		file_close();
+		sceIoRead(fd, memory_region_gfx2, memory_length_gfx2);
+		sceIoClose(fd);
 	}
 	else
 	{
-		int i;
+		int i, res;
 		char fname[32], *parent;
 
-		parent = strlen(parent_name) ? parent_name : NULL;
+		parent = strlen(parent_name) ? parent_name : (char *)"neogeo";
 
 		for (i = 0; i < num_gfx2rom; )
 		{
-			if (file_open(game_name, parent, gfx2rom[i].crc, fname) == -1)
+			strcpy(fname, gfx2rom[i].name);
+			if ((res = file_open(game_name, parent, gfx2rom[i].crc, fname)) < 0)
 			{
-				error_crc("GFX2");
+				if (res == -1)
+					error_file(fname);
+				else
+					error_crc(fname);
 				return 0;
 			}
 
@@ -427,6 +592,18 @@ static int load_rom_gfx2(void)
 
 			file_close();
 		}
+
+#if !RELEASE
+		switch (machine_init_type)
+		{
+		case INIT_cthd2003: cthd2003_sx_decrypt(); break;
+		case INIT_cthd2k3a: cthd2003_sx_decrypt(); break;
+		case INIT_ct2k3sp:  cthd2003_sx_decrypt(); break;
+		case INIT_kf2k1pa:  kf2k1pa_sx_decrypt();  break;
+		case INIT_kf2k5uni: kf2k5uni_sx_decrypt(); break;
+		case INIT_kf10thep: kf10thep_sx_decrypt(); break;
+		}
+#endif
 	}
 
 	neogeo_decode_fix(memory_region_gfx2, memory_length_gfx2, gfx_pen_usage[1]);
@@ -440,21 +617,18 @@ static int load_rom_gfx2(void)
 
 static int load_rom_gfx3(void)
 {
-	if ((gfx_pen_usage[2] = memalign(MEM_ALIGN, memory_length_gfx3 / 128)) == NULL)
+	if (!encrypt_gfx3)
 	{
-		error_memory("GFX_PEN_USAGE (spr)");
-		return 0;
-	}
-
-	if (encrypt_gfx)
-	{
-		msg_printf(TEXT(LOADING_DECRYPTED_GFX3_ROM));
-	}
-	else
-	{
-		if ((memory_region_gfx3 = memalign(MEM_ALIGN, memory_length_gfx3)) != NULL)
+#ifdef PSP_SLIM
+		if ((memory_region_gfx3 = psp2k_mem_alloc(memory_length_gfx3)) == NULL)
+#endif
 		{
-			int i;
+			memory_region_gfx3 = memalign(MEM_ALIGN, memory_length_gfx3);
+		}
+
+		if (memory_region_gfx3 != NULL)
+		{
+			int i, res;
 			char fname[32], *parent;
 
 			memset(memory_region_gfx3, 0, memory_length_gfx3);
@@ -463,9 +637,13 @@ static int load_rom_gfx3(void)
 
 			for (i = 0; i < num_gfx3rom; )
 			{
-				if (file_open(game_name, parent, gfx3rom[i].crc, fname) == -1)
+				strcpy(fname, gfx3rom[i].name);
+				if ((res = file_open(game_name, parent, gfx3rom[i].crc, fname)) < 0)
 				{
-					error_crc("GFX3");
+					if (res == -1)
+						error_file(fname);
+					else
+						error_crc(fname);
 					return 0;
 				}
 
@@ -510,6 +688,7 @@ static int load_rom_sound1(void)
 		memory_length_sound1 = 0;
 		return 1;
 	}
+#ifndef PSP_SLIM
 	if (disable_sound)
 	{
 		return 1;
@@ -520,31 +699,57 @@ static int load_rom_sound1(void)
 		error_memory("REGION_SOUND1");
 		return 0;
 	}
+#else
+	if ((memory_region_sound1 = memalign(MEM_ALIGN, memory_length_sound1)) == NULL)
+	{
+		if (disable_sound)
+		{
+			if ((memory_region_sound1 = psp2k_mem_alloc(memory_length_sound1)) == NULL)
+			{
+				return 1;
+			}
+		}
+		else
+		{
+			error_memory("REGION_SOUND1");
+			return 0;
+		}
+	}
+
+	disable_sound = 0;
+#endif
+
 	memset(memory_region_sound1, 0, memory_length_sound1);
 
 	if (encrypt_snd1)
 	{
+		SceUID fd;
+
 		msg_printf(TEXT(LOADING_DECRYPTED_SOUND1_ROM));
-		if (cachefile_open("vrom") == -1)
+		if ((fd = cachefile_open(CACHE_VROM)) < 0)
 		{
-			error_file("SOUND1");
+			error_file("cache/vrom");
 			return 0;
 		}
-		file_read(memory_region_sound1, memory_length_sound1);
-		file_close();
+		sceIoRead(fd, memory_region_sound1, memory_length_sound1);
+		sceIoClose(fd);
 	}
 	else
 	{
-		int i;
+		int i, res;
 		char fname[32], *parent;
 
 		parent = strlen(parent_name) ? parent_name : NULL;
 
 		for (i = 0; i < num_snd1rom; )
 		{
-			if (file_open(game_name, parent, snd1rom[i].crc, fname) == -1)
+			strcpy(fname, snd1rom[i].name);
+			if ((res = file_open(game_name, parent, snd1rom[i].crc, fname)) < 0)
 			{
-				error_crc("SOUND1");
+				if (res == -1)
+					error_file(fname);
+				else
+					error_crc(fname);
 				return 0;
 			}
 
@@ -565,7 +770,7 @@ static int load_rom_sound1(void)
 
 static int load_rom_sound2(void)
 {
-	int i;
+	int i, res;
 	char fname[32], *parent;
 
 	if (memory_length_sound2 == 0 || !option_sound_enable || disable_sound)
@@ -585,9 +790,13 @@ static int load_rom_sound2(void)
 
 	for (i = 0; i < num_snd2rom; )
 	{
-		if (file_open(game_name, parent, snd2rom[i].crc, fname) == -1)
+		strcpy(fname, snd2rom[i].name);
+		if ((res = file_open(game_name, parent, snd2rom[i].crc, fname)) < 0)
 		{
-			error_crc("SOUND2");
+			if (res == -1)
+				error_file(fname);
+			else
+				error_crc(fname);
 			return 0;
 		}
 
@@ -607,9 +816,10 @@ static int load_rom_sound2(void)
 
 static int load_rom_user1(int reload)
 {
+	int res;
 	char fname[32];
 	char *parent;
-	u32 patch = 0;
+	UINT32 patch = 0;
 
 	if (!reload)
 	{
@@ -627,9 +837,13 @@ static int load_rom_user1(int reload)
 	{
 		patch = bios_patch_address[neogeo_bios];
 
-		if (file_open(game_name, "neogeo", bios_crc[neogeo_bios], fname) == -1)
+		strcpy(fname, bios_name[neogeo_bios]);
+		if ((res = file_open(game_name, "neogeo", bios_crc[neogeo_bios], fname)) < 0)
 		{
-			error_crc(bios_name[neogeo_bios]);
+			if (res == -1)
+				error_file(fname);
+			else
+				error_crc(fname);
 			neogeo_bios = -1;
 			return 0;
 		}
@@ -639,39 +853,45 @@ static int load_rom_user1(int reload)
 	}
 	else if (!reload)
 	{
-		if (encrypt_usr1)
-		{
-			// JAMMA PCB
-			msg_printf(TEXT(LOADING_DECRYPTED_BIOS_ROM));
-			if (cachefile_open("biosrom") == -1)
-			{
-				error_file("BIOS (biosrom)");
-				return 0;
-			}
-		}
-		else
-		{
-			// irrmaze
-			if (!strcmp(game_name, "irrmaze")) patch = 0x010d8c;
+		if (!strcmp(game_name, "irrmaze")) patch = 0x010d8c;
 
-			if (file_open(game_name, parent, usr1rom[0].crc, fname) == -1)
-			{
-				sprintf(fname, "%s BIOS", game_name);
+		strcpy(fname, usr1rom[0].name);
+		if ((res = file_open(game_name, parent, usr1rom[0].crc, fname)) < 0)
+		{
+			if (res == -1)
+				error_file(fname);
+			else
 				error_crc(fname);
-				return 0;
-			}
-			msg_printf(TEXT(LOADING), fname);
+			return 0;
 		}
+
+		msg_printf(TEXT(LOADING), fname);
+
 		file_read(memory_region_user1, memory_length_user1);
 		file_close();
+
+		if (encrypt_usr1)
+		{
+			if (machine_init_type == INIT_kf2k3pcb)
+			{
+				if (kof2003biosdecode() == 0)
+				{
+					msg_printf(TEXT(COULD_NOT_ALLOCATE_MEMORY_FOR_DECRYPT_ROM));
+					msg_printf(TEXT(PRESS_ANY_BUTTON2));
+					pad_wait_press(PAD_WAIT_INFINITY);
+					Loop = LOOP_BROWSER;
+					return 0;
+				}
+			}
+		}
 	}
 
 	bios_amask = memory_length_user1 - 1;
 
 	if (patch)
 	{
-		u16 *mem16 = (u16 *)memory_region_user1;
-		u16 value;
+		UINT16 *mem16 = (UINT16 *)memory_region_user1;
+		UINT16 value;
 
 		if (!neogeo_region)
 			value = mem16[0x00400 >> 1] & 0x03;
@@ -692,6 +912,53 @@ static int load_rom_user1(int reload)
 }
 
 /*--------------------------------------------------------
+	USER2 (kof10th/kf10thep専用)
+--------------------------------------------------------*/
+
+#if !RELEASE
+static int load_rom_user2(void)
+{
+	int i, res;
+	char fname[32], *parent;
+
+	if (memory_length_user2 == 0)
+	{
+		return 1;
+	}
+
+	if ((memory_region_user2 = memalign(MEM_ALIGN, memory_length_user2)) == NULL)
+	{
+		error_memory("REGION_USER2");
+		return 0;
+	}
+	memset(memory_region_user2, 0, memory_length_user2);
+
+	parent = strlen(parent_name) ? parent_name : NULL;
+
+	for (i = 0; i < num_usr2rom; )
+	{
+		strcpy(fname, usr2rom[i].name);
+		if ((res = file_open(game_name, parent, usr2rom[i].crc, fname)) < 0)
+		{
+			if (res == -1)
+				error_file(fname);
+			else
+				error_crc(fname);
+			return 0;
+		}
+
+		msg_printf(TEXT(LOADING), fname);
+
+		i = rom_load(usr2rom, memory_region_user2, i, num_usr2rom);
+
+		file_close();
+	}
+
+	return 1;
+}
+#endif
+
+/*--------------------------------------------------------
 	ROM情報をデータベースで解析
 --------------------------------------------------------*/
 
@@ -710,10 +977,15 @@ static int load_rom_info(const char *game_name)
 	num_snd1rom = 0;
 	num_snd2rom = 0;
 	num_usr1rom = 0;
+#if !RELEASE
+	num_usr2rom = 0;
+#endif
 
 	encrypt_cpu1 = 0;
+	encrypt_cpu2 = 0;
 	encrypt_snd1 = 0;
-	encrypt_gfx  = 0;
+	encrypt_gfx2 = 0;
+	encrypt_gfx3 = 0;
 	encrypt_usr1 = 0;
 
 	disable_sound = 0;
@@ -799,17 +1071,19 @@ static int load_rom_info(const char *game_name)
 					else if (strcmp(type, "CPU2") == 0)
 					{
 						sscanf(size, "%x", &memory_length_cpu2);
+						encrypt_cpu2 = encrypted;
 						region = REGION_CPU2;
 					}
 					else if (strcmp(type, "GFX2") == 0)
 					{
 						sscanf(size, "%x", &memory_length_gfx2);
+						encrypt_gfx2 = encrypted;
 						region = REGION_GFX2;
 					}
 					else if (strcmp(type, "GFX3") == 0)
 					{
 						sscanf(size, "%x", &memory_length_gfx3);
-						encrypt_gfx = encrypted;
+						encrypt_gfx3 = encrypted;
 						region = REGION_GFX3;
 					}
 					else if (strcmp(type, "SOUND1") == 0)
@@ -829,6 +1103,13 @@ static int load_rom_info(const char *game_name)
 						encrypt_usr1 = encrypted;
 						region = REGION_USER1;
 					}
+#if !RELEASE
+					else if (strcmp(type, "USER2") == 0)
+					{
+						sscanf(size, "%x", &memory_length_user2);
+						region = REGION_USER2;
+					}
+#endif
 					else
 					{
 						region = REGION_SKIP;
@@ -836,10 +1117,14 @@ static int load_rom_info(const char *game_name)
 				}
 				else if (str_cmp(&buf[1], "ROM(") == 0)
 				{
-					char *type, *offset, *length, *crc;
+					char *type, *name, *offset, *length, *crc;
 
 					strtok(&buf[1], " ");
 					type   = strtok(NULL, " ,");
+					if (type[0] != '1')
+						name = strtok(NULL, " ,");
+					else
+						name = NULL;
 					offset = strtok(NULL, " ,");
 					length = strtok(NULL, " ,");
 					crc    = strtok(NULL, " ");
@@ -851,6 +1136,7 @@ static int load_rom_info(const char *game_name)
 						sscanf(offset, "%x", &cpu1rom[num_cpu1rom].offset);
 						sscanf(length, "%x", &cpu1rom[num_cpu1rom].length);
 						sscanf(crc, "%x", &cpu1rom[num_cpu1rom].crc);
+						if (name) strcpy(cpu1rom[num_cpu1rom].name, name);
 						cpu1rom[num_cpu1rom].group = 0;
 						cpu1rom[num_cpu1rom].skip = 0;
 						num_cpu1rom++;
@@ -861,6 +1147,7 @@ static int load_rom_info(const char *game_name)
 						sscanf(offset, "%x", &cpu2rom[num_cpu2rom].offset);
 						sscanf(length, "%x", &cpu2rom[num_cpu2rom].length);
 						sscanf(crc, "%x", &cpu2rom[num_cpu2rom].crc);
+						if (name) strcpy(cpu2rom[num_cpu2rom].name, name);
 						cpu2rom[num_cpu2rom].group = 0;
 						cpu2rom[num_cpu2rom].skip = 0;
 						num_cpu2rom++;
@@ -871,6 +1158,7 @@ static int load_rom_info(const char *game_name)
 						sscanf(offset, "%x", &gfx2rom[num_gfx2rom].offset);
 						sscanf(length, "%x", &gfx2rom[num_gfx2rom].length);
 						sscanf(crc, "%x", &gfx2rom[num_gfx2rom].crc);
+						if (name) strcpy(gfx2rom[num_gfx2rom].name, name);
 						gfx2rom[num_gfx2rom].group = 0;
 						gfx2rom[num_gfx2rom].skip = 0;
 						num_gfx2rom++;
@@ -881,6 +1169,7 @@ static int load_rom_info(const char *game_name)
 						sscanf(offset, "%x", &gfx3rom[num_gfx3rom].offset);
 						sscanf(length, "%x", &gfx3rom[num_gfx3rom].length);
 						sscanf(crc, "%x", &gfx3rom[num_gfx3rom].crc);
+						if (name) strcpy(gfx3rom[num_gfx3rom].name, name);
 						gfx3rom[num_gfx3rom].group = 0;
 						gfx3rom[num_gfx3rom].skip = 0;
 						num_gfx3rom++;
@@ -891,6 +1180,7 @@ static int load_rom_info(const char *game_name)
 						sscanf(offset, "%x", &snd1rom[num_snd1rom].offset);
 						sscanf(length, "%x", &snd1rom[num_snd1rom].length);
 						sscanf(crc, "%x", &snd1rom[num_snd1rom].crc);
+						if (name) strcpy(snd1rom[num_snd1rom].name, name);
 						snd1rom[num_snd1rom].group = 0;
 						snd1rom[num_snd1rom].skip = 0;
 						num_snd1rom++;
@@ -901,6 +1191,7 @@ static int load_rom_info(const char *game_name)
 						sscanf(offset, "%x", &snd2rom[num_snd2rom].offset);
 						sscanf(length, "%x", &snd2rom[num_snd2rom].length);
 						sscanf(crc, "%x", &snd2rom[num_snd2rom].crc);
+						if (name) strcpy(snd2rom[num_snd2rom].name, name);
 						snd2rom[num_snd2rom].group = 0;
 						snd2rom[num_snd2rom].skip = 0;
 						num_snd2rom++;
@@ -911,19 +1202,37 @@ static int load_rom_info(const char *game_name)
 						sscanf(offset, "%x", &usr1rom[num_usr1rom].offset);
 						sscanf(length, "%x", &usr1rom[num_usr1rom].length);
 						sscanf(crc, "%x", &usr1rom[num_usr1rom].crc);
+						if (name) strcpy(usr1rom[num_usr1rom].name, name);
 						usr1rom[num_usr1rom].group = 0;
 						usr1rom[num_usr1rom].skip = 0;
 						num_usr1rom++;
 						break;
+
+#if !RELEASE
+					case REGION_USER2:
+						sscanf(type, "%x", &usr2rom[num_usr2rom].type);
+						sscanf(offset, "%x", &usr2rom[num_usr2rom].offset);
+						sscanf(length, "%x", &usr2rom[num_usr2rom].length);
+						sscanf(crc, "%x", &usr2rom[num_usr2rom].crc);
+						if (name) strcpy(usr2rom[num_usr2rom].name, name);
+						usr2rom[num_usr2rom].group = 0;
+						usr2rom[num_usr2rom].skip = 0;
+						num_usr2rom++;
+						break;
+#endif
 					}
 				}
 				else if (str_cmp(&buf[1], "ROMX(") == 0)
 				{
-					char *type, *offset, *length, *crc;
+					char *type, *name, *offset, *length, *crc;
 					char *group, *skip;
 
 					strtok(&buf[1], " ");
 					type   = strtok(NULL, " ,");
+					if (type[0] != '1')
+						name = strtok(NULL, " ,");
+					else
+						name = NULL;
 					offset = strtok(NULL, " ,");
 					length = strtok(NULL, " ,");
 					crc    = strtok(NULL, " ,");
@@ -939,6 +1248,7 @@ static int load_rom_info(const char *game_name)
 						sscanf(crc, "%x", &cpu1rom[num_cpu1rom].crc);
 						sscanf(group, "%x", &cpu1rom[num_cpu1rom].group);
 						sscanf(skip, "%x", &cpu1rom[num_cpu1rom].skip);
+						if (name) strcpy(cpu1rom[num_cpu1rom].name, name);
 						num_cpu1rom++;
 						break;
 
@@ -949,6 +1259,7 @@ static int load_rom_info(const char *game_name)
 						sscanf(crc, "%x", &gfx3rom[num_gfx3rom].crc);
 						sscanf(group, "%x", &gfx3rom[num_gfx3rom].group);
 						sscanf(skip, "%x", &gfx3rom[num_gfx3rom].skip);
+						if (name) strcpy(gfx3rom[num_gfx3rom].name, name);
 						num_gfx3rom++;
 						break;
 					}
@@ -982,6 +1293,9 @@ int memory_init(void)
 	memory_region_sound1 = NULL;
 	memory_region_sound2 = NULL;
 	memory_region_user1  = NULL;
+#if !RELEASE
+	memory_region_user2  = NULL;
+#endif
 
 	memory_length_cpu1   = 0;
 	memory_length_cpu2   = 0;
@@ -991,10 +1305,18 @@ int memory_init(void)
 	memory_length_sound1 = 0;
 	memory_length_sound2 = 0;
 	memory_length_user1  = 0x20000;
+#if !RELEASE
+	memory_length_user2  = 0;
+#endif
 
 	gfx_pen_usage[0] = NULL;
 	gfx_pen_usage[1] = NULL;
 	gfx_pen_usage[2] = NULL;
+
+#ifdef PSP_SLIM
+	psp2k_mem_offset = PSP2K_MEM_TOP + PSP2K_MEM_SIZE;
+	psp2k_mem_left   = PSP2K_MEM_SIZE;
+#endif
 
 	cache_init();
 	pad_wait_clear();
@@ -1070,10 +1392,37 @@ int memory_init(void)
 		return 0;
 	}
 
+
 	if (parent_name[0])
+	{
+		int i = 0;
+
+		use_parent_crom = 1;
+		use_parent_srom = 1;
+		use_parent_vrom = 1;
+
+		while (MVS_cacheinfo[i].name)
+		{
+			if (strcmp(game_name, MVS_cacheinfo[i].name) == 0)
+			{
+				use_parent_crom = !MVS_cacheinfo[i].crom;
+				use_parent_srom = !MVS_cacheinfo[i].srom;
+				use_parent_vrom = !MVS_cacheinfo[i].vrom;
+				break;
+			}
+			i++;
+		}
+
 		msg_printf(TEXT(ROMSET_x_PARENT_x), game_name, parent_name);
+	}
 	else
+	{
+		use_parent_crom = 0;
+		use_parent_srom = 0;
+		use_parent_vrom = 0;
+
 		msg_printf(TEXT(ROMSET_x), game_name);
+	}
 
 #ifdef ADHOC
 	if (!adhoc_enable)
@@ -1087,34 +1436,60 @@ int memory_init(void)
 #endif
 	}
 
-	// Brezzasoft用の設定 - メモリを確保するので先に処理
-	if (machine_init_type == INIT_vliner || machine_init_type == INIT_jockeygp)
-	{
-		msg_printf(TEXT(ALLOCATE_BRZA_SRAM_MEMORY));
-		if ((brza_sram = (u16 *)malloc(0x2000)) == NULL)
-		{
-			msg_printf(TEXT(COULD_NOT_ALLOCATE_BRZA_SRAM_MEMORY));
-			msg_printf(TEXT(PRESS_ANY_BUTTON2));
-			pad_wait_press(PAD_WAIT_INFINITY);
-			Loop = LOOP_BROWSER;
-			return 0;
-		}
-		memset(brza_sram, 0, 0x2000);
-	}
-	else brza_sram = NULL;
-
-	if (load_rom_user1(0) == 0) return 0;
+#if !RELEASE
+	if (load_rom_user2() == 0) return 0;
+#endif
 	if (load_rom_cpu1() == 0) return 0;
+	if (load_rom_user1(0) == 0) return 0;
 	if (load_rom_cpu2() == 0) return 0;
-	if (load_rom_sound1() == 0) return 0;
-	if (load_rom_sound2() == 0) return 0;
+
+	if ((gfx_pen_usage[0] = memalign(MEM_ALIGN, memory_length_gfx1 / 32)) == NULL)
+	{
+		error_memory("GFX_PEN_USAGE (sfix)");
+		return 0;
+	}
+	if ((gfx_pen_usage[1] = memalign(MEM_ALIGN, memory_length_gfx2 / 32)) == NULL)
+	{
+		error_memory("GFX_PEN_USAGE (fix)");
+		return 0;
+	}
+	if ((gfx_pen_usage[2] = memalign(MEM_ALIGN, memory_length_gfx3 / 128)) == NULL)
+	{
+		error_memory("GFX_PEN_USAGE (spr)");
+		return 0;
+	}
+
 	if (load_rom_gfx1() == 0) return 0;
 	if (load_rom_gfx2() == 0) return 0;
+
+	if (load_rom_sound1() == 0) return 0;
+
+#ifdef PSP_SLIM
+	if (psp2k_mem_left != PSP2K_MEM_SIZE)
+	{
+		// sound1で拡張メモリに確保した場合
+
+		// キャッシュ領域を極力多く取るためにこれまで確保したメモリで移動可能なものを
+		// 拡張メモリに移動する。
+		// 極力連続した大きな領域を空けたいので、確保したのと逆の順で移動。
+
+		memory_region_gfx2  = psp2k_mem_move(memory_region_gfx2,  memory_length_gfx2);
+		memory_region_gfx1  = psp2k_mem_move(memory_region_gfx1,  memory_length_gfx1);
+		memory_region_cpu2  = psp2k_mem_move(memory_region_cpu2,  memory_length_cpu2);
+		memory_region_user1 = psp2k_mem_move(memory_region_user1, memory_length_user1);
+		memory_region_cpu1  = psp2k_mem_move(memory_region_cpu1,  memory_length_cpu1);
+
+		gfx_pen_usage[2] = psp2k_mem_move(gfx_pen_usage[2], memory_length_gfx3 / 128);
+		gfx_pen_usage[1] = psp2k_mem_move(gfx_pen_usage[1], memory_length_gfx2 / 32);
+		gfx_pen_usage[0] = psp2k_mem_move(gfx_pen_usage[0], memory_length_gfx1 / 32);
+	}
+#endif
+
+	if (load_rom_sound2() == 0) return 0;
 	if (load_rom_gfx3() == 0) return 0;
 
 	if (disable_sound)
 	{
-		msg_printf(TEXT(THIS_GAME_ONLY_WORK_WITHOUT_SOUND));
 		neogeo_save_sound_flag = option_sound_enable;
 		option_sound_enable = 0;
 	}
@@ -1143,6 +1518,9 @@ int memory_init(void)
 	case INIT_svchaosa:
 	case INIT_kf2k3pcb:
 	case INIT_kof2003:
+#if !RELEASE
+	case INIT_matrimbl:
+#endif
 		neogeo_fix_bank_type = 2;
 		break;
 
@@ -1150,6 +1528,9 @@ int memory_init(void)
 		neogeo_fix_bank_type = 0;
 		break;
 	}
+
+	neogeo_protection_16_r = neogeo_secondbank_16_r;
+	neogeo_protection_16_w = neogeo_secondbank_16_w;
 
 	switch (machine_init_type)
 	{
@@ -1165,8 +1546,6 @@ int memory_init(void)
 
 	case INIT_mslugx:
 		mslugx_install_protection();
-		neogeo_protection_16_r = neogeo_secondbank_16_r;
-		neogeo_protection_16_w = neogeo_secondbank_16_w;
 		break;
 
 	case INIT_kof99:
@@ -1192,10 +1571,16 @@ int memory_init(void)
 	case INIT_kof2000:
 		neogeo_protection_16_r = kof2000_protection_16_r;
 		neogeo_protection_16_w = kof2000_protection_16_w;
+		kof2000_AES_protection();
 		break;
 
 	case INIT_mslug5:
 	case INIT_ms5pcb:
+		neogeo_protection_16_r = pvc_protection_16_r;
+		neogeo_protection_16_w = pvc_protection_16_w;
+		mslug5_AES_protection();
+		break;
+
 	case INIT_svcpcb:
 	case INIT_svchaosa:
 	case INIT_kof2003:
@@ -1216,13 +1601,96 @@ int memory_init(void)
 		neogeo_ngh = NGH_jockeygp;
 		break;
 
-	default:
-		neogeo_protection_16_r = neogeo_secondbank_16_r;
-		neogeo_protection_16_w = neogeo_secondbank_16_w;
+	case INIT_nitd:
+		nitd_AES_protection();
 		break;
+
+	case INIT_zupapa:
+		zupapa_AES_protection();
+		break;
+
+	case INIT_sengoku3:
+		sengoku3_AES_protection();
+		break;
+
+	case INIT_mslug4:
+		mslug4_AES_protection();
+		break;
+
+	case INIT_rotd:
+		rotd_AES_protection();
+		break;
+
+	case INIT_matrim:
+		matrim_AES_protection();
+		break;
+
+#if !RELEASE
+	case INIT_kof97pla:
+		patch_kof97pla();
+		break;
+
+	case INIT_cthd2003:
+	case INIT_ct2k3sp:
+		patch_cthd2003();
+		neogeo_protection_16_w = cthd2003_protection_16_w;
+		cthd2003_AES_protection();
+		break;
+
+	case INIT_cthd2k3a:
+		cthd2003_AES_protection();
+		break;
+
+	case INIT_mslug5b:
+		neogeo_protection_16_r = pvc_protection_16_r;
+		neogeo_protection_16_w = pvc_protection_16_w;
+		mslug5_AES_protection();
+		break;
+
+	case INIT_ms5plus:
+		neogeo_protection_16_r = ms5plus_protection_16_r;
+		neogeo_protection_16_w = ms5plus_protection_16_w;
+		mslug5_AES_protection();
+		break;
+
+	case INIT_kf2k3bl:
+	case INIT_kf2k3upl:
+		neogeo_protection_16_r = pvc_protection_16_r;
+		neogeo_protection_16_w = kf2k3bl_protection_16_w;
+		break;
+
+	case INIT_kf2k3pl:
+		neogeo_protection_16_r = pvc_protection_16_r;
+		neogeo_protection_16_w = kf2k3pl_protection_16_w;
+		break;
+
+	case INIT_svcboot:
+	case INIT_svcsplus:
+		neogeo_protection_16_r = pvc_protection_16_r;
+		neogeo_protection_16_w = pvc_protection_16_w;
+		break;
+
+	case INIT_kof10th:
+		neogeo_protection_16_r = pvc_protection_16_r;
+		neogeo_protection_16_w = kof10th_protection_16_w;
+		break;
+
+	case INIT_matrimbl:
+		matrim_AES_protection();
+		break;
+
+	case INIT_ms4plus:
+		mslug4_AES_protection();
+		break;
+
+	case INIT_fr2ch:
+		patch_fr2ch();
+		neogeo_protection_16_w = fr2ch_protection_16_w;
+		break;
+#endif
 	}
 
-	neogeo_sram = (u8 *)neogeo_sram16;
+	neogeo_sram = (UINT8 *)neogeo_sram16;
 
 	return 1;
 }
@@ -1234,13 +1702,31 @@ int memory_init(void)
 
 void memory_shutdown(void)
 {
+	int i;
+
 	cache_shutdown();
 
-	if (brza_sram) free(brza_sram);
+#ifdef PSP_SLIM
+	for (i = 0; i < 3; i++)
+		psp2k_mem_free(gfx_pen_usage[i]);
 
-	if (gfx_pen_usage[0]) free(gfx_pen_usage[0]);
-	if (gfx_pen_usage[1]) free(gfx_pen_usage[1]);
-	if (gfx_pen_usage[2]) free(gfx_pen_usage[2]);
+	psp2k_mem_free(memory_region_cpu1);
+	psp2k_mem_free(memory_region_cpu2);
+	psp2k_mem_free(memory_region_gfx1);
+	psp2k_mem_free(memory_region_gfx2);
+	psp2k_mem_free(memory_region_gfx3);
+	psp2k_mem_free(memory_region_sound1);
+	psp2k_mem_free(memory_region_sound2);
+	psp2k_mem_free(memory_region_user1);
+#if !RELEASE
+	psp2k_mem_free(memory_region_user2);
+#endif
+#else
+	for (i = 0; i < 3; i++)
+	{
+		if (gfx_pen_usage[i])
+			free(gfx_pen_usage[i]);
+	}
 
 	if (memory_region_cpu1)   free(memory_region_cpu1);
 	if (memory_region_cpu2)   free(memory_region_cpu2);
@@ -1250,8 +1736,10 @@ void memory_shutdown(void)
 	if (memory_region_sound1) free(memory_region_sound1);
 	if (memory_region_sound2) free(memory_region_sound2);
 	if (memory_region_user1)  free(memory_region_user1);
-
-	if (neogeo_save_sound_flag) option_sound_enable = 1;
+#if !RELEASE
+	if (memory_region_user2)  free(memory_region_user2);
+#endif
+#endif
 
 #if PSP_VIDEO_32BPP
 	GFX_MEMORY = NULL;
@@ -1267,10 +1755,10 @@ void memory_shutdown(void)
 	M68000メモリリード (byte)
 ------------------------------------------------------*/
 
-u8 m68000_read_memory_8(u32 offset)
+UINT8 m68000_read_memory_8(UINT32 offset)
 {
 	int shift = (~offset & 1) << 3;
-	u16 mem_mask = ~(0xff << shift);
+	UINT16 mem_mask = ~(0xff << shift);
 
 	offset &= M68K_AMASK;
 
@@ -1304,7 +1792,7 @@ u8 m68000_read_memory_8(u32 offset)
 	M68000リードメモリ (word)
 ------------------------------------------------------*/
 
-u16 m68000_read_memory_16(u32 offset)
+UINT16 m68000_read_memory_16(UINT32 offset)
 {
 	offset &= M68K_AMASK;
 
@@ -1338,10 +1826,10 @@ u16 m68000_read_memory_16(u32 offset)
 	M68000ライトメモリ (byte)
 ------------------------------------------------------*/
 
-void m68000_write_memory_8(u32 offset, u8 data)
+void m68000_write_memory_8(UINT32 offset, UINT8 data)
 {
 	int shift = (~offset & 1) << 3;
-	u16 mem_mask = ~(0xff << shift);
+	UINT16 mem_mask = ~(0xff << shift);
 
 	offset &= M68K_AMASK;
 
@@ -1372,7 +1860,7 @@ void m68000_write_memory_8(u32 offset, u8 data)
 	M68000ライトメモリ (word)
 ------------------------------------------------------*/
 
-void m68000_write_memory_16(u32 offset, u16 data)
+void m68000_write_memory_16(UINT32 offset, UINT16 data)
 {
 	offset &= M68K_AMASK;
 
@@ -1407,7 +1895,7 @@ void m68000_write_memory_16(u32 offset, u16 data)
 	Z80リードメモリ (byte)
 ------------------------------------------------------*/
 
-u8 z80_read_memory_8(u32 offset)
+UINT8 z80_read_memory_8(UINT32 offset)
 {
 	return memory_region_cpu2[offset & Z80_AMASK];
 }
@@ -1417,7 +1905,7 @@ u8 z80_read_memory_8(u32 offset)
 	Z80ライトメモリ (byte)
 ------------------------------------------------------*/
 
-void z80_write_memory_8(u32 offset, u8 data)
+void z80_write_memory_8(UINT32 offset, UINT8 data)
 {
 	offset &= Z80_AMASK;
 
@@ -1442,13 +1930,12 @@ STATE_SAVE( memory )
 	state_save_byte(&memory_region_cpu2[0xf800], 0x800);
 	state_save_byte(neogeo_sram16, 0x10000);
 
-	if (brza_sram)
-		state_save_byte(brza_sram, 0x2000);
+	state_save_long(&neogeo_hard_dipsw, 1);
 }
 
 STATE_LOAD( memory )
 {
-	int bios, region, mode;
+	int bios, region, mode, harddip;
 
 	state_load_long(&bios, 1);
 	state_load_long(&region, 1);
@@ -1458,8 +1945,7 @@ STATE_LOAD( memory )
 	state_load_byte(&memory_region_cpu2[0xf800], 0x800);
 	state_load_byte(neogeo_sram16, 0x10000);
 
-	if (brza_sram)
-		state_load_byte(brza_sram, 0x2000);
+	state_load_long(&harddip, 1);
 
 	if (machine_init_type != INIT_ms5pcb
 	&&	machine_init_type != INIT_svcpcb
@@ -1475,6 +1961,17 @@ STATE_LOAD( memory )
 			state_reload_bios = 1;
 		}
 	}
+	if (machine_init_type == INIT_ms5pcb
+	||	machine_init_type == INIT_svcpcb)
+	{
+		memcpy(memory_region_user1, memory_region_user1 + 0x20000 + neogeo_hard_dipsw * 0x20000, 0x20000);
+	}
+#if !RELEASE
+	if (machine_init_type == INIT_kog)
+	{
+		memory_region_cpu1[0x1ffffc/2] = neogeo_hard_dipsw;
+	}
+#endif
 }
 
 

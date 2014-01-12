@@ -43,13 +43,14 @@
 #define PAD_WAIT_INFINITY	-1
 
 void pad_init(void);
-u32 poll_gamepad(void);
+UINT32 poll_gamepad(void);
 #if (EMU_SYSTEM == MVS)
-u32 poll_gamepad_analog(void);
+UINT32 poll_gamepad_fatfursp(void);
+UINT32 poll_gamepad_analog(void);
 #endif
 void pad_update(void);
-int pad_pressed(u32 code);
-int pad_pressed_any(u32 disable_code);
+int pad_pressed(UINT32 code);
+int pad_pressed_any(UINT32 disable_code);
 void pad_wait_clear(void);
 void pad_wait_press(int msec);
 

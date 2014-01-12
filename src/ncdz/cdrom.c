@@ -25,17 +25,17 @@ int neogeo_loadfinished;
 static struct filelist_t
 {
 	char name[16];
-	u32  offset;
+	UINT32  offset;
 	int  bank;
 	int  type;
-	u32  length;
-	u32  sectors;
+	UINT32  length;
+	UINT32  sectors;
 } filelist[32];
 
 
-static u8  *cdrom_cache;
-static u32 total_sectors;
-static u32 loaded_sectors;
+static UINT8  *cdrom_cache;
+static UINT32 total_sectors;
+static UINT32 loaded_sectors;
 static int total_files;
 
 static int firsttime_update;
@@ -47,11 +47,11 @@ typedef struct cdrom_state_t CDROM_STATE;
 struct cdrom_state_t
 {
 	char name[16];
-	u32 bank;
-	u32 offset;
-	u32 length;
-	u32 start;
-	u32 end;
+	UINT32 bank;
+	UINT32 offset;
+	UINT32 length;
+	UINT32 start;
+	UINT32 end;
 	CDROM_STATE *prev;
 	CDROM_STATE *next;
 };
@@ -68,12 +68,12 @@ static int cdrom_state_count[3];
 ******************************************************************************/
 
 #ifdef SAVE_STATE
-static void cdrom_state_load_file(int type, const char *fname, int bank, u32 offset, u32 length);
-static int cdrom_state_check_list(int type, u32 start, u32 end);
-static void cdrom_state_insert_list(int type, const char *fname, int bank, u32 offset, u32 length, u32 start, u32 end);
-static void cdrom_state_insert_fix(const char *fname, u32 offset, u32 length);
-static void cdrom_state_insert_spr(const char *fname, int bank, u32 offset, u32 length);
-static void cdrom_state_insert_pcm(const char *fname, int bank, u32 offset, u32 length);
+static void cdrom_state_load_file(int type, const char *fname, int bank, UINT32 offset, UINT32 length);
+static int cdrom_state_check_list(int type, UINT32 start, UINT32 end);
+static void cdrom_state_insert_list(int type, const char *fname, int bank, UINT32 offset, UINT32 length, UINT32 start, UINT32 end);
+static void cdrom_state_insert_fix(const char *fname, UINT32 offset, UINT32 length);
+static void cdrom_state_insert_spr(const char *fname, int bank, UINT32 offset, UINT32 length);
+static void cdrom_state_insert_pcm(const char *fname, int bank, UINT32 offset, UINT32 length);
 #endif
 
 
@@ -172,7 +172,7 @@ static void update_loading_progress(void)
 	if (neogeo_loadscreen && with_image())
 	{
 		static int draw = 0;
-		u32 prev_progress, progress;
+		UINT32 prev_progress, progress;
 
 		prev_progress = m68000_read_memory_32(0x108000 + 0x7690);
 
@@ -205,10 +205,10 @@ static void update_loading_progress(void)
 	CD-ROMキャッシュからメモリへデータを転送
 ------------------------------------------------------*/
 
-static void upload_file(int fileno, u32 offset, u32 length)
+static void upload_file(int fileno, UINT32 offset, UINT32 length)
 {
 	struct filelist_t *file = &filelist[fileno];
-	u32 base;
+	UINT32 base;
 
 	switch (file->type)
 	{
@@ -220,8 +220,8 @@ static void upload_file(int fileno, u32 offset, u32 length)
 	case FIX_TYPE:
 		if (neogeo_loadscreen && with_image())
 		{
-			u32 offset1, offset2, start, end;
-			u32 length1, length2;
+			UINT32 offset1, offset2, start, end;
+			UINT32 length1, length2;
 
 			start = (file->offset >> 1) + offset;
 			end   = (start + length) - 1;
@@ -280,7 +280,7 @@ static void upload_file(int fileno, u32 offset, u32 length)
 
 	case PAT_TYPE:
 		swab(cdrom_cache, cdrom_cache, length);
-		neogeo_apply_patch((u16 *)cdrom_cache, file->bank, file->offset);
+		neogeo_apply_patch((UINT16 *)cdrom_cache, file->bank, file->offset);
 		break;
 
 	case PCM_TYPE:
@@ -299,7 +299,7 @@ static int load_file(int fileno)
 {
 	struct filelist_t *file = &filelist[fileno];
 	int f;
-	u32 length, next = 0;
+	UINT32 length, next = 0;
 
 #ifdef SAVE_STATE
 	switch (file->type)
@@ -350,11 +350,11 @@ static int load_file(int fileno)
 	ロード画面のデータをチェック
 --------------------------------------------------------*/
 
-static u32 check_offset;
+static UINT32 check_offset;
 
-static int check_screen_data(u32 offset, int type)
+static int check_screen_data(UINT32 offset, int type)
 {
-	u32 data_offset;
+	UINT32 data_offset;
 	int data_type;
 
 	check_offset = offset;
@@ -385,8 +385,8 @@ static int check_screen_data(u32 offset, int type)
 
 static void loading_upload_fix(void)
 {
-	u8 *src, *dst;
-	u32 offset;
+	UINT8 *src, *dst;
+	UINT32 offset;
 
 	// 現在のFIXスプライトを保存
 	src = memory_region_gfx1;
@@ -405,7 +405,7 @@ static void loading_upload_fix(void)
 	// ゲーム独自のロード画面のFIXスプライトを転送
 	while (1)
 	{
-		u16 fix_offs, size;
+		UINT16 fix_offs, size;
 
 		offset = check_screen_data(offset, 1);
 		if (offset == 0xffffffff)
@@ -434,7 +434,7 @@ static void loading_upload_fix(void)
 static void loading_upload_palette(void)
 {
 	int i;
-	u32 src, dst, offset;
+	UINT32 src, dst, offset;
 
 	// 現在のパレットを保存
 	src = 0x400000;
@@ -463,7 +463,7 @@ static void loading_upload_palette(void)
 	// ゲーム独自のパレットを転送
 	while (1)
 	{
-		u16 palno;
+		UINT16 palno;
 
 		src = check_screen_data(offset, 2);
 		if (src == 0xffffffff)
@@ -499,7 +499,7 @@ static void loading_screen_start(void)
 		if (with_image())
 		{
 			int i;
-			u32 offset;
+			UINT32 offset;
 
 			video_clear_screen();
 
@@ -560,7 +560,7 @@ static void loading_screen_start(void)
 		}
 		else if (NGH_NUMBER(0x0212))	// overtop
 		{
-			u8 *src, *dst;
+			UINT8 *src, *dst;
 
 			video_clear_screen();
 
@@ -585,8 +585,8 @@ static void loading_screen_stop(void)
 	{
 		if (with_image())
 		{
-			u8 *src, *dst;
-			u32 src_offs, dst_offs;
+			UINT8 *src, *dst;
+			UINT32 src_offs, dst_offs;
 			int i;
 
 			// Restore palettes
@@ -672,7 +672,7 @@ int cdrom_process_ipl(void)
 {
 	struct filelist_t *file = &filelist[0];
     int i, j, f;
-    u32 length;
+    UINT32 length;
     char linebuf[32], *buf, *p, *ext;
 	char region_chr[3] = { 'J','U','E' };
 
@@ -691,7 +691,7 @@ int cdrom_process_ipl(void)
 
 			if ((f = zopen(fname)) != -1)
 			{
-				u8 *mem = memory_region_cpu1 + 0x120000;
+				UINT8 *mem = memory_region_cpu1 + 0x120000;
 
 				length = zread(f, mem, 0x10000);
 				zclose(f);
@@ -723,7 +723,7 @@ int cdrom_process_ipl(void)
 
 	p = buf = (char *)cdrom_cache;
 
-	while ((u32)p - (u32)cdrom_cache < length)
+	while ((UINT32)p - (UINT32)cdrom_cache < length)
 	{
 		memset(linebuf, 0, 32);
 
@@ -813,7 +813,7 @@ int cdrom_process_ipl(void)
 void cdrom_load_files(void)
 {
 	struct filelist_t *file = &filelist[0];
-	u32 offset, src, dst, data, save1, save2;
+	UINT32 offset, src, dst, data, save1, save2;
 	int i;
 
 	neogeo_loadfinished = 0;
@@ -952,18 +952,18 @@ void cdrom_load_files(void)
 	SPRスプライトのデコード
 ------------------------------------------------------*/
 
-void neogeo_decode_spr(u8 *mem, u32 offset, u32 length)
+void neogeo_decode_spr(UINT8 *mem, UINT32 offset, UINT32 length)
 {
-	u32 tileno, numtiles = length / 128;
-	u8 *base  = mem + offset;
-	u8 *usage = video_spr_usage + (offset >> 7);
+	UINT32 tileno, numtiles = length / 128;
+	UINT8 *base  = mem + offset;
+	UINT8 *usage = video_spr_usage + (offset >> 7);
 
 	for (tileno = 0; tileno < numtiles; tileno++)
 	{
-		u8 swap[128];
-		u8 *gfxdata;
+		UINT8 swap[128];
+		UINT8 *gfxdata;
 		int x,y;
-		u32 pen;
+		UINT32 pen;
 		int opaque = 0;
 
 		gfxdata = &base[tileno << 7];
@@ -972,7 +972,7 @@ void neogeo_decode_spr(u8 *mem, u32 offset, u32 length)
 
 		for (y = 0;y < 16;y++)
 		{
-			u32 dw, data;
+			UINT32 dw, data;
 
 			dw = 0;
 			for (x = 0;x < 8;x++)
@@ -1040,13 +1040,13 @@ void neogeo_decode_spr(u8 *mem, u32 offset, u32 length)
 	opaque += (tile >> 4) != 0;		\
 }
 
-void neogeo_decode_fix(u8 *mem, u32 offset, u32 length)
+void neogeo_decode_fix(UINT8 *mem, UINT32 offset, UINT32 length)
 {
-	u32 i, j;
-	u8 tile, opaque;
-	u8 *p, buf[32];
-	u8 *usage = &video_fix_usage[offset >> 6];
-	u8 *base  = &mem[offset >> 1];
+	UINT32 i, j;
+	UINT8 tile, opaque;
+	UINT8 *p, buf[32];
+	UINT8 *usage = &video_fix_usage[offset >> 6];
+	UINT8 *base  = &mem[offset >> 1];
 
 	for (i = 0; i < length; i += 32)
 	{
@@ -1067,7 +1067,7 @@ void neogeo_decode_fix(u8 *mem, u32 offset, u32 length)
 			*usage = (opaque == 64) ? 1 : 2;
 		else
 			*usage = 0;
-		*usage++;
+		usage++;
 	}
 
 	blit_clear_fix_sprite();
@@ -1083,11 +1083,11 @@ void neogeo_decode_fix(u8 *mem, u32 offset, u32 length)
 	buf[n] = *p++;					\
 }
 
-void neogeo_undecode_fix(u8 *mem, u32 offset, u32 length)
+void neogeo_undecode_fix(UINT8 *mem, UINT32 offset, UINT32 length)
 {
-	u32 i, j;
-	u8 *p, buf[32];
-	u8 *base = &mem[offset >> 1];
+	UINT32 i, j;
+	UINT8 *p, buf[32];
+	UINT8 *base = &mem[offset >> 1];
 
 	for (i = 0; i < length; i += 32)
 	{
@@ -1117,9 +1117,9 @@ void neogeo_undecode_fix(u8 *mem, u32 offset, u32 length)
 	dst[((a) + 1)] = ((b) >> 8) & 0xff;	\
 }
 
-void neogeo_apply_patch(u16 *src, int bank, u32 offset)
+void neogeo_apply_patch(UINT16 *src, int bank, UINT32 offset)
 {
-	u8 *dst = memory_region_cpu2;
+	UINT8 *dst = memory_region_cpu2;
 
 	offset = (((bank * 0x100000) + offset) >> 8) & 0xffff;
 
@@ -1222,12 +1222,12 @@ STATE_LOAD( cdrom )
 	CD-ROMからファイルを読み込む
 ------------------------------------------------------*/
 
-static void cdrom_state_load_file(int type, const char *fname, int bank, u32 offset, u32 length)
+static void cdrom_state_load_file(int type, const char *fname, int bank, UINT32 offset, UINT32 length)
 {
 	struct filelist_t *file = &filelist[0];
 	int ftype[3] = { FIX_TYPE, SPR_TYPE, PCM_TYPE };
 	int f;
-	u32 next = 0;
+	UINT32 next = 0;
 
 	if ((f = zopen(fname)) == -1)
 	{
@@ -1253,7 +1253,7 @@ static void cdrom_state_load_file(int type, const char *fname, int bank, u32 off
 	CD-ROMステートデータをチェック
 ------------------------------------------------------*/
 
-static int cdrom_state_check_list(int type, u32 start, u32 end)
+static int cdrom_state_check_list(int type, UINT32 start, UINT32 end)
 {
 	if (cdrom_state_count[type])
 	{
@@ -1293,7 +1293,7 @@ static int cdrom_state_check_list(int type, u32 start, u32 end)
 	CD-ROMステートデータにファイル情報を追加
 ------------------------------------------------------*/
 
-static void cdrom_state_insert_list(int type, const char *fname, int bank, u32 offset, u32 length, u32 start, u32 end)
+static void cdrom_state_insert_list(int type, const char *fname, int bank, UINT32 offset, UINT32 length, UINT32 start, UINT32 end)
 {
 	CDROM_STATE *p, *last = NULL;
 
@@ -1337,9 +1337,9 @@ static void cdrom_state_insert_list(int type, const char *fname, int bank, u32 o
 	FIXファイルをリストに追加
 ------------------------------------------------------*/
 
-static void cdrom_state_insert_fix(const char *fname, u32 offset, u32 length)
+static void cdrom_state_insert_fix(const char *fname, UINT32 offset, UINT32 length)
 {
-	u32 start, end;
+	UINT32 start, end;
 
 	start = offset >> 1;
 	end   = start + length - 1;
@@ -1352,9 +1352,9 @@ static void cdrom_state_insert_fix(const char *fname, u32 offset, u32 length)
 	SPRファイルをリストに追加
 ------------------------------------------------------*/
 
-static void cdrom_state_insert_spr(const char *fname, int bank, u32 offset, u32 length)
+static void cdrom_state_insert_spr(const char *fname, int bank, UINT32 offset, UINT32 length)
 {
-	u32 start, end;
+	UINT32 start, end;
 
 	start = offset + (bank << 20);
 	end   = start + length - 1;
@@ -1366,9 +1366,9 @@ static void cdrom_state_insert_spr(const char *fname, int bank, u32 offset, u32 
 	PCMファイルをリストに追加
 ------------------------------------------------------*/
 
-static void cdrom_state_insert_pcm(const char *fname, int bank, u32 offset, u32 length)
+static void cdrom_state_insert_pcm(const char *fname, int bank, UINT32 offset, UINT32 length)
 {
-	u32 start, end;
+	UINT32 start, end;
 
 	start = (offset >> 1) + (bank << 19);
 	end   = start + length - 1;

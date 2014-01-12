@@ -9,8 +9,11 @@ VERSION_STR += [AdHoc]
 endif
 
 PSP_EBOOT_ICON = data/cps2.png
+ifdef PSP_SLIM
+PSP_EBOOT_TITLE = $(PBPNAME_STR) $(VERSION_STR) for PSP slim
+else
 PSP_EBOOT_TITLE = $(PBPNAME_STR) $(VERSION_STR)
-
+endif
 
 #------------------------------------------------------------------------------
 # Object File Output Directtory

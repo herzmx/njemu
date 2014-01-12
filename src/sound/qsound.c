@@ -12,9 +12,9 @@
 #define QSOUND_CLOCKDIV 166			/* Clock divider */
 #define QSOUND_CHANNELS 16
 
-typedef s8  QSOUND_SRC_SAMPLE;
-typedef s16 QSOUND_SAMPLE;
-typedef s32 QSOUND_SAMPLE_MIX;
+typedef INT8  QSOUND_SRC_SAMPLE;
+typedef INT16 QSOUND_SAMPLE;
+typedef INT32 QSOUND_SAMPLE_MIX;
 
 
 /******************************************************************************
@@ -68,7 +68,7 @@ static const int ALIGN_DATA qsound_pan_table[33] =
 	サウンドストリーム生成 (通常)
 --------------------------------------------------------*/
 
-static void qsound_update_normal(s32 *buffer, int length)
+static void qsound_update_normal(INT32 *buffer, int length)
 {
 	int ch;
 
@@ -122,7 +122,7 @@ static void qsound_update_normal(s32 *buffer, int length)
 	サウンドストリーム生成 (リサンプリング処理)
 --------------------------------------------------------*/
 
-static void qsound_update_resample(s32 *buffer, int length)
+static void qsound_update_resample(INT32 *buffer, int length)
 {
 	int ch;
 

@@ -19,9 +19,6 @@
 #elif (EMU_SYSTEM == MVS)
 #define GFX_MEMORY			memory_region_gfx3
 #define GFX_SIZE			memory_length_gfx3
-#define PCM_CACHE_SIZE		0x10000
-#define PCM_CACHE_MASK		0xffff
-#define PCM_CACHE_SHIFT		16
 #define MAX_CACHE_BLOCKS	0x400
 #endif
 
@@ -32,13 +29,13 @@ enum
 	CACHE_RAWFILE
 };
 
-extern u32 (*read_cache)(u32 offset);
-extern void (*update_cache)(u32 offset);
+extern UINT32 (*read_cache)(UINT32 offset);
+extern void (*update_cache)(UINT32 offset);
 #if (EMU_SYSTEM == MVS)
 extern int pcm_cache_enable;
 #else
-extern u8 *block_empty;
-extern u32 block_offset[MAX_CACHE_BLOCKS];
+extern UINT8 *block_empty;
+extern UINT32 block_offset[MAX_CACHE_BLOCKS];
 #endif
 
 void cache_init(void);
@@ -47,13 +44,13 @@ void cache_shutdown(void);
 void cache_sleep(int flag);
 
 #if (EMU_SYSTEM == MVS)
-u8 pcm_cache_read(int ch, u32 offset);
-u8 *pcm_get_cache(int ch);
+UINT8 *pcm_cache_read(UINT16 new_block);
+void pcm_cache_update(UINT16 block);
 #endif
 
 #ifdef STATE_SAVE
-u8 *cache_alloc_state_buffer(u32 size);
-void cache_free_state_buffer(u32 size);
+UINT8 *cache_alloc_state_buffer(UINT32 size);
+void cache_free_state_buffer(UINT32 size);
 #endif
 
 #endif /* USE_CACHE */

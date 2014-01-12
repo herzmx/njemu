@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 
-  CPS1PSP game list (ver.2.0)
+  CPS1PSP game list (ver.2.2.0)
 
 -------------------------------------------------------------------------------
 
@@ -26,8 +26,9 @@ willowje   Willow (Japan - English)
 unsquad    U.N. Squadron (US)
 area88     Area 88 (Japan)
 ffight     Final Fight (World)
-ffightu    Final Fight (US 900112)
-ffightua   Final Fight (US 900613)
+ffightu    Final Fight (US)
+ffightua   Final Fight (US 900112)
+ffightub   Final Fight (US 900613)
 ffightj    Final Fight (Japan)
 ffightj1   Final Fight (Japan 900305)
 1941       1941 - Counter Attack (World)

@@ -18,7 +18,7 @@
 	gryph data
 ------------------------------------------------------*/
 
-static const u8 ALIGN_DATA jpn_h14p[] = {
+static const UINT8 ALIGN_DATA jpn_h14p[] = {
 	0xf1,0x06,0xe0,0x09,0x90,0x0d,0xf5,0x01,0x30,0x3f,0x9b,0x00,0x00,0xcd,0x3f,0x00,
 	0x00,0xf5,0x0b,0x00,0x30,0xf4,0x39,0x00,0xf0,0xff,0xff,0x03,0x70,0xf7,0x7b,0x01,
 	0xb0,0xfb,0xbd,0x02,0x00,0xf0,0x07,0x00,0x00,0xf0,0x07,0x00,0x00,0x30,0x01,0x00,
@@ -192,35 +192,35 @@ static const int ALIGN_DATA jpn_h14p_pos[NUM_FONTS] = {
 	0x00079d,0x0007be,0x0007fa,0x00082a,0x000852,0x00088e,0x0008bb,0x0008e7,0x00091b,0x00094b,0x000987,0x0009b3,0x0009db,0x000a07,0x000a33
 };
 
-static const s8 ALIGN_DATA jpn_h14p_width[NUM_FONTS] = {
+static const INT8 ALIGN_DATA jpn_h14p_width[NUM_FONTS] = {
 	 8, 6, 4, 4, 4, 4, 8, 8, 6, 8, 6, 8, 8, 8, 6, 8,
 	10, 8, 8, 8, 8,10, 8,10, 6, 8, 8,10, 8, 8, 8, 8,
 	 8, 8, 8, 8, 6,10, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
 	 6,10, 8, 8,10,10, 8, 8, 8,10, 8, 8, 8, 8, 4
 };
 
-static const s8 ALIGN_DATA jpn_h14p_height[NUM_FONTS] = {
+static const INT8 ALIGN_DATA jpn_h14p_height[NUM_FONTS] = {
 	12, 5,11,11, 4, 4,11, 9,10,12, 8,12,10, 7, 9, 9,
 	 2,11,12,13,10,14,13,14,13,12, 9,12,12,11,12,11,
 	13,12,11,13,12,12, 8,10,13,11, 9,11,11, 8,14,10,
 	11,12,12,10,12, 9,11,13,12,12,11,10,11,11, 4
 };
 
-static const s8 ALIGN_DATA jpn_h14p_skipx[NUM_FONTS] = {
+static const INT8 ALIGN_DATA jpn_h14p_skipx[NUM_FONTS] = {
 	 0, 0, 2, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0,
 	 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0,
 	 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0
 };
 
-static const s8 ALIGN_DATA jpn_h14p_skipy[NUM_FONTS] = {
+static const INT8 ALIGN_DATA jpn_h14p_skipy[NUM_FONTS] = {
 	 1, 9, 0, 3,10, 5, 2, 4, 3, 2, 4, 2, 3, 5, 4, 4,
 	 6, 2, 1, 0, 2, 0, 0, 0, 1, 1, 3, 1, 1, 2, 1, 2,
 	 1, 1, 2, 1, 1, 1, 3, 2, 0, 1, 3, 2, 2, 3, 0, 2,
 	 2, 1, 1, 2, 1, 3, 2, 1, 1, 1, 2, 2, 2, 2, 0
 };
 
-static const s8 ALIGN_DATA jpn_h14p_pitch[NUM_FONTS] = {
+static const INT8 ALIGN_DATA jpn_h14p_pitch[NUM_FONTS] = {
 	 8, 6, 6, 6, 6, 6, 8, 7, 6, 7, 7, 7, 7, 7, 7, 7,
 	 9, 9, 8, 9, 8, 9, 8, 9, 8, 9, 7, 9, 8, 9, 9, 8,
 	 7, 8, 8, 8, 6, 9, 8, 8, 9, 7, 9, 7, 8, 9, 9, 8,
@@ -234,7 +234,7 @@ static const s8 ALIGN_DATA jpn_h14p_pitch[NUM_FONTS] = {
 	shadow data
 ------------------------------------------------------*/
 
-static const u8 ALIGN_DATA jpn_h14p_shadow[] = {
+static const UINT8 ALIGN_DATA jpn_h14p_shadow[] = {
 	0x11,0x11,0x10,0x11,0x00,0x52,0x45,0x43,0x35,0x01,0x73,0x78,0x87,0x58,0x01,0x62,
 	0xaa,0xbb,0x59,0x01,0x51,0xc9,0xbd,0x37,0x00,0x40,0xc8,0xad,0x26,0x00,0x41,0xd9,
 	0xbd,0x26,0x00,0x61,0xeb,0xce,0x49,0x01,0x72,0xeb,0xee,0x6b,0x02,0x61,0xda,0xde,
@@ -506,28 +506,28 @@ static const int ALIGN_DATA jpn_h14p_shadow_pos[NUM_FONTS] = {
 	0x000c43,0x000c7b,0x000cd5,0x000d20,0x000d61,0x000dbb,0x000e03,0x000e49,0x000e99,0x000ee4,0x000f38,0x000f7e,0x000fbf,0x001005,0x001046
 };
 
-static const s8 ALIGN_DATA jpn_h14p_shadow_width[NUM_FONTS] = {
+static const INT8 ALIGN_DATA jpn_h14p_shadow_width[NUM_FONTS] = {
 	10, 8, 6, 6, 8, 6,10,10, 8,10, 8,10,10,10, 8,10,
 	12,10,10,10,10,12,10,12,10,10,10,12,10,10,12,10,
 	10,10,10,10, 8,12,10,10,12,10,10,10,10,10,10,10,
 	 8,12,10,10,12,12,10,10,10,12,10,10,10,10, 6
 };
 
-static const s8 ALIGN_DATA jpn_h14p_shadow_height[NUM_FONTS] = {
+static const INT8 ALIGN_DATA jpn_h14p_shadow_height[NUM_FONTS] = {
 	15, 8,13,14, 7, 7,14,12,12,15,11,15,13,10,12,12,
 	 5,14,14,15,13,16,15,16,16,15,12,15,15,14,15,14,
 	16,14,14,16,15,15,11,13,15,14,11,14,14,10,16,13,
 	14,15,15,13,15,12,14,16,15,14,14,13,14,13, 6
 };
 
-static const s8 ALIGN_DATA jpn_h14p_shadow_skipx[NUM_FONTS] = {
+static const INT8 ALIGN_DATA jpn_h14p_shadow_skipx[NUM_FONTS] = {
 	 1, 1, 3, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 	 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 	 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 	 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
 };
 
-static const s8 ALIGN_DATA jpn_h14p_shadow_skipy[NUM_FONTS] = {
+static const INT8 ALIGN_DATA jpn_h14p_shadow_skipy[NUM_FONTS] = {
 	 1, 9, 1, 3,10, 5, 2, 4, 4, 2, 4, 2, 3, 5, 4, 4,
 	 6, 2, 2, 1, 2, 1, 1, 1, 1, 1, 3, 1, 1, 2, 1, 2,
 	 1, 2, 2, 1, 1, 1, 3, 2, 1, 1, 4, 2, 2, 4, 1, 2,
@@ -541,7 +541,7 @@ static const s8 ALIGN_DATA jpn_h14p_shadow_skipy[NUM_FONTS] = {
 	functions
 ------------------------------------------------------*/
 
-int jpn_h14p_get_gryph(struct font_t *font, u16 code)
+int jpn_h14p_get_gryph(struct font_t *font, UINT16 code)
 {
 	if (code < NUM_FONTS)
 	{
@@ -557,7 +557,7 @@ int jpn_h14p_get_gryph(struct font_t *font, u16 code)
 }
 
 #if PSP_VIDEO_32BPP
-int jpn_h14p_get_shadow(struct font_t *font, u16 code)
+int jpn_h14p_get_shadow(struct font_t *font, UINT16 code)
 {
 	if (code < NUM_FONTS)
 	{
@@ -573,7 +573,7 @@ int jpn_h14p_get_shadow(struct font_t *font, u16 code)
 }
 #endif
 
-int jpn_h14p_get_pitch(u16 code)
+int jpn_h14p_get_pitch(UINT16 code)
 {
 	if (code < NUM_FONTS)
 		return jpn_h14p_pitch[code];

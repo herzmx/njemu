@@ -5,7 +5,7 @@
 #------------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
-# Configration
+# Configuration
 #------------------------------------------------------------------------------
 
 #BUILD_CPS1PSP = 1
@@ -13,13 +13,18 @@ BUILD_CPS2PSP = 1
 #BUILD_MVSPSP = 1
 #BUILD_NCDZPSP = 1
 
+PSP_SLIM = 1
+#KERNEL_MODE = 1
 SAVE_STATE = 1
-KERNEL_MODE = 1
-#ADHOC = 1
-#COMMAND_LIST = 1
+ADHOC = 1
+COMMAND_LIST = 1
 #JAPANESE_UI = 1
 #UI_32BPP = 1
 RELEASE = 1
+
+VERSION_MAJOR = 2
+VERSION_MINOR = 2
+VERSION_BUILD = 1
 
 #------------------------------------------------------------------------------
 # Defines
@@ -27,9 +32,12 @@ RELEASE = 1
 
 OS = psp
 
-VERSION_MAJOR = 2
-VERSION_MINOR = 0
-VERSION_BUILD = 0
+ifdef PSP_SLIM
+PSP_FW_VERSION = 371
+KERNEL_MODE =
+else
+PSP_FW_VERSION = 150
+endif
 
 ifdef BUILD_CPS1PSP
 BUILD_CPS2PSP=
@@ -54,7 +62,7 @@ TARGET = NCDZPSP
 endif
 
 ifdef ADHOC
-KERNEL_MODE = 1
+#KERNEL_MODE = 1
 endif
 
 PBPNAME_STR = $(TARGET)
@@ -70,13 +78,13 @@ EXTRA_TARGETS = maketree EBOOT.PBP delelf
 # Utilities
 #------------------------------------------------------------------------------
 
-ifeq ($(PSPDEV),)
+#ifeq ($(PSPDEV),)
 MD = -mkdir
 RM = -rm
-else
-MD = -mkdir.exe
-RM = -rm.exe
-endif
+#else
+#MD = -mkdir.exe
+#RM = -rm.exe
+#endif
 
 
 #------------------------------------------------------------------------------
@@ -85,6 +93,7 @@ endif
 
 INCDIR = \
 	src \
+	src/SDK/include \
 	src/zip \
 	src/zlib \
 	src/libmad
@@ -164,8 +173,17 @@ ifdef UI_32BPP
 OSOBJS += $(OBJ)/$(OS)/wallpaper.o
 endif
 
-ZLIB = $(OBJ)/zlib.a
-
+ZLIB = \
+	$(OBJ)/zlib/adler32.o \
+	$(OBJ)/zlib/compress.o \
+	$(OBJ)/zlib/uncompr.o \
+	$(OBJ)/zlib/crc32.o \
+	$(OBJ)/zlib/deflate.o \
+	$(OBJ)/zlib/inflate.o \
+	$(OBJ)/zlib/inftrees.o \
+	$(OBJ)/zlib/inffast.o \
+	$(OBJ)/zlib/trees.o \
+	$(OBJ)/zlib/zutil.o
 
 #------------------------------------------------------------------------------
 # Include makefiles
@@ -179,20 +197,20 @@ include src/makefiles/$(TARGET).mak
 #------------------------------------------------------------------------------
 
 CFLAGS = \
-	-O2 \
 	-fomit-frame-pointer \
 	-fstrict-aliasing \
-	-Wall \
 	-Wundef \
 	-Wpointer-arith  \
 	-Wbad-function-cast \
 	-Wwrite-strings \
 	-Wmissing-prototypes \
 	-Wsign-compare \
-	-Werror
+#	-Werror
 
 ifdef ADHOC
-CFLAGS += -G0
+CFLAGS += -G0 -O2
+else
+CFLAGS += -O2
 endif
 
 #------------------------------------------------------------------------------
@@ -212,6 +230,10 @@ CDEFS = -DINLINE='static __inline' \
 
 ifdef KERNEL_MODE
 CDEFS += -DKERNEL_MODE=1
+endif
+
+ifdef PSP_SLIM
+CDEFS += -DPSP_SLIM=1
 endif
 
 ifdef SAVE_STATE
@@ -248,7 +270,11 @@ endif
 # Linker Flags
 #------------------------------------------------------------------------------
 
+ifdef PSP_SLIM
+LIBDIR = src/SDK/lib
+else
 LIBDIR =
+endif
 LDFLAGS =
 
 
@@ -259,6 +285,10 @@ LDFLAGS =
 USE_PSPSDK_LIBC = 1
 
 LIBS = -lm -lc -lpspaudio -lpspgu -lpsppower -lpsprtc
+
+ifdef PSP_SLIM
+LIBS += -lpspkubridge
+endif
 
 ifdef ADHOC
 LIBS += -lpspwlan -lpspnet_adhoc -lpspnet_adhocctl -lpspnet_adhocmatching
@@ -275,18 +305,6 @@ endif
 OBJS = $(MAINOBJS) $(COREOBJS) $(OSOBJS) $(FONTOBJS) $(ICONOBJS) $(ZLIB)
 
 include src/makefiles/build.mak
-
-$(OBJ)/zlib.a:  \
-	$(OBJ)/zlib/adler32.o \
-	$(OBJ)/zlib/compress.o \
-	$(OBJ)/zlib/uncompr.o \
-	$(OBJ)/zlib/crc32.o \
-	$(OBJ)/zlib/deflate.o \
-	$(OBJ)/zlib/inflate.o \
-	$(OBJ)/zlib/inftrees.o \
-	$(OBJ)/zlib/inffast.o \
-	$(OBJ)/zlib/trees.o \
-	$(OBJ)/zlib/zutil.o
 
 #------------------------------------------------------------------------------
 # Rules to manage files

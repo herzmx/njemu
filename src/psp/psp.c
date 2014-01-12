@@ -137,7 +137,7 @@ static int SetupCallbacks(void)
 #ifdef KERNEL_MODE
 
 static volatile int home_active;
-volatile u32 home_button;
+volatile UINT32 home_button;
 
 static int home_button_thread(SceSize args, void *argp)
 {
@@ -234,6 +234,11 @@ int main(int argc, char *argv[])
 	}
 
 	set_cpu_clock(PSPCLOCK_222);
+
+        // AHMAN
+#ifdef ADHOC
+        pspSdkLoadAdhocModules();
+#endif
 
 	pad_init();
 	video_set_mode(32);

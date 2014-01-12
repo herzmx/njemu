@@ -40,30 +40,30 @@
 /* PNG support */
 struct png_info
 {
-	u32 width;
-	u32 height;
-	u8  *image;
-	u32 rowbytes;
-	u8  *zimage;
-	u32 zlength;
+	UINT32 width;
+	UINT32 height;
+	UINT8  *image;
+	UINT32 rowbytes;
+	UINT8  *zimage;
+	UINT32 zlength;
 
 #if PSP_VIDEO_32BPP || (EMU_SYSTEM == NCDZ)
-	u32 xres;
-	u32 yres;
-	u32 resolution_unit;
-	u32 offset_unit;
-	u32 scale_unit;
-	u8  bpp;
-	u8  bit_depth;
-	u8  color_type;
-	u8  compression_method;
-	u8  filter_method;
-	u8  interlace_method;
-	u32 num_palette;
-	u8  *palette;
-	u32 num_trans;
-	u8  *trans;
-	u8  *fimage;
+	UINT32 xres;
+	UINT32 yres;
+	UINT32 resolution_unit;
+	UINT32 offset_unit;
+	UINT32 scale_unit;
+	UINT8  bpp;
+	UINT8  bit_depth;
+	UINT8  color_type;
+	UINT8  compression_method;
+	UINT8  filter_method;
+	UINT8  interlace_method;
+	UINT32 num_palette;
+	UINT8  *palette;
+	UINT32 num_trans;
+	UINT8  *trans;
+	UINT8  *fimage;
 	double xscale;
 	double yscale;
 	double source_gamma;
@@ -96,13 +96,13 @@ static void errormsg(int number)
 
 static int left_mem;
 static int alloc_size;
-static u8 *next_ptr;
+static UINT8 *next_ptr;
 
 static void png_mem_init(int flag)
 {
 	if (GFX_MEMORY)
 	{
-		u8 *mem;
+		UINT8 *mem;
 
 		if (flag)
 			alloc_size = ALLOC_LOAD_SIZE;
@@ -111,7 +111,7 @@ static void png_mem_init(int flag)
 
 		mem = cache_alloc_state_buffer(alloc_size);
 
-		next_ptr = (u8 *)(((u32)mem + 15) & ~15);
+		next_ptr = (UINT8 *)(((UINT32)mem + 15) & ~15);
 		left_mem = alloc_size - 16;
 	}
 }
@@ -132,7 +132,7 @@ static void *png_alloc(int size)
 
 		if (left_mem >= size)
 		{
-			u8 *mem = next_ptr;
+			UINT8 *mem = next_ptr;
 
 			next_ptr = next_ptr + size;
 			left_mem -= size;
@@ -177,9 +177,9 @@ static void png_zcfree(voidpf opaque, voidpf ptr)
 
 
 #if PSP_VIDEO_32BPP
-static const u8 *png_data;
-static u32 png_size;
-static u32 png_offset;
+static const UINT8 *png_data;
+static UINT32 png_size;
+static UINT32 png_offset;
 
 static size_t png_read(void *buf, size_t size, FILE *fp)
 {
@@ -206,7 +206,7 @@ static size_t png_read(void *buf, size_t size, FILE *fp)
 	}
 }
 #elif (EMU_SYSTEM == NCDZ)
-#define png_read(buf, size, fp)	fread(buf, 1, size, fp);
+#define png_read(buf, size, fp)	fread(buf, 1, size, fp)
 #endif
 
 
@@ -219,14 +219,14 @@ static size_t png_read(void *buf, size_t size, FILE *fp)
 #if PSP_VIDEO_32BPP || (EMU_SYSTEM == NCDZ)
 
 /* convert_uint is here so we don't have to deal with byte-ordering issues */
-static u32 convert_from_network_order(u8 *v)
+static UINT32 convert_from_network_order(UINT8 *v)
 {
 	return (v[0] << 24) | (v[1] << 16) | (v[2] << 8) | (v[3]);
 }
 
 static int png_verify_signature(FILE *fp)
 {
-	s8 signature[8];
+	INT8 signature[8];
 
 	if (png_read(signature, 8, fp) == 8)
 	{
@@ -240,13 +240,13 @@ static int png_verify_signature(FILE *fp)
 
 static int png_unfilter(struct png_info *p)
 {
-	u32 res = 0;
+	UINT32 res = 0;
 
-	if ((p->image = (u8 *)png_alloc(p->height * (p->rowbytes + 1))) != NULL)
+	if ((p->image = (UINT8 *)png_alloc(p->height * (p->rowbytes + 1))) != NULL)
 	{
-		u32 i, j, bpp, filter;
-		s32 prediction, pA, pB, pC, dA, dB, dC;
-		u8 *src, *dst;
+		UINT32 i, j, bpp, filter;
+		INT32 prediction, pA, pB, pC, dA, dB, dC;
+		UINT8 *src, *dst;
 
 		src = p->fimage;
 		dst = p->image;
@@ -317,13 +317,13 @@ error:
 
 static int png_inflate_image(struct png_info *p)
 {
-	u32 res = 0;
+	UINT32 res = 0, i, has_filter = 0;
 	unsigned long fbuff_size;
 	z_stream stream;
 
 	fbuff_size = p->height * (p->rowbytes + 1);
 
-	if ((p->fimage = (u8 *)png_alloc(fbuff_size)) == NULL)
+	if ((p->fimage = (UINT8 *)png_alloc(fbuff_size)) == NULL)
 	{
 		errormsg(0);
 		png_free(p->zimage);
@@ -351,7 +351,16 @@ static int png_inflate_image(struct png_info *p)
 
 	if (res)
 	{
-		if (p->filter_method)
+		for (i = 0; i < p->height; i++)
+		{
+			if (p->fimage[i * (p->rowbytes + 1)] != 0)
+			{
+				has_filter = 1;
+				break;
+			}
+		}
+
+		if (has_filter)
 		{
 			return png_unfilter(p);
 		}
@@ -370,15 +379,15 @@ static int png_read_file(FILE *fp, struct png_info *p)
 	/* translates color_type to bytes per pixel */
 	const int samples[] = {1, 0, 3, 1, 2, 0, 4};
 
-	u32 chunk_length, chunk_type=0, chunk_crc, crc;
-	u8 *chunk_data, *temp;
-	u8 str_chunk_type[5], v[4];
+	UINT32 chunk_length, chunk_type=0, chunk_crc, crc;
+	UINT8 *chunk_data, *temp;
+	UINT8 str_chunk_type[5], v[4];
 
 	struct idat
 	{
 		struct idat *next;
 		int length;
-		u8 *data;
+		UINT8 *data;
 	} *ihead, *pidat;
 
 	if ((ihead = malloc(sizeof(struct idat))) == NULL)
@@ -403,7 +412,7 @@ static int png_read_file(FILE *fp, struct png_info *p)
 
 		if (chunk_length)
 		{
-			if ((chunk_data = (u8 *)malloc(chunk_length + 1)) == NULL)
+			if ((chunk_data = (UINT8 *)malloc(chunk_length + 1)) == NULL)
 			{
 				errormsg(0);
 				return 0;
@@ -503,7 +512,7 @@ static int png_read_file(FILE *fp, struct png_info *p)
 		return 0;
 	}
 
-	if ((p->zimage = (u8 *)png_alloc(p->zlength)) == NULL)
+	if ((p->zimage = (UINT8 *)png_alloc(p->zlength)) == NULL)
 	{
 		errormsg(0);
 		return 0;
@@ -535,7 +544,7 @@ static int png_read_file(FILE *fp, struct png_info *p)
 --------------------------------------------------------*/
 
 #if PSP_VIDEO_32BPP
-INLINE void adjust_blightness(u8 *r, u8 *g, u8 *b)
+INLINE void adjust_blightness(UINT8 *r, UINT8 *g, UINT8 *b)
 {
 	switch (bgimage_blightness)
 	{
@@ -558,9 +567,9 @@ INLINE void adjust_blightness(u8 *r, u8 *g, u8 *b)
 		break;
 
 	default:
-		*r = (u8)((int)*r * bgimage_blightness / 100);
-		*g = (u8)((int)*g * bgimage_blightness / 100);
-		*b = (u8)((int)*b * bgimage_blightness / 100);
+		*r = (UINT8)((int)*r * bgimage_blightness / 100);
+		*g = (UINT8)((int)*g * bgimage_blightness / 100);
+		*b = (UINT8)((int)*b * bgimage_blightness / 100);
 		break;
 	}
 }
@@ -575,7 +584,7 @@ int load_png(const char *name, int number)
 {
 	struct png_info p;
 	FILE *fp;
-	u32 res = 0;
+	UINT32 res = 0;
 
 	memset(&p, 0, sizeof(struct png_info));
 
@@ -603,8 +612,8 @@ int load_png(const char *name, int number)
 
 	if ((res = png_read_file(fp, &p)))
 	{
-		u32 x, y, sx, sy;
-		u8 *src = p.image;
+		UINT32 x, y, sx, sy;
+		UINT8 *src = p.image;
 
 		sx = (SCR_WIDTH - p.width) >> 1;
 		sy = (SCR_HEIGHT - p.height) >> 1;
@@ -612,9 +621,9 @@ int load_png(const char *name, int number)
 #if PSP_VIDEO_32BPP
 		if (video_mode == 32)
 		{
-			u32 *vptr, *dst;
+			UINT32 *vptr, *dst;
 
-			vptr = (u32 *)video_frame_addr(draw_frame, sx, sy);
+			vptr = (UINT32 *)video_frame_addr(draw_frame, sx, sy);
 
 			switch (p.bpp * p.bit_depth)
 			{
@@ -626,15 +635,15 @@ int load_png(const char *name, int number)
 
 					for (x = 0; x < p.width; x++)
 					{
-						u8 color = *src++;
-						u8 r = p.palette[color * 3 + 0];
-						u8 g = p.palette[color * 3 + 1];
-						u8 b = p.palette[color * 3 + 2];
+						UINT8 color = *src++;
+						UINT8 r = p.palette[color * 3 + 0];
+						UINT8 g = p.palette[color * 3 + 1];
+						UINT8 b = p.palette[color * 3 + 2];
 
 						if (bgimage_blightness != 100)
 							adjust_blightness(&r, &g, &b);
 
-						dst[x] = MAKECOL15(r, g, b);
+						dst[x] = MAKECOL32(r, g, b);
 					}
 				}
 				break;
@@ -647,9 +656,9 @@ int load_png(const char *name, int number)
 
 					for (x = 0; x < p.width; x++)
 					{
-						u8 r = *src++;
-						u8 g = *src++;
-						u8 b = *src++;
+						UINT8 r = *src++;
+						UINT8 g = *src++;
+						UINT8 b = *src++;
 
 						if (bgimage_blightness != 100)
 							adjust_blightness(&r, &g, &b);
@@ -667,9 +676,9 @@ int load_png(const char *name, int number)
 		else
 #endif
 		{
-			u16 *vptr, *dst;
+			UINT16 *vptr, *dst;
 
-			vptr = (u16 *)video_frame_addr(draw_frame, sx, sy);
+			vptr = (UINT16 *)video_frame_addr(draw_frame, sx, sy);
 
 			switch (p.bpp * p.bit_depth)
 			{
@@ -681,10 +690,10 @@ int load_png(const char *name, int number)
 
 					for (x = 0; x < p.width; x++)
 					{
-						u8 color = *src++;
-						u8 r = p.palette[color * 3 + 0];
-						u8 g = p.palette[color * 3 + 1];
-						u8 b = p.palette[color * 3 + 2];
+						UINT8 color = *src++;
+						UINT8 r = p.palette[color * 3 + 0];
+						UINT8 g = p.palette[color * 3 + 1];
+						UINT8 b = p.palette[color * 3 + 2];
 
 						dst[x] = MAKECOL15(r, g, b);
 					}
@@ -699,11 +708,11 @@ int load_png(const char *name, int number)
 
 					for (x = 0; x < p.width; x++)
 					{
-						u8 r = *src++;
-						u8 g = *src++;
-						u8 b = *src++;
+						UINT8 r = *src++;
+						UINT8 g = *src++;
+						UINT8 b = *src++;
 
-						dst[x] = MAKECOL32(r, g, b);
+						dst[x] = MAKECOL15(r, g, b);
 					}
 				}
 				break;
@@ -743,7 +752,7 @@ struct png_text
 
 static struct png_text *png_text_list = 0;
 
-static void convert_to_network_order(u32 i, u8 *v)
+static void convert_to_network_order(UINT32 i, UINT8 *v)
 {
 	v[0] = (i >> 24) & 0xff;
 	v[1] = (i >> 16) & 0xff;
@@ -770,11 +779,11 @@ static int png_add_text(const char *keyword, const char *text)
 	return 1;
 }
 
-static int write_chunk(SceUID fd, u32 chunk_type, u8 *chunk_data, u32 chunk_length)
+static int write_chunk(SceUID fd, UINT32 chunk_type, UINT8 *chunk_data, UINT32 chunk_length)
 {
-	u32 crc;
-	u8 v[4];
-	u32 written;
+	UINT32 crc;
+	UINT8 v[4];
+	UINT32 written;
 
 	/* write length */
 	convert_to_network_order(chunk_length, v);
@@ -818,7 +827,7 @@ static int png_write_sig(SceUID fd)
 
 static int png_write_datastream(SceUID fd, struct png_info *p)
 {
-	u8 ihdr[13];
+	UINT8 ihdr[13];
 	struct png_text *pt;
 
 	/* IHDR */
@@ -841,7 +850,7 @@ static int png_write_datastream(SceUID fd, struct png_info *p)
 	while (png_text_list)
 	{
 		pt = png_text_list;
-		if (write_chunk(fd, PNG_CN_tEXt, (u8 *)pt->data, pt->length) == 0)
+		if (write_chunk(fd, PNG_CN_tEXt, (UINT8 *)pt->data, pt->length) == 0)
 			return 0;
 		free(pt->data);
 
@@ -863,7 +872,7 @@ static int png_deflate_image(struct png_info *p)
 
 	zbuff_size = (p->height * (p->rowbytes + 1)) * 1.1 + 12;
 
-	if ((p->zimage = (u8 *)png_alloc(zbuff_size)) == NULL)
+	if ((p->zimage = (UINT8 *)png_alloc(zbuff_size)) == NULL)
 	{
 		errormsg(0);
 		return 0;
@@ -894,8 +903,8 @@ static int png_deflate_image(struct png_info *p)
 
 static int png_create_datastream(SceUID fd)
 {
-	u32 x, y;
-	u8 *dst;
+	UINT32 x, y;
+	UINT8 *dst;
 	struct png_info p;
 
 	memset(&p, 0, sizeof (struct png_info));
@@ -903,7 +912,7 @@ static int png_create_datastream(SceUID fd)
 	p.height   = SCR_HEIGHT;
 	p.rowbytes = p.width * 3;
 
-	if ((p.image = (u8 *)png_alloc(p.height * (p.rowbytes + 1))) == NULL)
+	if ((p.image = (UINT8 *)png_alloc(p.height * (p.rowbytes + 1))) == NULL)
 	{
 		errormsg(0);
 		return 0;
@@ -915,9 +924,9 @@ static int png_create_datastream(SceUID fd)
 #if 0
 	if (video_mode == 32)
 	{
-		u32 *vptr, *src;
+		UINT32 *vptr, *src;
 
-		vptr = (u32 *)video_frame_addr(show_frame, 0, 0);
+		vptr = (UINT32 *)video_frame_addr(show_frame, 0, 0);
 
 		for (y = 0; y < p.height; y++)
 		{
@@ -926,19 +935,19 @@ static int png_create_datastream(SceUID fd)
 			*dst++ = 0;
 			for (x = 0; x < p.width; x++)
 			{
-				u32 color = src[x];
-				*dst++ = (u8)GETR32(color);
-				*dst++ = (u8)GETG32(color);
-				*dst++ = (u8)GETB32(color);
+				UINT32 color = src[x];
+				*dst++ = (UINT8)GETR32(color);
+				*dst++ = (UINT8)GETG32(color);
+				*dst++ = (UINT8)GETB32(color);
 			}
 		}
 	}
 #endif
 #endif
 	{
-		u16 *vptr, *src;
+		UINT16 *vptr, *src;
 
-		vptr = (u16 *)video_frame_addr(show_frame, 0, 0);
+		vptr = (UINT16 *)video_frame_addr(show_frame, 0, 0);
 
 		for (y = 0; y < p.height; y++)
 		{
@@ -947,10 +956,10 @@ static int png_create_datastream(SceUID fd)
 			*dst++ = 0;
 			for (x = 0; x < p.width; x++)
 			{
-				u16 color = src[x];
-				*dst++ = (u8)GETR15(color);
-				*dst++ = (u8)GETG15(color);
-				*dst++ = (u8)GETB15(color);
+				UINT16 color = src[x];
+				*dst++ = (UINT8)GETR15(color);
+				*dst++ = (UINT8)GETG15(color);
+				*dst++ = (UINT8)GETB15(color);
 			}
 		}
 	}

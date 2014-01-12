@@ -1,1 +1,1 @@
-romcnv_cps2 "%1" -zip
+romcnv_cps2 "%1"

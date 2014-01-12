@@ -6,8 +6,8 @@
 static struct EEPROM_interface *intf;
 
 static int serial_count;
-static u8 serial_buffer[SERIAL_BUFFER_LENGTH];
-static u8 eeprom_data[EEPROM_SIZE];
+static UINT8 serial_buffer[SERIAL_BUFFER_LENGTH];
+static UINT8 eeprom_data[EEPROM_SIZE];
 static int eeprom_data_bits;
 static int eeprom_read_address;
 static int eeprom_clock_count;
@@ -292,12 +292,12 @@ void EEPROM_save(FILE *fp)
 	fwrite(eeprom_data, 1, (1 << intf->address_bits) * intf->data_bits / 8, fp);
 }
 
-u8 EEPROM_read_data(u32 address)
+UINT8 EEPROM_read_data(UINT32 address)
 {
 	return eeprom_data[address];
 }
 
-void EEPROM_write_data(u32 address, u8 data)
+void EEPROM_write_data(UINT32 address, UINT8 data)
 {
 	eeprom_data[address] = data;
 }

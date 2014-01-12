@@ -85,7 +85,7 @@ int ui_show_popup(int draw);
 
 void msg_screen_init(int wallpaper, int icon, const char *title);
 void msg_screen_clear(void);
-void msg_set_text_color(u32 color);
+void msg_set_text_color(UINT32 color);
 void msg_printf(const char *text, ...);
 
 
@@ -116,6 +116,9 @@ enum
 	MB_GAMENOTWORK,
 #endif
 	MB_SETSTARTUPDIR,
+#ifdef PSP_SLIM
+	MB_PSPVERSIONERROR,
+#endif
 #ifdef SAVE_STATE
 	MB_STARTSAVESTATE,
 	MB_FINISHSAVESTATE,

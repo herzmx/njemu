@@ -48,6 +48,13 @@ static gamecfg2_t gamecfg_ncdz[] =
 
 	gamecfg2 = gamecfg_ncdz;
 
+	if (neogeo_ngh == NGH_tpgolf
+	||	neogeo_ngh == NGH_trally
+	||	neogeo_ngh == NGH_neodrift)
+	{
+		gamecfg[6].enable = 0;
+	}
+
 #elif defined(INCLUDE_KEYCFG_STRUCT)
 
 /*-----------------------------------------------------------------------------
@@ -56,6 +63,8 @@ static gamecfg2_t gamecfg_ncdz[] =
 
 static keycfg2_t keycfg_ncdz[] =
 {
+	{ BUTTON_LAYOUT,    KEYCFG_LAYOUT, NEOGEO_PAD },
+	MENU_BLANK,
 	{ INPUT_UP,         KEYCFG_BUTTON, P1_UP      },
 	{ INPUT_DOWN,       KEYCFG_BUTTON, P1_DOWN    },
 	{ INPUT_LEFT,       KEYCFG_BUTTON, P1_LEFT    },

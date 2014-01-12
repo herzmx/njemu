@@ -17,6 +17,9 @@
 #define CPS1_KLUDGE_3WONDERS	4
 #define CPS1_KLUDGE_PANG3		5
 #define CPS1_KLUDGE_SF2CEB		6
+#define CPS1_KLUDGE_WOFB		7
+#define CPS1_KLUDGE_CAWINGB		8
+#define CPS1_KLUDGE_KNIGHTSB	9
 
 enum
 {
@@ -25,6 +28,9 @@ enum
 	MACHINE_sf2,
 	MACHINE_qsound,
 	MACHINE_pang3,
+#if !RELEASE
+	MACHINE_kodb,
+#endif
 	MACHINE_MAX
 };
 
@@ -68,6 +74,14 @@ enum
 	INPTYPE_pnickj,
 	INPTYPE_pang3,
 	INPTYPE_sfzch,
+#if !RELEASE
+	INPTYPE_knightsh,
+	INPTYPE_wofh,
+	INPTYPE_wof3js,
+	INPTYPE_wofsj,
+	INPTYPE_wofsjb,
+	INPTYPE_dinoh,
+#endif
 	INPTYPE_MAX
 };
 
@@ -79,6 +93,16 @@ enum
 	INIT_punisher,
 	INIT_slammast,
 	INIT_pang3,
+#if !RELEASE
+	INIT_kodb,
+	INIT_sf2m13,
+	INIT_wofh,
+	INIT_wof3js,
+	INIT_wof3sj,
+	INIT_wofsjb,
+	INIT_dinob,
+	INIT_dinoh,
+#endif
 	INIT_MAX
 };
 
@@ -91,29 +115,29 @@ enum
 
 struct tile_t
 {
-	u16 start;
-	u16 end;
+	UINT16 start;
+	UINT16 end;
 };
 
 struct driver_t
 {
 	const char *name;
-	const u16 cpsb_addr;
-	const u16 cpsb_value;
-	const u8  mult_factor1;
-	const u8  mult_factor2;
-	const u8  mult_result_lo;
-	const u8  mult_result_hi;
-	const u8  priority[4];
-	const u8  layer_enable_mask[5];
-	const u8  layer_control;
-	const u8  control_reg;
-	const u8  kludge;
-	const u8  has_stars;
-	const u8  bank_scroll1;
-	const u8  bank_scroll2;
-	const u8  bank_scroll3;
-	const u32 gfx_limit;
+	const UINT16 cpsb_addr;
+	const UINT16 cpsb_value;
+	const UINT8  mult_factor1;
+	const UINT8  mult_factor2;
+	const UINT8  mult_result_lo;
+	const UINT8  mult_result_hi;
+	const UINT8  priority[4];
+	const UINT8  layer_enable_mask[5];
+	const UINT8  layer_control;
+	const UINT8  control_reg;
+	const UINT8  kludge;
+	const UINT8  has_stars;
+	const UINT8  bank_scroll1;
+	const UINT8  bank_scroll2;
+	const UINT8  bank_scroll3;
+	const UINT32 gfx_limit;
 	const struct tile_t scroll1;
 	const struct tile_t scroll2;
 	const struct tile_t scroll3;
@@ -165,6 +189,15 @@ TIMER_CALLBACK( cps1_qsound_interrupt );
 void cps1_sound_interrupt(int state);
 
 void pang3_decode(void);
+#if !RELEASE
+void kodb_init(void);
+void sf2m13_init(void);
+void wofh_init(void);
+void wof3js_init(void);
+void wof3sj_init(void);
+void wofsjb_init(void);
+void dinob_init(void);
+#endif
 
 int cps1_driver_init(void);
 void cps1_driver_reset(void);

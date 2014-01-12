@@ -12,8 +12,8 @@
 #define SCR_WIDTH			480
 #define SCR_HEIGHT			272
 #define BUF_WIDTH			512
-#define	FRAMESIZE			(BUF_WIDTH * SCR_HEIGHT * sizeof(u16))
-#define	FRAMESIZE32			(BUF_WIDTH * SCR_HEIGHT * sizeof(u32))
+#define	FRAMESIZE			(BUF_WIDTH * SCR_HEIGHT * sizeof(UINT16))
+#define	FRAMESIZE32			(BUF_WIDTH * SCR_HEIGHT * sizeof(UINT32))
 
 #define SLICE_SIZE			64 // change this to experiment with different page-cache sizes
 #define TEXTURE_FLAGS		(GU_TEXTURE_16BIT | GU_COLOR_5551 | GU_VERTEX_16BIT | GU_TRANSFORM_2D)
@@ -45,7 +45,7 @@
 #define COLOR_DARKCYAN		  0,127,127
 #define COLOR_DARKGRAY		 63, 63, 63
 
-#define GU_FRAME_ADDR(frame)		(u16 *)((u32)frame | 0x44000000)
+#define GU_FRAME_ADDR(frame)		(UINT16 *)((UINT32)frame | 0x44000000)
 #define CNVCOL15TO32(c)				(GETR15(c) | (GETG15(c) << 8) | (GETB15(c) << 16))
 #define CNVCOL32TO15(c)				(((GETR32(c) & 0xf8) >> 3) | ((GETG32(c) & 0xf8) << 2) | ((GETB32(src[x]) & 0xf8) << 7))
 
@@ -60,9 +60,9 @@
 
 struct Vertex
 {
-	u16 u, v;
-	u16 color;
-	s16 x, y, z;
+	UINT16 u, v;
+	UINT16 color;
+	INT16 x, y, z;
 };
 
 struct rectangle
@@ -75,14 +75,14 @@ struct rectangle
 
 typedef struct rect_t
 {
-	s16 left;
-	s16 top;
-	s16 right;
-	s16 bottom;
+	INT16 left;
+	INT16 top;
+	INT16 right;
+	INT16 bottom;
 } RECT;
 
 
-extern u8 gulist[GULIST_SIZE];
+extern UINT8 gulist[GULIST_SIZE];
 extern int video_mode;
 extern void *show_frame;
 extern void *draw_frame;
@@ -105,8 +105,8 @@ extern void *(*video_frame_addr)(void *frame, int x, int y);
 extern void (*video_clear_screen)(void);
 extern void (*video_clear_frame)(void *frame);
 extern void (*video_clear_rect)(void *frame, RECT *rect);
-extern void (*video_fill_frame)(void *frame, u32 color);
-extern void (*video_fill_rect)(void *frame, u32 color, RECT *rect);
+extern void (*video_fill_frame)(void *frame, UINT32 color);
+extern void (*video_fill_rect)(void *frame, UINT32 color, RECT *rect);
 extern void (*video_copy_rect)(void *src, void *dst, RECT *src_rect, RECT *dst_rect);
 extern void (*video_copy_rect_flip)(void *src, void *dst, RECT *src_rect, RECT *dst_rect);
 extern void (*video_copy_rect_rotate)(void *src, void *dst, RECT *src_rect, RECT *dst_rect);
@@ -116,8 +116,8 @@ extern void *video_frame_addr(void *frame, int x, int y);
 extern void video_clear_screen(void);
 extern void video_clear_frame(void *frame);
 extern void video_clear_rect(void *frame, RECT *rect);
-extern void video_fill_frame(void *frame, u32 color);
-extern void video_fill_rect(void *frame, u32 color, RECT *rect);
+extern void video_fill_frame(void *frame, UINT32 color);
+extern void video_fill_rect(void *frame, UINT32 color, RECT *rect);
 extern void video_copy_rect(void *src, void *dst, RECT *src_rect, RECT *dst_rect);
 extern void video_clear_depth(void *frame);
 extern void video_copy_rect_flip(void *src, void *dst, RECT *src_rect, RECT *dst_rect);

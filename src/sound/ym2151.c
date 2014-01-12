@@ -53,20 +53,20 @@
 *   TL_RES_LEN - sinus resolution (X axis)
 */
 #define TL_TAB_LEN (13*2*TL_RES_LEN)
-static s32 tl_tab[TL_TAB_LEN];
+static INT32 tl_tab[TL_TAB_LEN];
 
 #define ENV_QUIET		(TL_TAB_LEN>>3)
 
 /* sin waveform table in 'decibel' scale */
-static u32 sin_tab[SIN_LEN];
+static UINT32 sin_tab[SIN_LEN];
 
 
 /* translate from D1L to volume index (16 D1L levels) */
-static u32 d1l_tab[16];
+static UINT32 d1l_tab[16];
 
 
 #define RATE_STEPS (8)
-static const u8 eg_inc[19*RATE_STEPS]={
+static const UINT8 eg_inc[19*RATE_STEPS]={
 
 /*cycle:0 1  2 3  4 5  6 7*/
 
@@ -99,7 +99,7 @@ static const u8 eg_inc[19*RATE_STEPS]={
 #define O(a) (a*RATE_STEPS)
 
 /*note that there is no O(17) in this table - it's directly in the code */
-static const u8 ALIGN_DATA eg_rate_select[32+64+32]={	/* Envelope Generator rates (32 + 64 rates + 32 RKS) */
+static const UINT8 ALIGN_DATA eg_rate_select[32+64+32]={	/* Envelope Generator rates (32 + 64 rates + 32 RKS) */
 /* 32 dummy (infinite time) rates */
 O(18),O(18),O(18),O(18),O(18),O(18),O(18),O(18),
 O(18),O(18),O(18),O(18),O(18),O(18),O(18),O(18),
@@ -146,7 +146,7 @@ O(16),O(16),O(16),O(16),O(16),O(16),O(16),O(16)
 /*mask  2047, 1023, 511, 255, 127, 63, 31, 15, 7,  3, 1,  0,  0,  0,  0,  0 */
 
 #define O(a) (a*1)
-static const u8 ALIGN_DATA eg_rate_shift[32+64+32]={	/* Envelope Generator counter shifts (32 + 64 rates + 32 RKS) */
+static const UINT8 ALIGN_DATA eg_rate_shift[32+64+32]={	/* Envelope Generator counter shifts (32 + 64 rates + 32 RKS) */
 /* 32 infinite time rates */
 O(0),O(0),O(0),O(0),O(0),O(0),O(0),O(0),
 O(0),O(0),O(0),O(0),O(0),O(0),O(0),O(0),
@@ -199,14 +199,14 @@ O( 0),O( 0),O( 0),O( 0),O( 0),O( 0),O( 0),O( 0)
 *   DT2=0 DT2=1 DT2=2 DT2=3
 *   0     600   781   950
 */
-static const u32 ALIGN_DATA dt2_tab[4] = { 0, 384, 500, 608 };
+static const UINT32 ALIGN_DATA dt2_tab[4] = { 0, 384, 500, 608 };
 
 /*  DT1 defines offset in Hertz from base note
 *   This table is converted while initialization...
 *   Detune table shown in YM2151 User's Manual is wrong (verified on the real chip)
 */
 
-static const u8 ALIGN_DATA dt1_tab[4*32] = { /* 4*32 DT1 values */
+static const UINT8 ALIGN_DATA dt1_tab[4*32] = { /* 4*32 DT1 values */
 /* DT1=0 */
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -224,7 +224,7 @@ static const u8 ALIGN_DATA dt1_tab[4*32] = { /* 4*32 DT1 values */
   8, 8, 9,10,11,12,13,14,16,17,19,20,22,22,22,22
 };
 
-static const u16 ALIGN_DATA phaseinc_rom[768]={
+static const UINT16 ALIGN_DATA phaseinc_rom[768]={
 1299,1300,1301,1302,1303,1304,1305,1306,1308,1309,1310,1311,1313,1314,1315,1316,
 1318,1319,1320,1321,1322,1323,1324,1325,1327,1328,1329,1330,1332,1333,1334,1335,
 1337,1338,1339,1340,1341,1342,1343,1344,1346,1347,1348,1349,1351,1352,1353,1354,
@@ -294,7 +294,7 @@ static const u16 ALIGN_DATA phaseinc_rom[768]={
         some 0x80 could be 0x81 as well as some 0x00 could be 0x01.
 */
 
-static const u8 ALIGN_DATA lfo_noise_waveform[256] = {
+static const UINT8 ALIGN_DATA lfo_noise_waveform[256] = {
 0xFF,0xEE,0xD3,0x80,0x58,0xDA,0x7F,0x94,0x9E,0xE3,0xFA,0x00,0x4D,0xFA,0xFF,0x6A,
 0x7A,0xDE,0x49,0xF6,0x00,0x33,0xBB,0x63,0x91,0x60,0x51,0xFF,0x00,0xD8,0x7F,0xDE,
 0xDC,0x73,0x21,0x85,0xB2,0x9C,0x5D,0x24,0xCD,0x91,0x9E,0x76,0x7F,0x20,0xFB,0xF3,
@@ -321,50 +321,50 @@ static const u8 ALIGN_DATA lfo_noise_waveform[256] = {
 /* struct describing a single operator */
 typedef struct
 {
-	u32 phase;					/* accumulated operator phase */
-	u32 freq;					/* operator frequency count */
-	s32 dt1;					/* current DT1 (detune 1 phase inc/decrement) value */
-	u32 mul;					/* frequency count multiply */
-	u32 dt1_i;					/* DT1 index * 32 */
-	u32 dt2;					/* current DT2 (detune 2) value */
+	UINT32 phase;					/* accumulated operator phase */
+	UINT32 freq;					/* operator frequency count */
+	INT32 dt1;					/* current DT1 (detune 1 phase inc/decrement) value */
+	UINT32 mul;					/* frequency count multiply */
+	UINT32 dt1_i;					/* DT1 index * 32 */
+	UINT32 dt2;					/* current DT2 (detune 2) value */
 
-	s32 *connect;				/* operator output 'direction' */
+	INT32 *connect;				/* operator output 'direction' */
 
 	/* only M1 (operator 0) is filled with this data: */
-	s32 *mem_connect;			/* where to put the delayed sample (MEM) */
-	s32 mem_value;				/* delayed sample (MEM) value */
+	INT32 *mem_connect;			/* where to put the delayed sample (MEM) */
+	INT32 mem_value;				/* delayed sample (MEM) value */
 
 	/* channel specific data; note: each operator number 0 contains channel specific data */
-	u32 fb_shift;				/* feedback shift value for operators 0 in each channel */
-	s32 fb_out_curr;			/* operator feedback value (used only by operators 0) */
-	s32 fb_out_prev;			/* previous feedback value (used only by operators 0) */
-	u32 kc;						/* channel KC (copied to all operators) */
-	u32 kc_i;					/* just for speedup */
-	u32 pms;					/* channel PMS */
-	u32 ams;					/* channel AMS */
+	UINT32 fb_shift;				/* feedback shift value for operators 0 in each channel */
+	INT32 fb_out_curr;			/* operator feedback value (used only by operators 0) */
+	INT32 fb_out_prev;			/* previous feedback value (used only by operators 0) */
+	UINT32 kc;						/* channel KC (copied to all operators) */
+	UINT32 kc_i;					/* just for speedup */
+	UINT32 pms;					/* channel PMS */
+	UINT32 ams;					/* channel AMS */
 	/* end of channel specific data */
 
-	u32 AMmask;					/* LFO Amplitude Modulation enable mask */
-	u32 state;					/* Envelope state: 4-attack(AR) 3-decay(D1R) 2-sustain(D2R) 1-release(RR) 0-off */
-	u8  eg_sh_ar;				/*  (attack state) */
-	u8  eg_sel_ar;				/*  (attack state) */
-	u32 tl;						/* Total attenuation Level */
-	s32 volume;					/* current envelope attenuation level */
-	u8  eg_sh_d1r;				/*  (decay state) */
-	u8  eg_sel_d1r;				/*  (decay state) */
-	u32 d1l;					/* envelope switches to sustain state after reaching this level */
-	u8  eg_sh_d2r;				/*  (sustain state) */
-	u8  eg_sel_d2r;				/*  (sustain state) */
-	u8  eg_sh_rr;				/*  (release state) */
-	u8  eg_sel_rr;				/*  (release state) */
+	UINT32 AMmask;					/* LFO Amplitude Modulation enable mask */
+	UINT32 state;					/* Envelope state: 4-attack(AR) 3-decay(D1R) 2-sustain(D2R) 1-release(RR) 0-off */
+	UINT8  eg_sh_ar;				/*  (attack state) */
+	UINT8  eg_sel_ar;				/*  (attack state) */
+	UINT32 tl;						/* Total attenuation Level */
+	INT32 volume;					/* current envelope attenuation level */
+	UINT8  eg_sh_d1r;				/*  (decay state) */
+	UINT8  eg_sel_d1r;				/*  (decay state) */
+	UINT32 d1l;					/* envelope switches to sustain state after reaching this level */
+	UINT8  eg_sh_d2r;				/*  (sustain state) */
+	UINT8  eg_sel_d2r;				/*  (sustain state) */
+	UINT8  eg_sh_rr;				/*  (release state) */
+	UINT8  eg_sel_rr;				/*  (release state) */
 
-	u32 key;					/* 0=last key was KEY OFF, 1=last key was KEY ON */
+	UINT32 key;					/* 0=last key was KEY OFF, 1=last key was KEY ON */
 
-	u32 ks;						/* key scale    */
-	u32 ar;						/* attack rate  */
-	u32 d1r;					/* decay rate   */
-	u32 d2r;					/* sustain rate */
-	u32 rr;						/* release rate */
+	UINT32 ks;						/* key scale    */
+	UINT32 ar;						/* attack rate  */
+	UINT32 d1r;					/* decay rate   */
+	UINT32 d2r;					/* sustain rate */
+	UINT32 rr;						/* release rate */
 
 } FM_OPM;
 
@@ -373,46 +373,46 @@ typedef struct
 {
 	FM_OPM oper[32];			/* the 32 operators */
 
-	u32 pan[16];				/* channels output masks (0xffffffff = enable) */
+	UINT32 pan[16];				/* channels output masks (0xffffffff = enable) */
 
-	u32 eg_cnt;					/* global envelope generator counter */
-	u32 eg_timer;				/* global envelope generator counter works at frequency = chipclock/64/3 */
-	u32 eg_timer_add;			/* step of eg_timer */
-	u32 eg_timer_overflow;		/* envelope generator timer overlfows every 3 samples (on real chip) */
+	UINT32 eg_cnt;					/* global envelope generator counter */
+	UINT32 eg_timer;				/* global envelope generator counter works at frequency = chipclock/64/3 */
+	UINT32 eg_timer_add;			/* step of eg_timer */
+	UINT32 eg_timer_overflow;		/* envelope generator timer overlfows every 3 samples (on real chip) */
 
-	u32 lfo_phase;				/* accumulated LFO phase (0 to 255) */
-	u32 lfo_timer;				/* LFO timer                        */
-	u32 lfo_timer_add;			/* step of lfo_timer                */
-	u32 lfo_overflow;			/* LFO generates new output when lfo_timer reaches this value */
-	u32 lfo_counter;			/* LFO phase increment counter      */
-	u32 lfo_counter_add;		/* step of lfo_counter              */
-	u8  lfo_wsel;				/* LFO waveform (0-saw, 1-square, 2-triangle, 3-random noise) */
-	u8  amd;					/* LFO Amplitude Modulation Depth   */
-	s8  pmd;					/* LFO Phase Modulation Depth       */
-	u32 lfa;					/* LFO current AM output            */
-	s32 lfp;					/* LFO current PM output            */
+	UINT32 lfo_phase;				/* accumulated LFO phase (0 to 255) */
+	UINT32 lfo_timer;				/* LFO timer                        */
+	UINT32 lfo_timer_add;			/* step of lfo_timer                */
+	UINT32 lfo_overflow;			/* LFO generates new output when lfo_timer reaches this value */
+	UINT32 lfo_counter;			/* LFO phase increment counter      */
+	UINT32 lfo_counter_add;		/* step of lfo_counter              */
+	UINT8  lfo_wsel;				/* LFO waveform (0-saw, 1-square, 2-triangle, 3-random noise) */
+	UINT8  amd;					/* LFO Amplitude Modulation Depth   */
+	INT8  pmd;					/* LFO Phase Modulation Depth       */
+	UINT32 lfa;					/* LFO current AM output            */
+	INT32 lfp;					/* LFO current PM output            */
 
-	u8  test;					/* TEST register */
-	u8  ct;						/* output control pins (bit1-CT2, bit0-CT1) */
+	UINT8  test;					/* TEST register */
+	UINT8  ct;						/* output control pins (bit1-CT2, bit0-CT1) */
 
-	u32 noise;					/* noise enable/period register (bit 7 - noise enable, bits 4-0 - noise period */
-	u32 noise_rng;				/* 17 bit noise shift register */
-	u32 noise_p;				/* current noise 'phase'*/
-	u32 noise_f;				/* current noise period */
+	UINT32 noise;					/* noise enable/period register (bit 7 - noise enable, bits 4-0 - noise period */
+	UINT32 noise_rng;				/* 17 bit noise shift register */
+	UINT32 noise_p;				/* current noise 'phase'*/
+	UINT32 noise_f;				/* current noise period */
 
-	u32 csm_req;				/* CSM  KEY ON / KEY OFF sequence request */
+	UINT32 csm_req;				/* CSM  KEY ON / KEY OFF sequence request */
 
-	u32 irq_enable;				/* IRQ enable for timer B (bit 3) and timer A (bit 2); bit 7 - CSM mode (keyon to all slots, everytime timer A overflows) */
-	u32 status;					/* chip status (BUSY, IRQ Flags) */
-	u8  connect[8];				/* channels connections */
+	UINT32 irq_enable;				/* IRQ enable for timer B (bit 3) and timer A (bit 2); bit 7 - CSM mode (keyon to all slots, everytime timer A overflows) */
+	UINT32 status;					/* chip status (BUSY, IRQ Flags) */
+	UINT8  connect[8];				/* channels connections */
 
 	/* ASG 980324 -- added for tracking timers */
 	float timer_A_time[1024];	/* timer A times */
 	float timer_B_time[256];	/* timer B times */
-	u32 timer_A_index;			/* timer A index */
-	u32 timer_B_index;			/* timer B index */
-	u32 timer_A_index_old;		/* timer A previous index */
-	u32 timer_B_index_old;		/* timer B previous index */
+	UINT32 timer_A_index;			/* timer A index */
+	UINT32 timer_B_index;			/* timer B index */
+	UINT32 timer_A_index_old;		/* timer A previous index */
+	UINT32 timer_B_index_old;		/* timer B previous index */
 
 	/*  Frequency-deltas to get the closest frequency possible.
     *   There are 11 octaves because of DT2 (max 950 cents over base frequency)
@@ -430,19 +430,19 @@ typedef struct
     *              9       note code + DT2 + LFO PM
     *              10      note code + DT2 + LFO PM
     */
-	u32 freq[11*768];			/* 11 octaves, 768 'cents' per octave */
+	UINT32 freq[11*768];			/* 11 octaves, 768 'cents' per octave */
 
 	/*  Frequency deltas for DT1. These deltas alter operator frequency
     *   after it has been taken from frequency-deltas table.
     */
-	s32 dt1_freq[8*32];			/* 8 DT1 levels, 32 KC values */
+	INT32 dt1_freq[8*32];			/* 8 DT1 levels, 32 KC values */
 
-	u32 noise_tab[32];			/* 17bit Noise Generator periods */
+	UINT32 noise_tab[32];			/* 17bit Noise Generator periods */
 
 	FM_IRQHANDLER irqhandler;		/* IRQ function handler */
 
-	u32 clock;					/* chip clock in Hz (passed from 2151intf.c) */
-	u32 sampfreq;				/* sampling frequency in Hz (passed from 2151intf.c) */
+	UINT32 clock;					/* chip clock in Hz (passed from 2151intf.c) */
+	UINT32 sampfreq;				/* sampling frequency in Hz (passed from 2151intf.c) */
 
 } ym2151_t;
 
@@ -450,9 +450,9 @@ typedef struct
 static ym2151_t ALIGN_DATA YM2151;
 static ym2151_t *ym2151 = &YM2151;
 
-static s32 ALIGN_DATA chanout[8];
-static s32 m2,c1,c2; 				/* Phase Modulation input for operators 2,3,4 */
-static s32 mem;					/* one sample delay memory */
+static INT32 ALIGN_DATA chanout[8];
+static INT32 m2,c1,c2; 				/* Phase Modulation input for operators 2,3,4 */
+static INT32 mem;					/* one sample delay memory */
 
 
 #define KEY_ON(op, key_set)																\
@@ -490,7 +490,7 @@ static s32 mem;					/* one sample delay memory */
 
 static void init_tables(void)
 {
-	s32 i, x, n;
+	INT32 i, x, n;
 	double o, m;
 
 	for (x = 0; x < TL_RES_LEN; x++)
@@ -799,8 +799,8 @@ static void set_connect(FM_OPM *om1, int ch, int v)
 
 static void refresh_EG(FM_OPM *op)
 {
-	u32 kc;
-	u32 v;
+	UINT32 kc;
+	UINT32 v;
 
 	kc = op->kc;
 
@@ -1022,9 +1022,9 @@ void YM2151WriteReg(int r, int v)
 
 		case 0x08:	/* Key Code */
 			v &= 0x7f;
-			if ((u32)v != op->kc)
+			if ((UINT32)v != op->kc)
 			{
-				u32 kc, kc_channel;
+				UINT32 kc, kc_channel;
 
 				kc_channel = (v - (v >> 2)) << 6;
 				kc_channel += 768;
@@ -1059,9 +1059,9 @@ void YM2151WriteReg(int r, int v)
 
 		case 0x10:	/* Key Fraction */
 			v >>= 2;
-			if ((u32)v !=  (op->kc_i & 63))
+			if ((UINT32)v !=  (op->kc_i & 63))
 			{
-				u32 kc_channel;
+				UINT32 kc_channel;
 
 				kc_channel = v;
 				kc_channel |= (op->kc_i & ~63);
@@ -1087,8 +1087,8 @@ void YM2151WriteReg(int r, int v)
 
 	case 0x40:		/* DT1, MUL */
 		{
-			u32 olddt1_i = op->dt1_i;
-			u32 oldmul = op->mul;
+			UINT32 olddt1_i = op->dt1_i;
+			UINT32 oldmul = op->mul;
 
 			op->dt1_i = (v&0x70)<<1;
 			op->mul   = (v&0x0f) ? (v&0x0f)<<1: 1;
@@ -1107,8 +1107,8 @@ void YM2151WriteReg(int r, int v)
 
 	case 0x80:		/* KS, AR */
 		{
-			u32 oldks = op->ks;
-			u32 oldar = op->ar;
+			UINT32 oldks = op->ks;
+			UINT32 oldar = op->ar;
 
 			op->ks = 5-(v>>6);
 			op->ar = (v&0x1f) ? 32 + ((v&0x1f)<<1) : 0;
@@ -1148,7 +1148,7 @@ void YM2151WriteReg(int r, int v)
 
 	case 0xc0:		/* DT2, D2R */
 		{
-			u32 olddt2 = op->dt2;
+			UINT32 olddt2 = op->dt2;
 			op->dt2 = dt2_tab[v>>6];
 			if (op->dt2 != olddt2)
 				op->freq = ((ym2151->freq[op->kc_i + op->dt2] + op->dt1) * op->mul) >> 1;
@@ -1174,137 +1174,120 @@ int YM2151ReadStatus(void)
 }
 
 
-#define volume_calc(OP) ((OP)->tl + ((u32)(OP)->volume) + (AM & (OP)->AMmask))
+#define volume_calc(OP) ((OP)->tl + ((UINT32)(OP)->volume) + (AM & (OP)->AMmask))
 
 
-INLINE s32 op_calc(FM_OPM *OP, u32 env, s32 pm)
+INLINE INT32 op_calc(UINT32 phase, UINT32 env, INT32 pm)
 {
-	u32 p = (env << 3) + sin_tab[(((s32)((OP->phase & ~FREQ_MASK) + (pm << 15))) >> FREQ_SH) & SIN_MASK];
+	env = (env << 3) + sin_tab[(((INT32)((phase & ~FREQ_MASK) + (pm))) >> FREQ_SH) & SIN_MASK];
 
-	if (p >= TL_TAB_LEN)
-		return 0;
-
-	return tl_tab[p];
+	return ((env < TL_TAB_LEN) ? tl_tab[env] : 0);
 }
 
-INLINE s32 op_calc1(FM_OPM *OP, u32 env, s32 pm)
+static void chan_calc(UINT32 chan)
 {
-	u32 p = (env << 3) + sin_tab[(((s32)((OP->phase & ~FREQ_MASK) + pm)) >> FREQ_SH) & SIN_MASK];
+	FM_OPM *op = &ym2151->oper[chan << 2];		/* M1 */
+	UINT32 AM = ((op->ams) ? ym2151->lfa << (op->ams - 1) : 0);
+	UINT32 env;
 
-	if (p >= TL_TAB_LEN)
-		return 0;
-
-	return tl_tab[p];
-}
-
-static void chan_calc(u32 chan)
-{
-	FM_OPM *op;
-	u32 env;
-	u32 AM = 0;
-
-	m2 = c1 = c2 = mem = 0;
-	op = &ym2151->oper[chan << 2];	/* M1 */
+	chanout[chan] = m2 = c1 = c2 = mem = 0;
 
 	*op->mem_connect = op->mem_value;	/* restore delayed sample (MEM) value to m2 or c2 */
 
-	if (op->ams)
-		AM = ym2151->lfa << (op->ams-1);
+	if (!op->connect)
+		/* algorithm 5 */
+		mem = c1 = c2 = op->fb_out_curr;
+	else
+		/* other algorithms */
+		*op->connect = op->fb_out_curr;
+
 	env = volume_calc(op);
+	if (env < ENV_QUIET)
 	{
-		s32 out = op->fb_out_prev + op->fb_out_curr;
+		INT32 out = ((op->fb_shift) ? (op->fb_out_prev + op->fb_out_curr) << op->fb_shift : 0);
+
 		op->fb_out_prev = op->fb_out_curr;
-
-		if (!op->connect)
-			/* algorithm 5 */
-			mem = c1 = c2 = op->fb_out_prev;
-		else
-			/* other algorithms */
-			*op->connect = op->fb_out_prev;
-
+		op->fb_out_curr = op_calc(op->phase, env, out);
+	}
+	else
+	{
+		op->fb_out_prev = op->fb_out_curr;
 		op->fb_out_curr = 0;
-		if (env < ENV_QUIET)
-		{
-			if (!op->fb_shift)
-				out = 0;
-			op->fb_out_curr = op_calc1(op, env, out << op->fb_shift);
-		}
 	}
 
 	env = volume_calc(op+1);	/* M2 */
 	if (env < ENV_QUIET)
-		*(op+1)->connect += op_calc(op+1, env, m2);
+	{
+		*(op+1)->connect += op_calc((op+1)->phase, env, m2 << 15);
+	}
 
 	env = volume_calc(op+2);	/* C1 */
 	if (env < ENV_QUIET)
-		*(op+2)->connect += op_calc(op+2, env, c1);
+	{
+		*(op+2)->connect += op_calc((op+2)->phase, env, c1 << 15);
+	}
 
 	env = volume_calc(op+3);	/* C2 */
 	if (env < ENV_QUIET)
-		chanout[chan] += op_calc(op+3, env, c2);
+	{
+		chanout[chan] += op_calc((op+3)->phase, env, c2 << 15);
+	}
 
 	/* M1 */
 	op->mem_value = mem;
 }
 
 
-static void chan7_calc(void)
+static void chan7_calc_noise(void)
 {
-	FM_OPM *op;
-	u32 env;
-	u32 AM = 0;
+	FM_OPM *op = &ym2151->oper[7 * 4];		/* M1 */
+	UINT32 AM = ((op->ams) ? ym2151->lfa << (op->ams - 1) : 0);
+	UINT32 env;
 
-	m2 = c1 = c2 = mem = 0;
-	op = &ym2151->oper[7 * 4];		/* M1 */
+	chanout[7] = m2 = c1 = c2 = mem = 0;
 
 	*op->mem_connect = op->mem_value;	/* restore delayed sample (MEM) value to m2 or c2 */
 
-	if (op->ams)
-		AM = ym2151->lfa << (op->ams - 1);
+	if (!op->connect)
+		/* algorithm 5 */
+		mem = c1 = c2 = op->fb_out_curr;
+	else
+		/* other algorithms */
+		*op->connect = op->fb_out_curr;
+
 	env = volume_calc(op);
+	if (env < ENV_QUIET)
 	{
-		s32 out = op->fb_out_prev + op->fb_out_curr;
+		INT32 out = ((op->fb_shift) ? (op->fb_out_prev + op->fb_out_curr) << op->fb_shift : 0);
+
 		op->fb_out_prev = op->fb_out_curr;
-
-		if (!op->connect)
-			/* algorithm 5 */
-			mem = c1 = c2 = op->fb_out_prev;
-		else
-			/* other algorithms */
-			*op->connect = op->fb_out_prev;
-
+		op->fb_out_curr = op_calc(op->phase, env, out);
+	}
+	else
+	{
+		op->fb_out_prev = op->fb_out_curr;
 		op->fb_out_curr = 0;
-		if (env < ENV_QUIET)
-		{
-			if (!op->fb_shift)
-				out = 0;
-			op->fb_out_curr = op_calc1(op, env, out << op->fb_shift);
-		}
 	}
 
 	env = volume_calc(op+1);	/* M2 */
 	if (env < ENV_QUIET)
-		*(op+1)->connect += op_calc(op+1, env, m2);
+	{
+		*(op+1)->connect += op_calc((op+1)->phase, env, m2 << 15);
+	}
 
 	env = volume_calc(op+2);	/* C1 */
 	if (env < ENV_QUIET)
-		*(op+2)->connect += op_calc(op+2, env, c1);
+	{
+		*(op+2)->connect += op_calc((op+2)->phase, env, c1 << 15);
+	}
 
 	env = volume_calc(op+3);	/* C2 */
-	if (ym2151->noise & 0x80)
+	if (env < 0x3ff)
 	{
-		u32 noiseout;
+		env = (env ^ 0x3ff) << 1;
+		chanout[7] += ((ym2151->noise_rng & 0x10000) ? env : -env);
+	}
 
-		noiseout = 0;
-		if (env < 0x3ff)
-			noiseout = (env ^ 0x3ff) << 1;	/* range of the YM2151 noise output is -2044 to 2040 */
-		chanout[7] += ((ym2151->noise_rng & 0x10000) ? noiseout: -noiseout); /* bit 16 -> output */
-	}
-	else
-	{
-		if (env < ENV_QUIET)
-			chanout[7] += op_calc(op+3, env, c2);
-	}
 	/* M1 */
 	op->mem_value = mem;
 }
@@ -1313,7 +1296,7 @@ static void chan7_calc(void)
 static void advance_eg(void)
 {
 	FM_OPM *op;
-	u32 i;
+	UINT32 i;
 
 	ym2151->eg_timer += ym2151->eg_timer_add;
 
@@ -1348,7 +1331,7 @@ static void advance_eg(void)
 				{
 					op->volume += eg_inc[op->eg_sel_d1r + ((ym2151->eg_cnt >> op->eg_sh_d1r) & 7)];
 
-					if ((u32)op->volume >= op->d1l)
+					if ((UINT32)op->volume >= op->d1l)
 						op->state = EG_SUS;
 				}
 				break;
@@ -1389,7 +1372,7 @@ static void advance_eg(void)
 static void advance(void)
 {
 	FM_OPM *op;
-	u32 i;
+	UINT32 i;
 	int a,p;
 
 	/* LFO */
@@ -1475,7 +1458,7 @@ static void advance(void)
 	ym2151->noise_p &= 0xffff;
 	while (i)
 	{
-		u32 j;
+		UINT32 j;
 		j = ((ym2151->noise_rng ^ (ym2151->noise_rng >> 3)) & 1) ^ 1;
 		ym2151->noise_rng = (j << 16) | (ym2151->noise_rng >> 1);
 		i--;
@@ -1489,7 +1472,7 @@ static void advance(void)
 	{
 		if (op->pms)	/* only when phase modulation from LFO is enabled for this channel */
 		{
-			s32 mod_ind = ym2151->lfp;		/* -128..+127 (8bits signed) */
+			INT32 mod_ind = ym2151->lfp;		/* -128..+127 (8bits signed) */
 			if (op->pms < 6)
 				mod_ind >>= (6 - op->pms);
 			else
@@ -1497,7 +1480,7 @@ static void advance(void)
 
 			if (mod_ind)
 			{
-				u32 kc_channel =	op->kc_i + mod_ind;
+				UINT32 kc_channel =	op->kc_i + mod_ind;
 				(op+0)->phase += ((ym2151->freq[kc_channel + (op+0)->dt2] + (op+0)->dt1) * (op+0)->mul) >> 1;
 				(op+1)->phase += ((ym2151->freq[kc_channel + (op+1)->dt2] + (op+1)->dt1) * (op+1)->mul) >> 1;
 				(op+2)->phase += ((ym2151->freq[kc_channel + (op+2)->dt2] + (op+2)->dt1) * (op+2)->mul) >> 1;
@@ -1563,7 +1546,7 @@ static void advance(void)
 }
 
 
-static void YM2151Update_stereo(s32 *buffer, int length)
+static void YM2151Update_stereo(INT32 *buffer, int length)
 {
 	int i;
 	FMSAMPLE_MIX sample;
@@ -1572,15 +1555,6 @@ static void YM2151Update_stereo(s32 *buffer, int length)
 	{
 		advance_eg();
 
-		chanout[0] = 0;
-		chanout[1] = 0;
-		chanout[2] = 0;
-		chanout[3] = 0;
-		chanout[4] = 0;
-		chanout[5] = 0;
-		chanout[6] = 0;
-		chanout[7] = 0;
-
 		chan_calc(0);
 		chan_calc(1);
 		chan_calc(2);
@@ -1588,7 +1562,10 @@ static void YM2151Update_stereo(s32 *buffer, int length)
 		chan_calc(4);
 		chan_calc(5);
 		chan_calc(6);
-		chan7_calc();
+		if (ym2151->noise & 0x80)
+			chan7_calc_noise();
+		else
+			chan_calc(7);
 
 		sample  = chanout[0] & ym2151->pan[ 0];
 		sample += chanout[1] & ym2151->pan[ 2];
@@ -1598,7 +1575,7 @@ static void YM2151Update_stereo(s32 *buffer, int length)
 		sample += chanout[5] & ym2151->pan[10];
 		sample += chanout[6] & ym2151->pan[12];
 		sample += chanout[7] & ym2151->pan[14];
-		*buffer++ = sample << 1;
+		*buffer++ = sample;
 
 		sample  = chanout[0] & ym2151->pan[ 1];
 		sample += chanout[1] & ym2151->pan[ 3];
@@ -1608,14 +1585,14 @@ static void YM2151Update_stereo(s32 *buffer, int length)
 		sample += chanout[5] & ym2151->pan[11];
 		sample += chanout[6] & ym2151->pan[13];
 		sample += chanout[7] & ym2151->pan[15];
-		*buffer++ = sample << 1;
+		*buffer++ = sample;
 
 		advance();
 	}
 }
 
 
-static void YM2151Update_mono(s32 *buffer, int length)
+static void YM2151Update_mono(INT32 *buffer, int length)
 {
 	int i;
 	FMSAMPLE_MIX sample;
@@ -1624,15 +1601,6 @@ static void YM2151Update_mono(s32 *buffer, int length)
 	{
 		advance_eg();
 
-		chanout[0] = 0;
-		chanout[1] = 0;
-		chanout[2] = 0;
-		chanout[3] = 0;
-		chanout[4] = 0;
-		chanout[5] = 0;
-		chanout[6] = 0;
-		chanout[7] = 0;
-
 		chan_calc(0);
 		chan_calc(1);
 		chan_calc(2);
@@ -1640,7 +1608,10 @@ static void YM2151Update_mono(s32 *buffer, int length)
 		chan_calc(4);
 		chan_calc(5);
 		chan_calc(6);
-		chan7_calc();
+		if (ym2151->noise & 0x80)
+			chan7_calc_noise();
+		else
+			chan_calc(7);
 
 		sample  = chanout[0] & ym2151->pan[0];
 		sample += chanout[1] & ym2151->pan[1];
@@ -1650,7 +1621,7 @@ static void YM2151Update_mono(s32 *buffer, int length)
 		sample += chanout[5] & ym2151->pan[5];
 		sample += chanout[6] & ym2151->pan[6];
 		sample += chanout[7] & ym2151->pan[7];
-		*buffer++ = sample << 1;
+		*buffer++ = sample;
 
 		advance();
 	}
@@ -1658,7 +1629,7 @@ static void YM2151Update_mono(s32 *buffer, int length)
 
 
 #if (EMU_SYSTEM == CPS1)
-static void YM2151Update_mono_with_okim6295(s32 *buffer, int length)
+static void YM2151Update_mono_with_okim6295(INT32 *buffer, int length)
 {
 	YM2151Update_mono(buffer, length);
 	OKIM6295Update(buffer, length);

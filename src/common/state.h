@@ -46,7 +46,7 @@ extern char time_str[16];
 extern char stver_str[16];
 extern int  current_state_version;
 extern int  state_version;
-extern u8   *state_buffer;
+extern UINT8   *state_buffer;
 #if (EMU_SYSTEM == MVS)
 extern int  state_reload_bios;
 #endif

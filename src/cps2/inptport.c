@@ -14,7 +14,7 @@
 ******************************************************************************/
 
 int option_controller;
-u16 cps2_port_value[CPS2_PORT_MAX];
+UINT16 cps2_port_value[CPS2_PORT_MAX];
 
 int input_map[MAX_INPUTS];
 int input_max_players;
@@ -28,7 +28,7 @@ int af_interval = 1;
 	ローカル変数
 ******************************************************************************/
 
-static u8 ALIGN_DATA input_flag[MAX_INPUTS];
+static UINT8 ALIGN_DATA input_flag[MAX_INPUTS];
 static int ALIGN_DATA af_map1[CPS2_BUTTON_MAX];
 static int ALIGN_DATA af_map2[CPS2_BUTTON_MAX];
 static int ALIGN_DATA af_counter[CPS2_BUTTON_MAX];
@@ -37,7 +37,7 @@ static int input_ui_wait;
 static int service_switch;
 static int p12_start_pressed;
 
-static u8 max_players[COIN_MAX] =
+static UINT8 max_players[COIN_MAX] =
 {
 	2,	// COIN_NONE: 2P 2シューター固定 (チェック必要なし)
 
@@ -53,7 +53,7 @@ static u8 max_players[COIN_MAX] =
 	4	// COIN_4P4C: 4P 4シューター
 };
 
-static u8 coin_chuter[COIN_MAX][4] =
+static UINT8 coin_chuter[COIN_MAX][4] =
 {
 	{ 1, 2, 0, 0 },	// COIN_NONE: 2P 2シューター固定 (チェック必要なし)
 
@@ -72,9 +72,9 @@ static u8 coin_chuter[COIN_MAX][4] =
 #ifdef ADHOC
 typedef struct
 {
-	u32 buttons;
+	UINT32 buttons;
 	int loop_flag;
-	u16 port_value[4];
+	UINT16 port_value[4];
 } ADHOC_DATA;
 
 static ADHOC_DATA ALIGN_PSPDATA send_data;
@@ -82,7 +82,7 @@ static ADHOC_DATA ALIGN_PSPDATA recv_data;
 static SceUID adhoc_thread;
 static volatile int adhoc_active;
 static volatile int adhoc_update;
-static volatile u32 adhoc_paused;
+static volatile UINT32 adhoc_paused;
 #endif
 
 
@@ -96,8 +96,8 @@ static volatile u32 adhoc_paused;
 
 static void check_eeprom_settings(int popup)
 {
-	u8 eeprom_value = EEPROM_read_data(driver->inp_eeprom);
-	u8 coin_type = driver->inp_eeprom_value[eeprom_value];
+	UINT8 eeprom_value = EEPROM_read_data(driver->inp_eeprom);
+	UINT8 coin_type = driver->inp_eeprom_value[eeprom_value];
 
 	if (input_coin_chuter != coin_type)
 	{
@@ -117,7 +117,7 @@ static void check_eeprom_settings(int popup)
 	連射フラグを更新
 ------------------------------------------------------*/
 
-static u32 update_autofire(u32 buttons)
+static UINT32 update_autofire(UINT32 buttons)
 {
 	int i;
 
@@ -154,7 +154,7 @@ static u32 update_autofire(u32 buttons)
 
 static void update_inputport0(void)
 {
-	u16 value = 0xffff;
+	UINT16 value = 0xffff;
 
 	switch (machine_input_type)
 	{
@@ -209,7 +209,7 @@ static void update_inputport0(void)
 		break;
 
 	case INPTYPE_ddtod:
-	case INPTYPE_puzloop2:
+	case INPTYPE_pzloop2:
 		if (option_controller == INPUT_PLAYER1)
 		{
 			if (input_flag[P1_RIGHT])   value &= ~0x0001;
@@ -267,7 +267,7 @@ static void update_inputport0(void)
 
 static void update_inputport1(void)
 {
-	u16 value = 0xffff;
+	UINT16 value = 0xffff;
 
 	switch (machine_input_type)
 	{
@@ -372,7 +372,7 @@ static void update_inputport1(void)
 
 static void update_inputport2(void)
 {
-	u16 value = 0xffff;
+	UINT16 value = 0xffff;
 
 	if (input_flag[SERV_SWITCH] || service_switch)
 	{
@@ -453,7 +453,7 @@ static void update_inputport2(void)
 
 
 /*------------------------------------------------------
-	puzloop2 アナログ入力ポート
+	pzloop2 アナログ入力ポート
 ------------------------------------------------------*/
 
 static void update_inputport3(void)
@@ -493,9 +493,9 @@ static void update_inputport3(void)
 	入力ボタンを画面方向に合わせて調整
 ------------------------------------------------------*/
 
-static u32 adjust_input(u32 buttons)
+static UINT32 adjust_input(UINT32 buttons)
 {
-	u32 buttons2;
+	UINT32 buttons2;
 
 	if (!cps_flip_screen && machine_screen_type != SCREEN_VERTICAL)
 		return buttons;
@@ -569,7 +569,7 @@ static u32 adjust_input(u32 buttons)
 static int adhoc_update_inputport(SceSize args, void *argp)
 {
 	int i;
-	u32 buttons;
+	UINT32 buttons;
 
 	while (adhoc_active)
 	{
@@ -617,7 +617,7 @@ static int adhoc_update_inputport(SceSize args, void *argp)
 			update_inputport0();
 			update_inputport1();
 			update_inputport2();
-			if (machine_input_type == INPTYPE_puzloop2) update_inputport3();
+			if (machine_input_type == INPTYPE_pzloop2) update_inputport3();
 
 			send_data.buttons = adhoc_paused;
 			send_data.loop_flag = Loop;
@@ -715,7 +715,7 @@ static int adhoc_update_inputport(SceSize args, void *argp)
 static void adhoc_pause(void)
 {
 	int control, sel = 0;
-	u32 buttons, frame = frames_displayed;
+	UINT32 buttons, frame = frames_displayed;
 	char buf[64];
 	RECT rect = { 140-8, 96-8, 340+8, 176+8 };
 
@@ -863,7 +863,7 @@ void input_init(void)
 	case INPTYPE_cybots:
 	case INPTYPE_ddtod:
 	case INPTYPE_qndream:
-	case INPTYPE_puzloop2:
+	case INPTYPE_pzloop2:
 		input_max_buttons = 4;
 		break;
 
@@ -983,7 +983,7 @@ void update_inputport(void)
 #endif
 	{
 		int i;
-		u32 buttons;
+		UINT32 buttons;
 
 		service_switch = 0;
 		p12_start_pressed = 0;
@@ -1026,7 +1026,7 @@ void update_inputport(void)
 		update_inputport0();
 		update_inputport1();
 		update_inputport2();
-		if (machine_input_type == INPTYPE_puzloop2) update_inputport3();
+		if (machine_input_type == INPTYPE_pzloop2) update_inputport3();
 
 		if (input_flag[SNAPSHOT])
 		{

@@ -196,8 +196,8 @@ int game_index;
 int neogeo_driver_type;
 int neogeo_ngh;
 int neogeo_raster_enable;
-u32 neogeo_frame_counter;
-u32 neogeo_frame_counter_speed;
+UINT32 neogeo_frame_counter;
+UINT32 neogeo_frame_counter_speed;
 
 int watchdog_counter;
 
@@ -210,12 +210,12 @@ static int current_rasterline;
 static int current_rastercounter;
 static int irq1start;
 static int irq1control;
-static u32 irq1pos_value;
+static UINT32 irq1pos_value;
 static int scanline_read;
 static int vblank_int;
 static int scanline_int;
 
-static u32 frame_counter;
+static UINT32 frame_counter;
 
 static int sound_code;
 static int result_code;
@@ -223,24 +223,24 @@ static int pending_command;
 
 static int hack_irq;
 
-static u8  upload_mode;
-static u8  upload_type;
-static u32 upload_offset1;
-static u32 upload_offset2;
-static u32 upload_length;
-static u16 upload_pattern;
+static UINT8  upload_mode;
+static UINT8  upload_type;
+static UINT32 upload_offset1;
+static UINT32 upload_offset2;
+static UINT32 upload_length;
+static UINT16 upload_pattern;
 static int upload_executing;
-static u32 z80_cdda_offset;
+static UINT32 z80_cdda_offset;
 
-static u8  exmem[0x100];
-static u8  exmem_latch[0x100];
-static u8  exmem_bank[0x10];
-static u8  exmem_counter;
+static UINT8  exmem[0x100];
+static UINT8  exmem_latch[0x100];
+static UINT8  exmem_bank[0x10];
+static UINT8  exmem_counter;
 
-static u8 neogeo_game_vectors[0x100];
-static u8 *neogeo_vectors[2];
+static UINT8 neogeo_game_vectors[0x100];
+static UINT8 *neogeo_vectors[2];
 
-static u8 memory_region_hctrl[0x200];
+static UINT8 memory_region_hctrl[0x200];
 
 
 /*------------------------------------------------------
@@ -510,7 +510,7 @@ void neogeo_interrupt(void)
 
 	if (hack_irq)
 	{
-		u32 pc = m68000_get_reg(M68K_PC);
+		UINT32 pc = m68000_get_reg(M68K_PC);
 
 		if (pc >= 0xbf00 && pc <= 0xbfff)	// 0xbf92
 			vblank_int = 0;
@@ -640,7 +640,7 @@ void neogeo_raster_interrupt(int line, int busy)
 
 		if (hack_irq)
 		{
-			u32 pc = m68000_get_reg(M68K_PC);
+			UINT32 pc = m68000_get_reg(M68K_PC);
 
 			if (pc >= 0xbf00 && pc <= 0xbfff)	// 0xbf92
 				vblank_int = 0;
@@ -678,7 +678,7 @@ INLINE void neogeo_select_vectors(int vector)
 	Select palette RAM bank  (0x3a000f / 0x3a001f)
 ------------------------------------------------------*/
 
-INLINE void neogeo_setpalbank(u32 bank)
+INLINE void neogeo_setpalbank(UINT32 bank)
 {
 	if (neogeo_palette_index != bank)
 	{
@@ -706,7 +706,7 @@ INLINE WRITE16_HANDLER( neogeo_vidram16_data_w )
 	Read video control data ($3c0006)
 ---------------------------------------------------------*/
 
-INLINE u16 neogeo_control_16_r(void)
+INLINE UINT16 neogeo_control_16_r(void)
 {
 	int res;
 
@@ -736,7 +736,7 @@ INLINE u16 neogeo_control_16_r(void)
 	Write video control data ($3c0006)
 ---------------------------------------------------------*/
 
-INLINE void neogeo_control_16_w(u16 data)
+INLINE void neogeo_control_16_w(UINT16 data)
 {
 	/* Auto-Anim Speed Control */
 	neogeo_frame_counter_speed = (data >> 8) & 0xff;
@@ -749,14 +749,14 @@ INLINE void neogeo_control_16_w(u16 data)
 	Write IRQ position     (0x3c0008, 0x3c000a)
 ------------------------------------------------------*/
 
-INLINE void neogeo_irq2pos_16_w(u32 offset, u16 data)
+INLINE void neogeo_irq2pos_16_w(UINT32 offset, UINT16 data)
 {
 	if (neogeo_driver_type == NORMAL) return;
 
 	if (offset)
-		irq1pos_value = (irq1pos_value & 0xffff0000) | (u32)data;
+		irq1pos_value = (irq1pos_value & 0xffff0000) | (UINT32)data;
 	else
-		irq1pos_value = (irq1pos_value & 0x0000ffff) | ((u32)data << 16);
+		irq1pos_value = (irq1pos_value & 0x0000ffff) | ((UINT32)data << 16);
 
 	if (irq1control & IRQ1CTRL_LOAD_RELATIVE)
 		irq1start = current_rasterline + (irq1pos_value + 0x3b) / 0x180;
@@ -793,8 +793,8 @@ static WRITE16_HANDLER( hardware_upload_16_w )
 	}
 	else if (data == 0x40)	// Execute upload
 	{
-		u32 i;
-		u8 *src, *dst;
+		UINT32 i;
+		UINT8 *src, *dst;
 
 		if (upload_mode == UPLOAD_MEMORY)
 		{
@@ -830,7 +830,7 @@ static WRITE16_HANDLER( hardware_upload_16_w )
 
 		case UPLOAD_MEMORY:
 			{
-				u32 length;
+				UINT32 length;
 
 				length = upload_length << 1;
 				src = memory_region_cpu1 + upload_offset1;
@@ -889,9 +889,9 @@ static WRITE16_HANDLER( hardware_upload_16_w )
 INLINE WRITE16_HANDLER( upload_offset1_16_w )
 {
 	if (offset)
-		upload_offset1 = (upload_offset1 & 0xffff0000) | (u32)data;
+		upload_offset1 = (upload_offset1 & 0xffff0000) | (UINT32)data;
 	else
-		upload_offset1 = (upload_offset1 & 0x0000ffff) | ((u32)data << 16);
+		upload_offset1 = (upload_offset1 & 0x0000ffff) | ((UINT32)data << 16);
 }
 
 
@@ -902,9 +902,9 @@ INLINE WRITE16_HANDLER( upload_offset1_16_w )
 INLINE WRITE16_HANDLER( upload_offset2_16_w )
 {
 	if (offset)
-		upload_offset2 = (upload_offset2 & 0xffff0000) | (u32)data;
+		upload_offset2 = (upload_offset2 & 0xffff0000) | (UINT32)data;
 	else
-		upload_offset2 = (upload_offset2 & 0x0000ffff) | ((u32)data << 16);
+		upload_offset2 = (upload_offset2 & 0x0000ffff) | ((UINT32)data << 16);
 
 	upload_mode = UPLOAD_MEMORY;
 }
@@ -928,9 +928,9 @@ INLINE WRITE16_HANDLER( upload_pattern_16_w )
 INLINE WRITE16_HANDLER( upload_length_16_w )
 {
 	if (offset)
-		upload_length = (upload_length & 0xffff0000) | (u32)data;
+		upload_length = (upload_length & 0xffff0000) | (UINT32)data;
 	else
-		upload_length = (upload_length & 0x0000ffff) | ((u32)data << 16);
+		upload_length = (upload_length & 0x0000ffff) | ((UINT32)data << 16);
 }
 
 
@@ -1105,7 +1105,7 @@ READ16_HANDLER( neogeo_controller3_16_r )
 
 READ16_HANDLER( neogeo_z80_r )
 {
-	u16 res = 0x3f;
+	UINT16 res = 0x3f;
 
 	res |= result_code << 8;
 	if (pending_command) res &= 0x7fff;
@@ -1186,7 +1186,7 @@ WRITE16_HANDLER( neogeo_video_16_w )
 
 WRITE16_HANDLER( neogeo_paletteram16_w )
 {
-	u16 color;
+	UINT16 color;
 
 	offset &= 0xfff;
 	color = COMBINE_DATA(&neogeo_paletteram16[offset]);
@@ -1266,7 +1266,7 @@ WRITE16_HANDLER( neogeo_externalmem_16_w )
 	case EXMEM_OBJ:
 		offset = (offset << 1) + (exmem_bank[EXMEM_OBJ] << 20);
 		data = (data << 8) | (data >> 8);
-		COMBINE_SWABDATA((u16 *)(memory_region_gfx2 + offset));
+		COMBINE_SWABDATA((UINT16 *)(memory_region_gfx2 + offset));
 		if ((offset & 0x7f) == 0x7e)
 			neogeo_decode_spr(memory_region_gfx2, (offset & ~0x7f), 128);
 		break;
@@ -1302,7 +1302,7 @@ READ16_HANDLER( neogeo_hardcontrol_16_r )
 {
 	if ((offset >> 15) == 0xff)
 	{
-		u16 *mem = (u16 *)memory_region_hctrl;
+		UINT16 *mem = (UINT16 *)memory_region_hctrl;
 		return mem[offset & 0xff];
 	}
 	return 0xffff;
@@ -1317,7 +1317,7 @@ WRITE16_HANDLER( neogeo_hardcontrol_16_w )
 {
 	if ((offset >> 15) == 0xff)
 	{
-		u16 *mem = (u16 *)memory_region_hctrl;
+		UINT16 *mem = (UINT16 *)memory_region_hctrl;
 		offset &= 0xff;
 
 		switch (offset)
@@ -1396,7 +1396,7 @@ WRITE16_HANDLER( neogeo_hardcontrol_16_w )
 	Read Z80 port
 ------------------------------------------------------*/
 
-u8 neogeo_z80_port_r(u16 port)
+UINT8 neogeo_z80_port_r(UINT16 port)
 {
 	switch (port & 0xff)
 	{
@@ -1432,7 +1432,7 @@ u8 neogeo_z80_port_r(u16 port)
 	Write Z80 port
 ------------------------------------------------------*/
 
-void neogeo_z80_port_w(u16 port, u8 data)
+void neogeo_z80_port_w(UINT16 port, UINT8 data)
 {
 	switch (port & 0xff)
 	{
@@ -1586,7 +1586,7 @@ const GAMES games[100] =
 	{ "bstars2",  NGH_bstars2  },
 	{ "3countb",  NGH_3countb  },
 	{ "aof",      NGH_aof      },
-	{ "samsho",   NGH_samsho2  },
+	{ "samsho",   NGH_samsho   },
 	{ "tophuntr", NGH_tophuntr },
 	{ "fatfury2", NGH_fatfury2 },
 	{ "ssideki",  NGH_ssideki  },

@@ -69,7 +69,7 @@ static int neogeo_init(void)
 
 		if (NGH_NUMBER(0x0085))
 		{
-			u16 *mem16 = (u16 *)memory_region_cpu1;
+			UINT16 *mem16 = (UINT16 *)memory_region_cpu1;
 
 			mem16[0x132020 >> 1] = 0x4ef9;
 			mem16[0x132022 >> 1] = 0x00c0;

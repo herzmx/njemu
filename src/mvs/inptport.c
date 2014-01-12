@@ -14,7 +14,7 @@
 ******************************************************************************/
 
 int option_controller;
-u8 ALIGN_DATA neogeo_port_value[MVS_PORT_MAX];
+UINT8 ALIGN_DATA neogeo_port_value[MVS_PORT_MAX];
 
 int input_map[MAX_INPUTS];
 int analog_sensitivity;
@@ -29,7 +29,7 @@ int input_analog_value[2];
 	ローカル変数
 ******************************************************************************/
 
-static const u8 hotkey_mask[11] =
+static const UINT8 hotkey_mask[11] =
 {
 //	0xef,	// A
 //	0xdf,	// B
@@ -48,7 +48,7 @@ static const u8 hotkey_mask[11] =
 	0x0f	// A+B+C+D
 };
 
-static u8 ALIGN_DATA input_flag[MAX_INPUTS];
+static UINT8 ALIGN_DATA input_flag[MAX_INPUTS];
 static int ALIGN_DATA af_map1[MVS_BUTTON_MAX];
 static int ALIGN_DATA af_map2[MVS_BUTTON_MAX];
 static int ALIGN_DATA af_counter[MVS_BUTTON_MAX];
@@ -58,9 +58,9 @@ static int service_switch;
 #ifdef ADHOC
 typedef struct
 {
-	u32 buttons;
+	UINT32 buttons;
 	int loop_flag;
-	u16 port_value[5];
+	UINT16 port_value[5];
 } ADHOC_DATA;
 
 static ADHOC_DATA ALIGN_PSPDATA send_data;
@@ -68,8 +68,10 @@ static ADHOC_DATA ALIGN_PSPDATA recv_data;
 static SceUID adhoc_thread;
 static volatile int adhoc_active;
 static volatile int adhoc_update;
-static volatile u32 adhoc_paused;
+static volatile UINT32 adhoc_paused;
 #endif
+
+static UINT32 (*poll_pad)(void);
 
 
 /******************************************************************************
@@ -101,7 +103,6 @@ void check_input_mode(void)
 		neogeo_input_mode = neogeo_machine_mode - 1;
 	}
 
-#if !RELEASE
 	if (neogeo_ngh == NGH_irrmaze)
 		return;
 
@@ -117,8 +118,12 @@ void check_input_mode(void)
 	case UNI_V22:
 		neogeo_input_mode = (neogeo_sram16[0x02 >> 1] & 0x8000) != 0;
 		break;
+
+	case ASIA_AES:
+	case DEBUG_BIOS:
+		neogeo_input_mode = INPUT_AES;
+		break;
 	}
-#endif
 }
 
 
@@ -126,7 +131,7 @@ void check_input_mode(void)
 	連射フラグを更新
 ------------------------------------------------------*/
 
-static u32 update_autofire(u32 buttons)
+static UINT32 update_autofire(UINT32 buttons)
 {
 	int i;
 
@@ -161,12 +166,12 @@ static u32 update_autofire(u32 buttons)
 	ホットキーフラグを反映
 ------------------------------------------------------*/
 
-static u8 apply_hotkey(u8 value)
+static UINT8 apply_hotkey(UINT8 value)
 {
 	int i, button;
 
 	button = P1_AB;
-	for (i= 0; i < 11; i++)
+	for (i = 0; i < 11; i++)
 	{
 		if (input_flag[button]) value &= hotkey_mask[i];
 		button++;
@@ -182,7 +187,7 @@ static u8 apply_hotkey(u8 value)
 
 static void update_inputport0(void)
 {
-	u8 value = 0xff;
+	UINT8 value = 0xff;
 
 	switch (neogeo_ngh)
 	{
@@ -231,7 +236,7 @@ static void update_inputport0(void)
 
 static void update_inputport1(void)
 {
-	u8 value = 0xff;
+	UINT8 value = 0xff;
 
 	switch (neogeo_ngh)
 	{
@@ -291,7 +296,7 @@ static void update_inputport1(void)
 
 static void update_inputport2(void)
 {
-	u8 value = 0xff;
+	UINT8 value = 0xff;
 
 	switch (neogeo_ngh)
 	{
@@ -337,7 +342,7 @@ static void update_inputport2(void)
 
 static void update_inputport4(void)
 {
-	u8 value;
+	UINT8 value;
 
 	switch (neogeo_ngh)
 	{
@@ -398,7 +403,7 @@ static void update_inputport4(void)
 
 static void update_inputport5(void)
 {
-	u8 value = 0xc0;
+	UINT8 value = 0xc0;
 
 	if (neogeo_input_mode)
 	{
@@ -418,7 +423,7 @@ static void update_inputport5(void)
 	irrmaze アナログ入力ポート
 ------------------------------------------------------*/
 
-static void irrmaze_update_analog_port(u16 value)
+static void irrmaze_update_analog_port(UINT16 value)
 {
 	int axis, delta;
 	int current, pad_value[2];
@@ -502,7 +507,7 @@ static void irrmaze_update_analog_port(u16 value)
 	popbounc アナログ入力ポート
 ------------------------------------------------------*/
 
-static void popbounc_update_analog_port(u16 value)
+static void popbounc_update_analog_port(UINT16 value)
 {
 	int delta, current;
 
@@ -579,7 +584,7 @@ static void popbounc_update_analog_port(u16 value)
 static int adhoc_update_inputport(SceSize args, void *argp)
 {
 	int i;
-	u32 buttons;
+	UINT32 buttons;
 
 	while (adhoc_active)
 	{
@@ -594,7 +599,7 @@ static int adhoc_update_inputport(SceSize args, void *argp)
 		{
 			service_switch = 0;
 
-			buttons = poll_gamepad();
+			buttons = (*poll_pad)();
 
 			if (buttons & PSP_CTRL_HOME)
 			{
@@ -717,7 +722,7 @@ static int adhoc_update_inputport(SceSize args, void *argp)
 static void adhoc_pause(void)
 {
 	int control, sel = 0;
-	u32 buttons, frame = frames_displayed;
+	UINT32 buttons, frame = frames_displayed;
 	char buf[64];
 	RECT rect = { 140-8, 96-8, 340+8, 176+8 };
 
@@ -839,6 +844,24 @@ void input_init(void)
 	input_analog_value[1] = 0x7f;
 
 	neogeo_dipswitch = 0xff;
+
+	if (neogeo_ngh == NGH_irrmaze || neogeo_ngh == NGH_popbounc)
+	{
+#ifdef ADHOC
+		if (adhoc_enable)
+			poll_pad = poll_gamepad;
+		else
+#endif
+			poll_pad = poll_gamepad_analog;
+	}
+	else if (!strcmp(game_name, "fatfursp"))
+	{
+		poll_pad = poll_gamepad_fatfursp;
+	}
+	else
+	{
+		poll_pad = poll_gamepad;
+	}
 }
 
 
@@ -947,11 +970,11 @@ void update_inputport(void)
 #endif
 	{
 		int i;
-		u32 buttons;
+		UINT32 buttons;
 
 		service_switch = 0;
 
-		buttons = poll_gamepad();
+		buttons = (*poll_pad)();
 
 #ifdef KERNEL_MODE
 		if (buttons & PSP_CTRL_HOME)
@@ -966,6 +989,8 @@ void update_inputport(void)
 				neogeo_port_value[3] = neogeo_dipswitch & 0xff;
 			else
 				neogeo_port_value[3] = 0xff;
+
+			buttons = (*poll_pad)();
 		}
 		else if ((buttons & PSP_CTRL_LTRIGGER) && (buttons & PSP_CTRL_RTRIGGER))
 		{
@@ -978,17 +1003,14 @@ void update_inputport(void)
 
 		if (neogeo_ngh == NGH_irrmaze)
 		{
-			buttons = poll_gamepad_analog();
 			irrmaze_update_analog_port(buttons >> 16);
 			buttons &= 0xffff;
 		}
 		else if (neogeo_ngh == NGH_popbounc)
 		{
-			buttons = poll_gamepad_analog();
 			popbounc_update_analog_port(buttons >> 16);
 			buttons &= 0xffff;
 		}
-		else buttons = poll_gamepad();
 
 		buttons = update_autofire(buttons);
 

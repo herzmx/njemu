@@ -66,7 +66,7 @@ static int frame_base;
 static int timer_ticks;
 static int timer_left;
 static int active_cpu;
-static u32 current_frame;
+static UINT32 current_frame;
 static int scanline;
 
 
@@ -295,7 +295,7 @@ int timer_getscanline(void)
 	Œ»İ‚ÌƒtƒŒ[ƒ€‚ğæ“¾
 ------------------------------------------------------*/
 
-u32 timer_getcurrentframe(void)
+UINT32 timer_getcurrentframe(void)
 {
 	return current_frame;
 }

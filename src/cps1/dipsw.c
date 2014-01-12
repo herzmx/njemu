@@ -3065,6 +3065,9 @@ dipswitch_t *load_dipswitch(int *sx)
 	case INPTYPE_kod:      dip_load_kod(0);     dipswitch = dipswitch_kod; break;
 	case INPTYPE_kodj:     dip_load_kod(1);     dipswitch = dipswitch_kodj; break;
 	case INPTYPE_captcomm: dip_load_captcomm(); dipswitch = dipswitch_captcomm; break;
+#if !RELEASE
+	case INPTYPE_knightsh:
+#endif
 	case INPTYPE_knights:  dip_load_knights();  dipswitch = dipswitch_knights; break;
 	case INPTYPE_varth:    dip_load_varth();    dipswitch = dipswitch_varth; break;
 	case INPTYPE_cworld2j: dip_load_cworld2j(); dipswitch = dipswitch_cworld2j; break;
@@ -3106,6 +3109,9 @@ void save_dipswitch(void)
 	case INPTYPE_kod:      dip_save_kod(0); break;
 	case INPTYPE_kodj:     dip_save_kod(1); break;
 	case INPTYPE_captcomm: dip_save_captcomm(); break;
+#if !RELEASE
+	case INPTYPE_knightsh:
+#endif
 	case INPTYPE_knights:  dip_save_knights(); break;
 	case INPTYPE_varth:    dip_save_varth(); break;
 	case INPTYPE_cworld2j: dip_save_cworld2j(); break;

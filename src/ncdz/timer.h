@@ -29,7 +29,7 @@
 #define SUSPEND_REASON_SPIN		0x0004
 #define SUSPEND_REASON_TRIGGER	0x0008
 #define SUSPEND_REASON_DISABLE	0x0010
-#define SUSPEND_ANY_REASON		((u32)-1)
+#define SUSPEND_ANY_REASON		((UINT32)-1)
 
 #define TIMER_CALLBACK(name)	void name(int param)
 
@@ -46,7 +46,7 @@ void timer_set(int which, int duration, int param, void (*callback)(int param));
 float timer_get_time(void);
 float timer_timeelapsed(void);
 int timer_getscanline(void);
-u32 timer_getcurrentframe(void);
+UINT32 timer_getcurrentframe(void);
 void timer_update_subcpu(void);
 
 #ifdef SAVE_STATE

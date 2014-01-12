@@ -27,13 +27,13 @@
 
 #define OP(name)				op_##name:
 
-#define MAKE_INT_8(A)			(s32)(s8)(A)
-#define MAKE_INT_16(A)			(s32)(s16)(A)
-#define MAKE_INT_32(A)			(s32)(A)
+#define MAKE_INT_8(A)			(INT32)(INT8)(A)
+#define MAKE_INT_16(A)			(INT32)(INT16)(A)
+#define MAKE_INT_32(A)			(INT32)(A)
 
-#define MAKE_UINT_8(A)			(u8)(A)
-#define MAKE_UINT_16(A)			(u16)(A)
-#define MAKE_UINT_32(A)			(u32)(A)
+#define MAKE_UINT_8(A)			(UINT8)(A)
+#define MAKE_UINT_16(A)			(UINT16)(A)
+#define MAKE_UINT_32(A)			(UINT32)(A)
 
 #define LOW_NIBBLE(A)			((A) & 0x0f)
 #define HIGH_NIBBLE(A)			((A) & 0xf0)
@@ -49,20 +49,20 @@
 #define READSX_REG_16(A)		MAKE_INT_16(A)
 #define READSX_REG_32(A)		MAKE_INT_32(A)
 
-#define WRITE_REG_8(A, D)		*(u8 *)(&A) = D
-#define WRITE_REG_16(A, D)		*(u16 *)(&A) = D
+#define WRITE_REG_8(A, D)		*(UINT8 *)(&A) = D
+#define WRITE_REG_16(A, D)		*(UINT16 *)(&A) = D
 #define WRITE_REG_32(A, D)		A = D
 
-#define READ_IMM_8()			(*(u8 *)PC)
-#define READ_IMM_16()			(*(u16 *)PC)
+#define READ_IMM_8()			(*(UINT8 *)PC)
+#define READ_IMM_16()			(*(UINT16 *)PC)
 #ifdef C68K_BIG_ENDIAN
-#define READ_IMM_32()			(*(u32 *)PC)
+#define READ_IMM_32()			(*(UINT32 *)PC)
 #else
-#define READ_IMM_32()			(((*(u16 *)PC) << 16) | (*(u16 *)(PC + 2)))
+#define READ_IMM_32()			(((*(UINT16 *)PC) << 16) | (*(UINT16 *)(PC + 2)))
 #endif
 
-#define READSX_IMM_8()			(s32)(*(s8 *)PC)
-#define READSX_IMM_16()			(s32)(*(s16 *)PC)
+#define READSX_IMM_8()			(INT32)(*(INT8 *)PC)
+#define READSX_IMM_16()			(INT32)(*(INT16 *)PC)
 #define READSX_IMM_32()			MAKE_INT_32(READ_IMM_32())
 
 #define READ_MEM_8(A)			CPU->Read_Byte(A)
@@ -114,7 +114,7 @@
 
 #define DECODE_EXT_WORD														\
 {																			\
-	u32 ext = READ_IMM_16();												\
+	UINT32 ext = READ_IMM_16();												\
 	PC += 2;																\
 																			\
 	adr += MAKE_INT_8(ext);													\
@@ -1080,7 +1080,7 @@
 {																			\
 	EA_READ_I(16, NA, res)													\
 	EA_##mode(NA, Y)														\
-	src = (u32)(&D0);														\
+	src = (UINT32)(&D0);													\
 	dst = adr;																\
 	do																		\
 	{																		\
@@ -1098,7 +1098,7 @@
 {																			\
 	EA_READ_I(16, NA, res)													\
 	adr = A##y;																\
-	src = (u32)(&A7);														\
+	src = (UINT32)(&A7);													\
 	dst = adr;																\
 	do																		\
 	{																		\
@@ -1117,13 +1117,13 @@
 {																			\
 	EA_READ_I(16, NA, res)													\
 	EA_##mode(NA, Y)														\
-	src = (u32)(&D0);														\
+	src = (UINT32)(&D0);													\
 	dst = adr;																\
 	do																		\
 	{																		\
 		if (res & 1)														\
 		{																	\
-			*(s32 *)src = READSX_##mode(size, NA);							\
+			*(INT32 *)src = READSX_##mode(size, NA);						\
 			adr += (size / 8);												\
 		}																	\
 		src += 4;															\
@@ -1135,13 +1135,13 @@
 {																			\
 	EA_READ_I(16, NA, res)													\
 	adr = A##y;																\
-	src = (u32)(&D0);														\
+	src = (UINT32)(&D0);													\
 	dst = adr;																\
 	do																		\
 	{																		\
 		if (res & 1)														\
 		{																	\
-			*(s32 *)src = READSX_MEM_##size(adr);							\
+			*(INT32 *)src = READSX_MEM_##size(adr);							\
 			adr += (size / 8);												\
 		}																	\
 		src += 4;															\
@@ -1252,7 +1252,7 @@
 {																			\
 	EA_READ_##mode(16, Y, src)												\
 	EA_READ_D(16, X, res)													\
-	if (((s32)res < 0) || (res > src))										\
+	if (((INT32)res < 0) || (res > src))									\
 	{																		\
 		FLAG_N = NFLAG_16(res);												\
 		SWAP_SP()															\
@@ -1346,7 +1346,7 @@
 	EA_READ_D(16, Y, res)													\
 	res--;																	\
 	EA_WRITE_RESULT(16, D, Y)												\
-	if ((s32)res != -1)														\
+	if ((INT32)res != -1)													\
 	{																		\
 		PC += READSX_IMM_16();												\
 		ADJUST_PC()															\
@@ -1572,7 +1572,7 @@
 	if (src)																\
 	{																		\
 		EA_READ_D(32, X, dst)												\
-		if (((u32)dst == 0x80000000) && ((s32)src == -1))					\
+		if (((UINT32)dst == 0x80000000) && ((INT32)src == -1))				\
 		{																	\
 			FLAG_C = CFLAG_CLEAR;											\
 			FLAG_V = VFLAG_CLEAR;											\
@@ -1583,7 +1583,7 @@
 		}																	\
 		else																\
 		{																	\
-			s32 quotient = (s32)dst / (s32)src;								\
+			INT32 quotient = (INT32)dst / (INT32)src;						\
 			if (quotient > 0x7fff || quotient < -0x8000)					\
 			{																\
 				FLAG_V = VFLAG_SET;											\
@@ -1591,7 +1591,7 @@
 			}																\
 			else															\
 			{																\
-				s32 remainder = (s32)dst % (s32)src;						\
+				INT32 remainder = (INT32)dst % (INT32)src;					\
 				quotient &= 0x0000ffff;										\
 				FLAG_C = CFLAG_CLEAR;										\
 				FLAG_V = VFLAG_CLEAR;										\
@@ -1879,7 +1879,7 @@
 {																			\
 	EA_READSX_##mode(16, Y, src)											\
 	EA_READSX_D(16, X, res)													\
-	res = (s32)res * (s32)src;												\
+	res = (INT32)res * (INT32)src;											\
 	FLAGS(32)																\
 	EA_WRITE_RESULT(32, D, X)												\
 	RET(50 + EA_CLOCKS_##mode##_16)											\

@@ -8,6 +8,16 @@
 
 #include "romcnv.h"
 
+#define MAX_GAMES		512
+
+#define TILE_BLANK		0x00
+#define TILE_NOT_BLANK	0x02
+#define TILE_OPAQUE		0x01
+
+#define MAX_GFX2ROM		4
+#define MAX_GFX3ROM		16
+#define MAX_SND1ROM		8
+
 enum
 {
 	REGION_CPU1 = 0,
@@ -23,49 +33,31 @@ enum
 
 enum
 {
-	ROM_LOAD = 0,
-	ROM_CONTINUE,
-	ROM_WORDSWAP,
-	MAP_MAX
+	TILE_FIX = 0,
+	TILE_SPR,
+	TILE_TYPE_MAX
 };
-
-#define MAX_CPU1ROM		8
-#define MAX_CPU2ROM		8
-#define MAX_GFX2ROM		4
-#define MAX_GFX3ROM		16
-#define MAX_SND1ROM		8
-#define MAX_SND2ROM		8
-#define MAX_USR1ROM		1
 
 
 /******************************************************************************
 	グローバル変数
 ******************************************************************************/
 
-u8 *memory_region_cpu1;
 u8 *memory_region_gfx2;
 u8 *memory_region_gfx3;
 u8 *memory_region_sound1;
-u8 *memory_region_user1;
 
-u32 memory_length_cpu1;
-u32 memory_length_cpu2;
-u32 memory_length_gfx1;
 u32 memory_length_gfx2;
 u32 memory_length_gfx3;
 u32 memory_length_sound1;
-u32 memory_length_sound2;
-u32 memory_length_user1;
 
 
 /******************************************************************************
 	ローカル変数
 ******************************************************************************/
 
-static char delimiter = '/';
-
-static u8 *video_fix_usage;
-static u8 *video_spr_usage;
+static u32 gfx_total_elements[TILE_TYPE_MAX];
+static u8  *gfx_pen_usage[TILE_TYPE_MAX];
 
 static int disable_sound;
 static int machine_driver_type;
@@ -73,312 +65,99 @@ static int machine_init_type;
 static int machine_input_type;
 static int machine_screen_type;
 
-static char game_dir[MAX_PATH];
-static char zip_dir[MAX_PATH];
-static char launchDir[MAX_PATH];
-static char game_name[16];
-static char parent_name[16];
-
-struct rom_t
-{
-	u32 type;
-	u32 offset;
-	u32 length;
-	u32 crc;
-	int group;
-	int skip;
-};
-
-static int rom_fd;
-
-static struct rom_t cpu1rom[MAX_CPU1ROM];
-static struct rom_t cpu2rom[MAX_CPU2ROM];
 static struct rom_t gfx2rom[MAX_GFX2ROM];
 static struct rom_t gfx3rom[MAX_GFX3ROM];
 static struct rom_t snd1rom[MAX_SND1ROM];
-static struct rom_t snd2rom[MAX_SND2ROM];
-static struct rom_t usr1rom[MAX_USR1ROM];
 
-static int num_cpu1rom;
-static int num_cpu2rom;
 static int num_gfx2rom;
 static int num_gfx3rom;
 static int num_snd1rom;
-static int num_snd2rom;
-static int num_usr1rom;
 
-static int encrypt_cpu1;
+static int encrypt_gfx2;
+static int encrypt_gfx3;
 static int encrypt_snd1;
-static int encrypt_gfx;
-static int encrypt_usr1;
 
+static int convert_crom;
+static int convert_srom;
+static int convert_vrom;
 
-/******************************************************************************
-	ローカル関数
-******************************************************************************/
+static char game_names[MAX_GAMES][16];
 
-#ifdef WIN32
-
-static int is_win9x = 0;
-
-/*--------------------------------------------------------
-	Open file dialog
---------------------------------------------------------*/
-
-int file_dialog(HWND hwnd, LPCSTR filter, char *fname, u32 flags)
+struct cacheinfo_t
 {
-	OPENFILENAME OFN;
+	const char *name;
+	const char *parent;
+	const int crom;
+	const int srom;
+	const int vrom;
+};
 
-	memset(&OFN, 0, sizeof(OPENFILENAME));
-	OFN.lStructSize = sizeof(OPENFILENAME);
-	OFN.hwndOwner   = hwnd;
-	OFN.lpstrFilter = filter;
-	OFN.lpstrFile   = fname;
-	OFN.nMaxFile    = MAX_PATH*2;
-	OFN.Flags       = flags;
-	OFN.lpstrTitle  = "Select zipped ROM file.";
-
-	return GetOpenFileName(&OFN);
-}
-
-
-/*--------------------------------------------------------
-	デリミタを変換
---------------------------------------------------------*/
-
-#define issjis1(c)	(((c) >= 0x81 && (c) <= 0x9f) | ((c) >= 0xe0 && (c) <= 0xfc))
-
-static void convert_delimiter(char *path)
+struct cacheinfo_t MVS_cacheinfo[] =
 {
-	if (!is_win9x)
-	{
-		char *p = path;
-		int i, len = strlen(path);
-
-		for (i = 0; i < len; i++)
-		{
-			if (*p == '\\')
-			{
-				if (i == 0 || !issjis1(*(u8 *)(p - 1)))
-					*p = '/';
-			}
-			p++;
-		}
-	}
-}
-
-#endif /* WIN32 */
-
-
-/*--------------------------------------------------------
-	エラーメッセージ表示
---------------------------------------------------------*/
-
-static void error_memory(const char *mem_name)
-{
-	zip_close();
-	printf("ERROR: Could not allocate %s memory.\n", mem_name);
-	printf("Press any button.\n");
-	getch();
-}
-
-
-static void error_rom(const char *rom_name)
-{
-	zip_close();
-	printf("ERROR: File not found or CRC32 not correct. \"%s\"\n", rom_name);
-	printf("Press any button.\n");
-	getch();
-}
-
-
-/*--------------------------------------------------------
-	ROMファイルを閉じる
---------------------------------------------------------*/
-
-static void file_close(void)
-{
-	if (rom_fd != -1)
-	{
-		zclose(rom_fd);
-		zip_close();
-		rom_fd = -1;
-	}
-}
-
-
-/*--------------------------------------------------------
-	ROMファイルを開く
---------------------------------------------------------*/
-
-static int file_open(const char *fname1, const char *fname2, const u32 crc, char *fname)
-{
-	int found = 0;
-	struct zip_find_t file;
-	char path[MAX_PATH];
-
-	file_close();
-
-	sprintf(path, "%s%c%s.zip", zip_dir, delimiter, fname1);
-
-	if (zip_open(path, "rb") != -1)
-	{
-		if (zip_findfirst(&file))
-		{
-			if (file.crc32 == crc)
-			{
-				found = 1;
-			}
-			else
-			{
-				while (zip_findnext(&file))
-				{
-					if (file.crc32 == crc)
-					{
-						found = 1;
-						break;
-					}
-				}
-			}
-		}
-		if (!found) zip_close();
-	}
-
-	if (!found && fname2 != NULL)
-	{
-		sprintf(path, "%s%c%s.zip", zip_dir, delimiter, fname2);
-
-		if (zip_open(path, "rb") != -1)
-		{
-			if (zip_findfirst(&file))
-			{
-				if (file.crc32 == crc)
-				{
-					found = 2;
-				}
-				else
-				{
-					while (zip_findnext(&file))
-					{
-						if (file.crc32 == crc)
-						{
-							found = 2;
-							break;
-						}
-					}
-				}
-			}
-			if (!found) zip_close();
-		}
-	}
-
-	if (found)
-	{
-		if (fname) strcpy(fname, file.name);
-		rom_fd = zopen(file.name);
-		return rom_fd;
-	}
-
-	return -1;
-}
-
-
-/*--------------------------------------------------------
-	ROMファイルを指定バイト読み込む
---------------------------------------------------------*/
-
-static int file_read(void *buf, size_t length)
-{
-	if (rom_fd != -1)
-		return zread(rom_fd, buf, length);
-	return -1;
-}
-
-
-/*--------------------------------------------------------
-	ROMファイルを1バイト読み込む
---------------------------------------------------------*/
-
-static int file_getc(void)
-{
-	if (rom_fd != -1)
-		return zgetc(rom_fd);
-	return -1;
-}
-
-
-/*--------------------------------------------------------
-	ROMを指定メモリエリアに読み込む
---------------------------------------------------------*/
-
-static int rom_load(struct rom_t *rom, u8 *mem, int idx, int max)
-{
-	int offset, length;
-
-_continue:
-	offset = rom[idx].offset;
-
-	if (rom[idx].skip == 0)
-	{
-		file_read(&mem[offset], rom[idx].length);
-
-		if (rom[idx].type == ROM_WORDSWAP)
-			swab(&mem[offset], &mem[offset], rom[idx].length);
-	}
-	else
-	{
-		int c;
-		int skip = rom[idx].skip + rom[idx].group;
-
-		length = 0;
-
-		if (rom[idx].group == 1)
-		{
-			if (rom[idx].type == ROM_WORDSWAP)
-				offset ^= 1;
-
-			while (length < rom[idx].length)
-			{
-				if ((c = file_getc()) == EOF) break;
-				mem[offset] = c;
-				offset += skip;
-				length++;
-			}
-		}
-		else
-		{
-			while (length < rom[idx].length)
-			{
-				if ((c = file_getc()) == EOF) break;
-				mem[offset + 0] = c;
-				if ((c = file_getc()) == EOF) break;
-				mem[offset + 1] = c;
-				offset += skip;
-				length += 2;
-			}
-		}
-	}
-
-	if (++idx != max)
-	{
-		if (rom[idx].type == ROM_CONTINUE)
-		{
-			goto _continue;
-		}
-	}
-
-	return idx;
-}
-
-
-/*--------------------------------------------------------
-	文字列の比較
---------------------------------------------------------*/
-
-static int str_cmp(const char *s1, const char *s2)
-{
-	return strnicmp(s1, s2, strlen(s2));
-}
+	{ "aof2a",    "aof2",     0, 0, 0 },
+	{ "fatfursa", "fatfursp", 0, 0, 0 },
+	{ "kof95a",   "kof95",    0, 0, 0 },
+	{ "samsho3a", "samsho3",  0, 0, 0 },
+	{ "fswords",  "samsho3",  0, 0, 0 },
+	{ "aof3k",    "aof3",     0, 0, 0 },
+	{ "kof96h",   "kof96",    0, 0, 0 },
+	{ "kof96ep",  "kof96",    0, 0, 0 },
+	{ "kizuna",   "savagere", 1, 1, 1 },
+	{ "kof97a",   "kof97",    0, 0, 0 },
+	{ "kof97pls", "kof97",    0, 0, 0 },
+	{ "kof97pla", "kof97",    0, 1, 0 },
+	{ "kog",      "kof97",    1, 1, 0 },
+	{ "lastbldh", "lastblad", 0, 0, 0 },
+	{ "lastsold", "lastblad", 0, 0, 0 },
+	{ "shocktra", "shocktro", 0, 0, 0 },
+	{ "rbff2h",   "rbff2",    0, 0, 0 },
+	{ "rbff2k",   "rbff2",    0, 0, 0 },
+	{ "kof98k",   "kof98",    0, 0, 0 },
+	{ "kof98n",   "kof98",    0, 0, 0 },
+	{ "breakrev", "breakers", 1, 1, 1 },
+	{ "lans2004", "shocktr2", 1, 1, 1 },
+	{ "kof99a",   "kof99",    0, 0, 0 },
+	{ "kof99e",   "kof99",    0, 0, 0 },
+	{ "kof99n",   "kof99",    0, 0, 0 },
+	{ "kof99p",   "kof99",    1, 1, 0 },
+	{ "garouo",   "garou",    0, 0, 0 },
+	{ "garoubl",  "garoup",   0, 1, 1 },
+	{ "mslug3n",  "mslug3",   0, 0, 0 },
+	{ "mslug3b6", "mslug3",   0, 1, 0 },
+	{ "kof2000n", "kof2000",  0, 0, 0 },
+	{ "kof2001h", "kof2001",  0, 0, 0 },
+	{ "kf2k1pls", "kof2001",  0, 0, 0 },
+	{ "kf2k1pa",  "kof2001",  0, 0, 0 },
+	{ "cthd2003", "kof2001",  1, 1, 0 },
+	{ "cthd2k3a", "kof2001",  1, 1, 1 },
+	{ "ct2k3sp",  "kof2001",  1, 1, 0 },
+	{ "ms4plus",  "mslug4",   0, 0, 0 },
+	{ "kof2002b", "kof2002",  1, 0, 0 },
+	{ "kf2k2pls", "kof2002",  0, 0, 0 },
+	{ "kf2k2pla", "kof2002",  0, 0, 0 },
+	{ "kf2k2plb", "kof2002",  0, 0, 0 },
+	{ "kf2k2plc", "kof2002",  0, 1, 0 },
+	{ "kf2k2mp",  "kof2002",  0, 1, 0 },
+	{ "kf2k2mp2", "kof2002",  0, 1, 0 },
+	{ "matrimbl", "matrim",   0, 0, 1 },
+	{ "mslug5b",  "mslug5",   0, 0, 0 },
+	{ "ms5plus",  "mslug5",   0, 1, 0 },
+	{ "svcpcba",  "svcpcb",   0, 0, 0 },
+	{ "samsho5h", "samsho5",  0, 0, 0 },
+	{ "samsho5b", "samsho5",  1, 1, 1 },
+	{ "samsh5sh", "samsh5sp", 0, 0, 0 },
+	{ "samsh5sn", "samsh5sp", 0, 0, 0 },
+	{ "kf2k4pls", "kof2k4se", 0, 1, 0 },
+	{ "kf10thep", "kof10th",  1, 1, 0 },
+	{ "kf2k5uni", "kof10th",  0, 0, 0 },
+	{ "svcplus",  "svcboot",  0, 1, 0 },
+	{ "svcplusa", "svcboot",  0, 0, 0 },
+	{ "svcsplus", "svcboot",  0, 1, 0 },
+	{ "kf2k3bla", "kf2k3bl",  0, 0, 0 },
+	{ "kf2k3pl",  "kf2k3bl",  0, 1, 0 },
+	{ "kf2k3upl", "kf2k3bl",  0, 1, 0 },
+	{ NULL }
+};
 
 
 /******************************************************************************
@@ -387,31 +166,28 @@ static int str_cmp(const char *s1, const char *s2)
 
 static void neogeo_decode_spr(u8 *mem, u32 length, u8 *usage)
 {
-	int tileno, numtiles = length / 128;
+	u32 i;
 
-	for (tileno = 0;tileno < numtiles;tileno++)
+	for (i = 0; i < gfx_total_elements[TILE_SPR]; i++)
 	{
-		unsigned char swap[128];
-		u8 *gfxdata;
-		int x,y;
-		unsigned int pen;
-		int opaque = 0;
+		u8 swap[128], *gfxdata;
+		u32 x, y, pen, opaque = 0;
 
-		gfxdata = &mem[128 * tileno];
+		gfxdata = &mem[128 * i];
 
-		memcpy(swap,gfxdata,128);
+		memcpy(swap, gfxdata, 128);
 
-		for (y = 0;y < 16;y++)
+		for (y = 0; y < 16; y++)
 		{
 			u32 dw, data;
 
 			dw = 0;
-			for (x = 0;x < 8;x++)
+			for (x = 0; x < 8; x++)
 			{
 				pen  = ((swap[64 + 4*y + 3] >> x) & 1) << 3;
 				pen |= ((swap[64 + 4*y + 1] >> x) & 1) << 2;
 				pen |= ((swap[64 + 4*y + 2] >> x) & 1) << 1;
-				pen |=	(swap[64 + 4*y	  ] >> x) & 1;
+				pen |= ((swap[64 + 4*y + 0] >> x) & 1) << 0;
 				opaque += (pen & 0x0f) != 0;
 				dw |= pen << 4*x;
 			}
@@ -432,7 +208,7 @@ static void neogeo_decode_spr(u8 *mem, u32 length, u8 *usage)
 				pen  = ((swap[4*y + 3] >> x) & 1) << 3;
 				pen |= ((swap[4*y + 1] >> x) & 1) << 2;
 				pen |= ((swap[4*y + 2] >> x) & 1) << 1;
-				pen |=	(swap[4*y	 ] >> x) & 1;
+				pen |= ((swap[4*y + 0] >> x) & 1) << 0;
 				opaque += (pen & 0x0f) != 0;
 				dw |= pen << 4*x;
 			}
@@ -449,125 +225,77 @@ static void neogeo_decode_spr(u8 *mem, u32 length, u8 *usage)
 		}
 
 		if (opaque)
-			*usage = (opaque == 256) ? 1 : 2;
+			*usage = (opaque == 256) ? TILE_OPAQUE : TILE_NOT_BLANK;
 		else
-			*usage = 0;
+			*usage = TILE_BLANK;
 		usage++;
 	}
 }
 
 
-#define decode_fix(n)				\
-{									\
-	tile = buf[n];					\
-	*p++ = tile;					\
-	opaque += (tile & 0x0f) != 0;	\
-	opaque += (tile >> 4) != 0;		\
-}
-
-static void neogeo_decode_fix(u8 *mem, u32 length, u8 *usage)
+static int load_rom_gfx2(void)
 {
-	int i, j;
-	u8 tile, opaque;
-	u8 *p, buf[32];
-	u32 *gfx = (u32 *)mem;
-
-	for (i = 0; i < length; i += 32)
+	if (encrypt_gfx2)
 	{
-		opaque  = 0;
+		int i;
+		char fname[32], *parent;
 
-		memcpy(buf, &mem[i], 32);
-		p = &mem[i];
+		gfx_total_elements[TILE_FIX] = memory_length_gfx2 / 32;
 
-		for (j = 0; j < 8; j++)
+		if ((memory_region_gfx2 = calloc(1, memory_length_gfx2)) == NULL)
 		{
-			decode_fix(j + 16);
-			decode_fix(j + 24);
-			decode_fix(j +  0);
-			decode_fix(j +  8);
+			error_memory("REGION_GFX2");
+			return 0;
 		}
-
-		if (opaque)
-			*usage = (opaque == 64) ? 1 : 2;
-		else
-			*usage = 0;
-		*usage++;
-	}
-
-	for (i = 0; i < length/4; i++)
-	{
-		u32 dw = gfx[i];
-		u32 data = ((dw & 0x0000000f) >>  0) | ((dw & 0x000000f0) <<  4)
-				 | ((dw & 0x00000f00) <<  8) | ((dw & 0x0000f000) << 12)
-				 | ((dw & 0x000f0000) >> 12) | ((dw & 0x00f00000) >>  8)
-				 | ((dw & 0x0f000000) >>  4) | ((dw & 0xf0000000) >>  0);
-		gfx[i] = data;
-	}
-}
-
-
-static int load_rom_cpu1(void)
-{
-	int i;
-	char fname[32], *parent;
-
-	if ((memory_region_cpu1 = calloc(1, memory_length_cpu1)) == NULL)
-	{
-		printf("Could not allocate memory. (REGION_CPU1)\n");
-		return 0;
-	}
-
-	parent = strlen(parent_name) ? parent_name : NULL;
-
-	for (i = 0; i < num_cpu1rom; )
-	{
-		if (file_open(game_name, parent, cpu1rom[i].crc, fname) == -1)
+		if ((gfx_pen_usage[TILE_FIX] = calloc(1, gfx_total_elements[TILE_FIX])) == NULL)
 		{
-			printf("Could not open file. (CPU1)\n");
+			error_memory("PEN_USAGE_GFX2");
 			return 0;
 		}
 
-		printf("Loading \"%s\"\n", fname);
+		parent = strlen(parent_name) ? parent_name : NULL;
 
-		i = rom_load(cpu1rom, memory_region_cpu1, i, num_cpu1rom);
+		for (i = 0; i < num_gfx2rom; )
+		{
+			int res;
 
-		file_close();
+			strcpy(fname, gfx2rom[i].name);
+			if ((res = file_open(game_name, parent, gfx2rom[i].crc, fname)) < 0)
+			{
+				if (res == -1)
+					error_file(fname);
+				else
+					error_crc(fname);
+				return 0;
+			}
+
+			printf("Loading \"%s\"\n", fname);
+
+			i = rom_load(gfx2rom, memory_region_gfx2, i, num_gfx2rom);
+
+			file_close();
+		}
 	}
 
 	return 1;
 }
 
 
-static int load_rom_gfx2(void)
-{
-	if ((memory_region_gfx2 = calloc(1, memory_length_gfx2)) == NULL)
-	{
-		printf("Could not allocate memory. (REGION_GFX2)\n");
-		return 0;
-	}
-	if ((video_fix_usage = calloc(1, memory_length_gfx2 / 32)) == NULL)
-	{
-		printf("Could not allocate memory. (FIX_PEN_USAGE)");
-		return 0;
-	}
-
-	return 1;
-}
-
-
-static int load_rom_gfx3(int decode)
+static int load_rom_gfx3(void)
 {
 	int i;
 	char fname[32], *parent;
 
+	gfx_total_elements[TILE_SPR] = memory_length_gfx3 / 128;
+
 	if ((memory_region_gfx3 = calloc(1, memory_length_gfx3)) == NULL)
 	{
-		printf("Could not allocate memory. (REGION_GFX3)\n");
+		error_memory("REGION_GFX3");
 		return 0;
 	}
-	if ((video_spr_usage = calloc(1, memory_length_gfx3 / 128)) == NULL)
+	if ((gfx_pen_usage[TILE_SPR] = calloc(1, gfx_total_elements[TILE_SPR])) == NULL)
 	{
-		printf("Could not allocate memory. (SPR_PEN_USAGE)");
+		error_memory("PEN_USAGE_GFX3");
 		return 0;
 	}
 
@@ -575,9 +303,15 @@ static int load_rom_gfx3(int decode)
 
 	for (i = 0; i < num_gfx3rom; )
 	{
-		if (file_open(game_name, parent, gfx3rom[i].crc, fname) == -1)
+		int res;
+
+		strcpy(fname, gfx3rom[i].name);
+		if ((res = file_open(game_name, parent, gfx3rom[i].crc, fname)) < 0)
 		{
-			printf("Could not open file. (GFX3)\n");
+			if (res == -1)
+				error_file(fname);
+			else
+				error_crc(fname);
 			return 0;
 		}
 
@@ -587,9 +321,6 @@ static int load_rom_gfx3(int decode)
 
 		file_close();
 	}
-
-	if (decode)
-		neogeo_decode_spr(memory_region_gfx3, memory_length_gfx3, video_spr_usage);
 
 	return 1;
 }
@@ -602,7 +333,7 @@ static int load_rom_sound1(void)
 
 	if ((memory_region_sound1 = calloc(1, memory_length_sound1)) == NULL)
 	{
-		printf("Could not allocate memory. (REGION_SOUND1)\n");
+		error_memory("REGION_SOUND1");
 		return 0;
 	}
 
@@ -610,9 +341,15 @@ static int load_rom_sound1(void)
 
 	for (i = 0; i < num_snd1rom; )
 	{
-		if (file_open(game_name, parent, snd1rom[i].crc, fname) == -1)
+		int res;
+
+		strcpy(fname, snd1rom[i].name);
+		if ((res = file_open(game_name, parent, snd1rom[i].crc, fname)) < 0)
 		{
-			printf("Could not open file. (SOUND1)\n");
+			if (res == -1)
+				error_file(fname);
+			else
+				error_crc(fname);
 			return 0;
 		}
 
@@ -627,66 +364,68 @@ static int load_rom_sound1(void)
 }
 
 
-static int load_rom_user1(void)
+static int build_game_list(void)
 {
-	int i;
-	char fname[32], *parent;
+	FILE *fp;
+	char path[MAX_PATH];
+	char buf[256];
+	int num_games = 0;
 
-	if ((memory_region_user1 = calloc(1, memory_length_user1)) == NULL)
+	sprintf(path, "%srominfo.mvs", launchDir);
+
+	if ((fp = fopen(path, "r")) != NULL)
 	{
-		printf("Could not allocate memory. (REGION_USER1)\n");
-		return 0;
-	}
-
-	parent = strlen(parent_name) ? parent_name : NULL;
-
-	for (i = 0; i < num_usr1rom; )
-	{
-		if (file_open(game_name, parent, usr1rom[i].crc, fname) == -1)
+		while (fgets(buf, 255, fp))
 		{
-			printf("Could not open file. (SOUND1)\n");
-			return 0;
+			if (buf[0] == '/' && buf[1] == '/')
+				continue;
+
+			if (buf[0] != '\t')
+			{
+				if (str_cmp(buf, "FILENAME(") == 0)
+				{
+					char *name;
+
+					strtok(buf, " ");
+					strcpy(game_names[num_games], strtok(NULL, " ,"));
+					num_games++;
+				}
+			}
 		}
-
-		printf("Loading \"%s\"\n", fname);
-
-		i = rom_load(usr1rom, memory_region_user1, i, num_usr1rom);
-
-		file_close();
+		fclose(fp);
+		return num_games;
 	}
-
-	return 1;
+	return 0;
 }
 
 
 static int load_rom_info(const char *game_name)
 {
 	FILE *fp;
+	char path[MAX_PATH];
 	char buf[256];
 	int rom_start = 0;
 	int region = 0;
+	int total_size = 0;
 
-	num_cpu1rom = 0;
-	num_cpu2rom = 0;
 	num_gfx2rom = 0;
 	num_gfx3rom = 0;
 	num_snd1rom = 0;
-	num_snd2rom = 0;
-	num_usr1rom = 0;
 
 	machine_driver_type = 0;
 	machine_input_type  = 0;
 	machine_init_type   = 0;
 	machine_screen_type = 0;
 
-	encrypt_cpu1 = 0;
+	encrypt_gfx2 = 0;
+	encrypt_gfx3 = 0;
 	encrypt_snd1 = 0;
-	encrypt_gfx  = 0;
-	encrypt_usr1 = 0;
 
 	disable_sound = 0;
 
-	if ((fp = fopen("rominfo.mvs", "r")) != NULL)
+	sprintf(path, "%srominfo.mvs", launchDir);
+
+	if ((fp = fopen(path, "r")) != NULL)
 	{
 		while (fgets(buf, 255, fp))
 		{
@@ -713,7 +452,7 @@ static int load_rom_info(const char *game_name)
 					init    = strtok(NULL, " ,");
 					rotate  = strtok(NULL, " ");
 
-					if (stricmp(name, game_name) == 0)
+					if (strcasecmp(name, game_name) == 0)
 					{
 						if (str_cmp(parent, "neogeo") == 0)
 						{
@@ -738,7 +477,10 @@ static int load_rom_info(const char *game_name)
 				else if (rom_start && str_cmp(buf, "END") == 0)
 				{
 					fclose(fp);
-					return 0;
+					if (total_size >= 16*1024*1024)
+						return 0;
+					else
+						return 4;
 				}
 			}
 			else if (rom_start)
@@ -747,35 +489,29 @@ static int load_rom_info(const char *game_name)
 				{
 					char *size, *type, *flag;
 					int encrypted = 0;
+					int size2;
 
 					strtok(&buf[1], " ");
 					size = strtok(NULL, " ,");
 					type = strtok(NULL, " ,");
 					flag = strtok(NULL, " ");
 
+					sscanf(size, "%x", &size2);
+					total_size += size2;
+
 					if (strstr(flag, "SOUND_DISABLE")) disable_sound = 1;
 					if (strstr(flag, "ENCRYPTED")) encrypted = 1;
 
-					if (strcmp(type, "CPU1") == 0)
-					{
-						sscanf(size, "%x", &memory_length_cpu1);
-						encrypt_cpu1 = encrypted;
-						region = REGION_CPU1;
-					}
-					else if (strcmp(type, "CPU2") == 0)
-					{
-						sscanf(size, "%x", &memory_length_cpu2);
-						region = REGION_CPU2;
-					}
-					else if (strcmp(type, "GFX2") == 0)
+					if (strcmp(type, "GFX2") == 0)
 					{
 						sscanf(size, "%x", &memory_length_gfx2);
+						encrypt_gfx2 = encrypted;
 						region = REGION_GFX2;
 					}
 					else if (strcmp(type, "GFX3") == 0)
 					{
 						sscanf(size, "%x", &memory_length_gfx3);
-						encrypt_gfx = encrypted;
+						encrypt_gfx3 = encrypted;
 						region = REGION_GFX3;
 					}
 					else if (strcmp(type, "SOUND1") == 0)
@@ -784,17 +520,6 @@ static int load_rom_info(const char *game_name)
 						encrypt_snd1 = encrypted;
 						region = REGION_SOUND1;
 					}
-					else if (strcmp(type, "SOUND2") == 0)
-					{
-						sscanf(size, "%x", &memory_length_sound2);
-						region = REGION_SOUND2;
-					}
-					else if (strcmp(type, "USER1") == 0)
-					{
-						sscanf(size, "%x", &memory_length_user1);
-						encrypt_usr1 = encrypted;
-						region = REGION_USER1;
-					}
 					else
 					{
 						region = REGION_SKIP;
@@ -802,41 +527,26 @@ static int load_rom_info(const char *game_name)
 				}
 				else if (str_cmp(&buf[1], "ROM(") == 0)
 				{
-					char *type, *offset, *length, *crc;
+					char *type, *name, *offset, *length, *crc;
 
 					strtok(&buf[1], " ");
 					type   = strtok(NULL, " ,");
+					if (type[0] != '1')
+						name = strtok(NULL, " ,");
+					else
+						name = NULL;
 					offset = strtok(NULL, " ,");
 					length = strtok(NULL, " ,");
 					crc    = strtok(NULL, " ");
 
 					switch (region)
 					{
-					case REGION_CPU1:
-						sscanf(type, "%x", &cpu1rom[num_cpu1rom].type);
-						sscanf(offset, "%x", &cpu1rom[num_cpu1rom].offset);
-						sscanf(length, "%x", &cpu1rom[num_cpu1rom].length);
-						sscanf(crc, "%x", &cpu1rom[num_cpu1rom].crc);
-						cpu1rom[num_cpu1rom].group = 0;
-						cpu1rom[num_cpu1rom].skip = 0;
-						num_cpu1rom++;
-						break;
-
-					case REGION_CPU2:
-						sscanf(type, "%x", &cpu2rom[num_cpu2rom].type);
-						sscanf(offset, "%x", &cpu2rom[num_cpu2rom].offset);
-						sscanf(length, "%x", &cpu2rom[num_cpu2rom].length);
-						sscanf(crc, "%x", &cpu2rom[num_cpu2rom].crc);
-						cpu2rom[num_cpu2rom].group = 0;
-						cpu2rom[num_cpu2rom].skip = 0;
-						num_cpu2rom++;
-						break;
-
 					case REGION_GFX2:
 						sscanf(type, "%x", &gfx2rom[num_gfx2rom].type);
 						sscanf(offset, "%x", &gfx2rom[num_gfx2rom].offset);
 						sscanf(length, "%x", &gfx2rom[num_gfx2rom].length);
 						sscanf(crc, "%x", &gfx2rom[num_gfx2rom].crc);
+						if (name) strcpy(gfx2rom[num_gfx2rom].name, name);
 						gfx2rom[num_gfx2rom].group = 0;
 						gfx2rom[num_gfx2rom].skip = 0;
 						num_gfx2rom++;
@@ -847,6 +557,7 @@ static int load_rom_info(const char *game_name)
 						sscanf(offset, "%x", &gfx3rom[num_gfx3rom].offset);
 						sscanf(length, "%x", &gfx3rom[num_gfx3rom].length);
 						sscanf(crc, "%x", &gfx3rom[num_gfx3rom].crc);
+						if (name) strcpy(gfx3rom[num_gfx3rom].name, name);
 						gfx3rom[num_gfx3rom].group = 0;
 						gfx3rom[num_gfx3rom].skip = 0;
 						num_gfx3rom++;
@@ -857,39 +568,24 @@ static int load_rom_info(const char *game_name)
 						sscanf(offset, "%x", &snd1rom[num_snd1rom].offset);
 						sscanf(length, "%x", &snd1rom[num_snd1rom].length);
 						sscanf(crc, "%x", &snd1rom[num_snd1rom].crc);
+						if (name) strcpy(snd1rom[num_snd1rom].name, name);
 						snd1rom[num_snd1rom].group = 0;
 						snd1rom[num_snd1rom].skip = 0;
 						num_snd1rom++;
-						break;
-
-					case REGION_SOUND2:
-						sscanf(type, "%x", &snd2rom[num_snd2rom].type);
-						sscanf(offset, "%x", &snd2rom[num_snd2rom].offset);
-						sscanf(length, "%x", &snd2rom[num_snd2rom].length);
-						sscanf(crc, "%x", &snd2rom[num_snd2rom].crc);
-						snd2rom[num_snd2rom].group = 0;
-						snd2rom[num_snd2rom].skip = 0;
-						num_snd2rom++;
-						break;
-
-					case REGION_USER1:
-						sscanf(type, "%x", &usr1rom[num_usr1rom].type);
-						sscanf(offset, "%x", &usr1rom[num_usr1rom].offset);
-						sscanf(length, "%x", &usr1rom[num_usr1rom].length);
-						sscanf(crc, "%x", &usr1rom[num_usr1rom].crc);
-						usr1rom[num_usr1rom].group = 0;
-						usr1rom[num_usr1rom].skip = 0;
-						num_usr1rom++;
 						break;
 					}
 				}
 				else if (str_cmp(&buf[1], "ROMX(") == 0)
 				{
-					char *type, *offset, *length, *crc;
+					char *type, *name, *offset, *length, *crc;
 					char *group, *skip;
 
 					strtok(&buf[1], " ");
 					type   = strtok(NULL, " ,");
+					if (type[0] != '1')
+						name = strtok(NULL, " ,");
+					else
+						name = NULL;
 					offset = strtok(NULL, " ,");
 					length = strtok(NULL, " ,");
 					crc    = strtok(NULL, " ,");
@@ -898,16 +594,6 @@ static int load_rom_info(const char *game_name)
 
 					switch (region)
 					{
-					case REGION_CPU1:
-						sscanf(type, "%x", &cpu1rom[num_cpu1rom].type);
-						sscanf(offset, "%x", &cpu1rom[num_cpu1rom].offset);
-						sscanf(length, "%x", &cpu1rom[num_cpu1rom].length);
-						sscanf(crc, "%x", &cpu1rom[num_cpu1rom].crc);
-						sscanf(group, "%x", &cpu1rom[num_cpu1rom].group);
-						sscanf(skip, "%x", &cpu1rom[num_cpu1rom].skip);
-						num_cpu1rom++;
-						break;
-
 					case REGION_GFX3:
 						sscanf(type, "%x", &gfx3rom[num_gfx3rom].type);
 						sscanf(offset, "%x", &gfx3rom[num_gfx3rom].offset);
@@ -915,7 +601,19 @@ static int load_rom_info(const char *game_name)
 						sscanf(crc, "%x", &gfx3rom[num_gfx3rom].crc);
 						sscanf(group, "%x", &gfx3rom[num_gfx3rom].group);
 						sscanf(skip, "%x", &gfx3rom[num_gfx3rom].skip);
+						if (name) strcpy(gfx3rom[num_gfx3rom].name, name);
 						num_gfx3rom++;
+						break;
+
+					case REGION_SOUND1:
+						sscanf(type, "%x", &snd1rom[num_snd1rom].type);
+						sscanf(offset, "%x", &snd1rom[num_snd1rom].offset);
+						sscanf(length, "%x", &snd1rom[num_snd1rom].length);
+						sscanf(crc, "%x", &snd1rom[num_snd1rom].crc);
+						sscanf(group, "%x", &snd1rom[num_snd1rom].group);
+						sscanf(skip, "%x", &snd1rom[num_snd1rom].skip);
+						if (name) strcpy(snd1rom[num_snd1rom].name, name);
+						num_snd1rom++;
 						break;
 					}
 				}
@@ -928,69 +626,421 @@ static int load_rom_info(const char *game_name)
 }
 
 
-#ifdef WIN32
-#define DELIMITER	'\\'
-#else
-#define DELIMITER	'/'
-#endif
-
-int main(int argc, char *argv[])
+void free_memory(void)
 {
-	int i;
-	u32 length, res = 1;
-	FILE *fp;
-	char fname[MAX_PATH], zipname[MAX_PATH];
-	char path[MAX_PATH];
-	char *p;
-	char version[8];
-#ifdef WIN32
-	OSVERSIONINFO osvi;
+	if (memory_region_gfx2)      free(memory_region_gfx2);
+	if (memory_region_gfx3)      free(memory_region_gfx3);
+	if (memory_region_sound1)    free(memory_region_sound1);
+	if (gfx_pen_usage[TILE_SPR]) free(gfx_pen_usage[TILE_SPR]);
+	if (gfx_pen_usage[TILE_FIX]) free(gfx_pen_usage[TILE_FIX]);
+}
 
-	osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-	GetVersionEx(&osvi);
 
-	if (osvi.dwMajorVersion == 4)
-	{
-		is_win9x  = 1;
-		delimiter = '\\';
-	}
-#endif
+static int convert_rom(char *game_name)
+{
+	int i, res;
 
-	memory_region_cpu1   = NULL;
+	printf("Checking ROM file... (%s)\n", game_name);
+
 	memory_region_gfx2   = NULL;
 	memory_region_gfx3   = NULL;
 	memory_region_sound1 = NULL;
-	memory_region_user1  = NULL;
 
-	memory_length_cpu1   = 0;
-	memory_length_cpu2   = 0;
-	memory_length_gfx1   = 0;
 	memory_length_gfx2   = 0;
 	memory_length_gfx3   = 0;
 	memory_length_sound1 = 0;
-	memory_length_sound2 = 0;
-	memory_length_user1  = 0;
 
-	video_fix_usage      = NULL;
-	video_spr_usage      = NULL;
+	gfx_pen_usage[TILE_FIX] = NULL;
+	gfx_pen_usage[TILE_SPR] = NULL;
 
-	printf("-------------------------------------------\n");
-	printf(" ROM converter for NEOGEO Emulator ver." VERSION_STR "\n");
-	printf("-------------------------------------------\n\n");
+	if ((res = load_rom_info(game_name)) != 0)
+	{
+		switch (res)
+		{
+		case 1: printf("ERROR: This game is not supported.\n"); break;
+		case 2: printf("ERROR: ROM not found. (zip file name incorrect)\n"); break;
+		case 3: printf("ERROR: rominfo.mvs not found.\n"); break;
+		case 4: printf("INFO: No need to convert this game.\n"); break;
+		}
+		return 0;
+	}
+
+	if (strlen(parent_name))
+		printf("Clone set (parent: %s)\n", parent_name);
+
+	if (encrypt_snd1 || disable_sound)
+	{
+		if (load_rom_sound1())
+		{
+			if (encrypt_snd1)
+			{
+				switch (machine_init_type)
+				{
+				case INIT_kof2002:	neo_pcm2_swap(0);		break;
+				case INIT_mslug5:	neo_pcm2_swap(2);		break;
+				case INIT_svchaosa:	neo_pcm2_swap(3);		break;
+				case INIT_samsho5:	neo_pcm2_swap(4);		break;
+				case INIT_kof2003:	neo_pcm2_swap(5);		break;
+				case INIT_samsh5sp:	neo_pcm2_swap(6);		break;
+				case INIT_pnyaa:	neo_pcm2_snk_1999(4);	break;
+				case INIT_mslug4:	neo_pcm2_snk_1999(8);	break;
+				case INIT_rotd:		neo_pcm2_snk_1999(16);	break;
+				case INIT_matrim:	neo_pcm2_swap(1);		break;
+
+				case INIT_ms5pcb:	neo_pcm2_swap(2);		break;
+				case INIT_svcpcb:	neo_pcm2_swap(3);		break;
+				case INIT_kf2k3pcb:	neo_pcm2_swap(5);		break;
+
+				case INIT_kof2002b:	neo_pcm2_swap(0);		break;
+				case INIT_kf2k2pls:	neo_pcm2_swap(0);		break;
+				case INIT_kf2k2plc:	neo_pcm2_swap(0);		break;
+				case INIT_kf2k2mp:	neo_pcm2_swap(0);		break;
+				case INIT_kf2k2mp2:	neo_pcm2_swap(0);		break;
+				case INIT_ms5plus:	neo_pcm2_swap(2);		break;
+				case INIT_mslug5b:	neo_pcm2_swap(2);		break;
+				case INIT_samsho5b:	samsho5b_vx_decrypt();	break;
+				case INIT_lans2004:	lans2004_vx_decrypt();	break;
+
+				default: goto error;
+				}
+			}
+		}
+		else
+		{
+			goto error;
+		}
+	}
+
+	if (encrypt_gfx2 || encrypt_gfx3)
+	{
+		if (load_rom_gfx2() && load_rom_gfx3())
+		{
+			switch (machine_init_type)
+			{
+			case INIT_kof99:	kof99_neogeo_gfx_decrypt(0x00);		break;
+			case INIT_kof99n:	kof99_neogeo_gfx_decrypt(0x00);		break;
+			case INIT_garou:	kof99_neogeo_gfx_decrypt(0x06);		break;
+			case INIT_garouo:	kof99_neogeo_gfx_decrypt(0x06);		break;
+			case INIT_mslug3:	kof99_neogeo_gfx_decrypt(0xad);		break;
+			case INIT_mslug3n:	kof99_neogeo_gfx_decrypt(0xad);		break;
+			case INIT_kof2000:	kof2000_neogeo_gfx_decrypt(0x00);	break;
+			case INIT_kof2000n:	kof2000_neogeo_gfx_decrypt(0x00);	break;
+			case INIT_zupapa:	kof99_neogeo_gfx_decrypt(0xbd);		break;
+			case INIT_sengoku3:	kof99_neogeo_gfx_decrypt(0xfe);		break;
+			case INIT_kof2001:	kof2000_neogeo_gfx_decrypt(0x1e);	break;
+			case INIT_kof2002:	kof2000_neogeo_gfx_decrypt(0xec);	break;
+			case INIT_mslug5:	kof2000_neogeo_gfx_decrypt(0x19);	break;
+			case INIT_svchaosa:	kof2000_neogeo_gfx_decrypt(0x57);	break;
+			case INIT_samsho5:	kof2000_neogeo_gfx_decrypt(0x0f);	break;
+			case INIT_kof2003:	kof2000_neogeo_gfx_decrypt(0x9d);	break;
+			case INIT_samsh5sp:	kof2000_neogeo_gfx_decrypt(0x0d);	break;
+			case INIT_nitd:		kof99_neogeo_gfx_decrypt(0xff);		break;
+			case INIT_s1945p:	kof99_neogeo_gfx_decrypt(0x05);		break;
+			case INIT_pnyaa:	kof2000_neogeo_gfx_decrypt(0x2e);	break;
+			case INIT_preisle2:	kof99_neogeo_gfx_decrypt(0x9f);		break;
+			case INIT_ganryu:	kof99_neogeo_gfx_decrypt(0x07);		break;
+			case INIT_bangbead:	kof99_neogeo_gfx_decrypt(0xf8);		break;
+			case INIT_mslug4:	kof2000_neogeo_gfx_decrypt(0x31);	break;
+			case INIT_rotd:		kof2000_neogeo_gfx_decrypt(0x3f);	break;
+			case INIT_matrim:	kof2000_neogeo_gfx_decrypt(0x6a);	break;
+			case INIT_jockeygp:	kof2000_neogeo_gfx_decrypt(0xac);	break;
+
+			// Jamma PCB
+
+			case INIT_ms5pcb:
+				svcpcb_cx_decrypt();
+				kof2000_neogeo_gfx_decrypt(0x19);
+				svcpcb_sx_decrypt();
+				break;
+
+			case INIT_svcpcb:
+				svcpcb_cx_decrypt();
+				kof2000_neogeo_gfx_decrypt(0x57);
+				svcpcb_sx_decrypt();
+				break;
+
+			case INIT_kf2k3pcb:
+				kf2k3pcb_cx_decrypt();
+				kof2000_neogeo_gfx_decrypt(0x9d);
+				kf2k3pcb_sx_decrypt();
+				break;
+
+			// bootleg
+
+			case INIT_kof97pla:
+				neogeo_bootleg_sx_decrypt(1);
+				break;
+
+			case INIT_garoubl:
+				neogeo_bootleg_sx_decrypt(2);
+				neogeo_bootleg_cx_decrypt();
+				break;
+
+			case INIT_kf2k1pls:
+			case INIT_kf2k1pa:
+				cmc50_neogeo_gfx_decrypt(0x1e);
+				break;
+
+			case INIT_kof2002b:
+				kof2002b_cx_decrypt();
+				kof2002b_sx_decrypt();
+				break;
+
+			case INIT_kf2k2pls:
+				cmc50_neogeo_gfx_decrypt(0xec);
+				break;
+
+			case INIT_kf2k2plc:
+			case INIT_kf2k2mp:
+				cmc50_neogeo_gfx_decrypt(0xec);
+				neogeo_bootleg_sx_decrypt(2);
+				break;
+
+			case INIT_kf2k2mp2:
+				cmc50_neogeo_gfx_decrypt(0xec);
+				neogeo_bootleg_sx_decrypt(1);
+				break;
+
+			case INIT_kf2k4pls:
+				neogeo_bootleg_sx_decrypt(1);
+				break;
+
+			case INIT_mslug5b:
+				kof2000_neogeo_gfx_decrypt(0x19);
+				break;
+
+			case INIT_ms5plus:
+				cmc50_neogeo_gfx_decrypt(0x19);
+				neogeo_bootleg_sx_decrypt(1);
+				break;
+
+			case INIT_svcboot:
+			case INIT_svcplusa:
+				svcboot_cx_decrypt();
+				break;
+
+			case INIT_svcplus:
+				svcboot_cx_decrypt();
+				neogeo_bootleg_sx_decrypt(1);
+				break;
+
+			case INIT_svcsplus:
+				svcboot_cx_decrypt();
+				neogeo_bootleg_sx_decrypt(2);
+				break;
+
+			case INIT_kf2k3bl:
+			case INIT_kf2k3pl:
+				neogeo_bootleg_sx_decrypt(1);
+				break;
+
+			case INIT_kf2k3upl:
+				neogeo_bootleg_sx_decrypt(2);
+				break;
+
+			case INIT_kog:
+				neogeo_bootleg_cx_decrypt();
+				neogeo_bootleg_sx_decrypt(1);
+				break;
+
+			case INIT_cthd2003:
+			case INIT_cthd2k3a:
+				cthd2003_cx_decrypt();
+				break;
+
+			case INIT_ct2k3sp:
+				cthd2003_cx_decrypt();
+				ct2k3sp_sx_decrypt();
+				break;
+
+			case INIT_samsho5b:
+				samsho5b_cx_decrypt();
+				neogeo_bootleg_sx_decrypt(1);
+				break;
+
+			case INIT_lans2004:
+				neogeo_bootleg_cx_decrypt();
+				neogeo_bootleg_sx_decrypt(1);
+				break;
+
+			case INIT_mslug3b6:
+				cmc42_neogeo_gfx_decrypt(0xad);
+				neogeo_bootleg_sx_decrypt(2);
+				break;
+
+			case INIT_matrimbl:
+				cthd2003_cx_decrypt();
+				neogeo_sfix_decrypt();
+				break;
+
+			default: goto error;
+			}
+
+			neogeo_decode_spr(memory_region_gfx3, memory_length_gfx3, gfx_pen_usage[TILE_SPR]);
+		}
+		else
+		{
+			return 0;
+		}
+	}
+	else
+	{
+		if (load_rom_gfx3())
+		{
+			neogeo_decode_spr(memory_region_gfx3, memory_length_gfx3, gfx_pen_usage[TILE_SPR]);
+		}
+		else
+		{
+			return 0;
+		}
+	}
+
+	return 1;
+
+error:
+	return 0;
+}
+
+
+
+static int create_raw_cache(char *game_name)
+{
+	FILE *fp;
+	char version[8];
+	char fname[MAX_PATH];
+
+	sprintf(version, "MVS_V%d%d\0", VERSION_MAJOR, VERSION_MINOR);
+
+	chdir("cache");
+
+	printf("Create cache file...\n");
+
+	sprintf(fname, "%s_cache", game_name);
+	if (chdir(fname) != 0)
+	{
+#ifdef UNIX
+		if (mkdir(fname, 0777) != 0)
+#else
+		if (mkdir(fname) != 0)
+#endif
+		{
+			printf("ERROR: Could not create folder.\n");
+			chdir(launchDir);
+			return 0;
+		}
+		chdir(fname);
+	}
+
+	if ((fp = fopen("cache_info", "wb")) == NULL) goto error;
+	fwrite(version, 1, 8, fp);
+	fwrite(gfx_pen_usage[TILE_SPR], 1, gfx_total_elements[TILE_SPR], fp);
+	fclose(fp);
+
+	if (convert_crom)
+	{
+		if ((fp = fopen("crom", "wb")) == NULL) goto error;
+		fwrite(memory_region_gfx3, 1, memory_length_gfx3, fp);
+		fclose(fp);
+	}
+	if (convert_srom && encrypt_gfx2)
+	{
+		if ((fp = fopen("srom", "wb")) == NULL) goto error;
+		fwrite(memory_region_gfx2, 1, memory_length_gfx2, fp);
+		fclose(fp);
+	}
+	if (convert_vrom && (encrypt_snd1 || disable_sound))
+	{
+		if ((fp = fopen("vrom", "wb")) == NULL) goto error;
+		fwrite(memory_region_sound1, 1, memory_length_sound1, fp);
+		fclose(fp);
+	}
+
+	chdir("..");
+	chdir("..");
+	return 1;
+
+error:
+	remove("cache_info");
+	if (convert_crom)
+	{
+		remove("crom");
+	}
+	if (convert_srom && encrypt_gfx2)
+	{
+		remove("srom");
+	}
+	if (convert_vrom && (encrypt_snd1 || disable_sound))
+	{
+		remove("vrom");
+	}
+
+	chdir("..");
+
+	sprintf(fname, "cache_%s", game_name);
+	rmdir(fname);
+
+	printf("ERROR: Could not create file.\n");
+	chdir("..");
+	return 0;
+}
+
+
+int main(int argc, char *argv[])
+{
+	char *p, path[MAX_PATH];
+	int i, path_found = 0, all = 0, zip = 0, res = 1;
+#ifdef WIN32
+	int pause = 1;
+
+	check_windows_version();
+#endif
+	check_byte_order();
+
+	printf("----------------------------------------------\n");
+	printf(" ROM converter for MVSPSP " VERSION_STR "\n");
+	printf("----------------------------------------------\n\n");
+
+	if (argc > 1)
+	{
+		for (i = 1; i < argc; i++)
+		{
+			if (!strcasecmp(argv[i], "-all"))
+			{
+				all = 1;
+			}
+#ifdef WIN32
+			else if (!strcasecmp(argv[i], "-batch"))
+			{
+				pause = 0;
+			}
+			else if (strchr(argv[i], ':') != NULL || strchr(argv[i], DELIMITER) != NULL)
+#else
+			else if (strchr(argv[i], DELIMITER) != NULL)
+#endif
+			{
+				path_found = i;
+			}
+		}
+	}
 
 #ifndef WIN32
-	if (argc != 2)
+	if (!path_found)
 	{
-		printf("usage: romcnv_mvs fullpath%cgamename.zip\n", delimiter);
+		printf("usage: romcnv_mvs fullpath%cgamename.zip\n", DELIMITER);
+		printf("  or   romcnv_mvs fullpath -all\n\n", DELIMITER);
 		return 0;
 	}
 #endif
 
 	if (chdir("cache") != 0)
 	{
+#ifdef UNIX
+		if (mkdir("cache", 0777) != 0)
+#else
 		if (mkdir("cache") != 0)
+#endif
 		{
-			printf("Error: Could not create directory \"cache\".\n");
+			printf("ERROR: Could not create directory \"cache\".\n");
 			goto error;
 		}
 	}
@@ -1000,369 +1050,178 @@ int main(int argc, char *argv[])
 	strcpy(launchDir, argv[0]);
 	convert_delimiter(launchDir);
 
-	p = strrchr(launchDir, DELIMITER);
-	if (p)
+	if ((p = strrchr(launchDir, delimiter)) != NULL)
 	{
 		*(p + 1) = '\0';
 	}
 	else
-#endif
 	{
-		_getcwd(launchDir, MAX_PATH);
-#ifdef WIN32
+		getcwd(launchDir, MAX_PATH);
+
 		convert_delimiter(launchDir);
 		if (is_win9x)
 			strcat(launchDir, "\\");
 		else
-#endif
 			strcat(launchDir, "/");
 	}
-
-#ifdef WIN32
-	if (argc != 2 || !argv[1])
-	{
-		printf("Please select ROM file.\n");
-
-		if (!file_dialog(NULL, "zip file (*.zip)\0*.zip\0", game_dir, OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY))
-			goto error;
-	}
-	else
-	{
-		strcpy(path, argv[1]);
-		strcpy(game_dir, strtok(path, "\""));
-	}
-	convert_delimiter(game_dir);
 #else
-	strcpy(game_dir, argv[1]);
+	getcwd(launchDir, MAX_PATH);
+	strcat(launchDir, "/");
 #endif
 
-	if ((p = strrchr(game_dir, delimiter)) != NULL)
+	if (all)
 	{
-		strcpy(game_name, p + 1);
-		strcpy(zip_dir, game_dir);
-		*strrchr(zip_dir, delimiter) = '\0';
-	}
-	else
-	{
-		strcpy(game_name, game_dir);
-		strcpy(zip_dir, "");
-	}
+		int total_games;
 
-	p = game_name;
-	while (*p)
-	{
-		*p = tolower(*p);
-		*p++;
-	}
+#ifdef WIN32
+		if (!folder_dialog(NULL, zip_dir)) goto error;
+		convert_delimiter(zip_dir);
 
-	printf("path: %s\n", zip_dir);
-	printf("filename: %s\n", game_name);
+		strcpy(game_dir, zip_dir);
 
-	if ((p = strrchr(game_name, '.')) == NULL)
-	{
-		printf("Please input correct path.\n");
-		goto error;
-	}
-	*p = '\0';
+		if (is_win9x)
+			strcat(game_dir, "\\");
+		else
+			strcat(game_dir, "/");
+#else
+		strcpy(zip_dir, argv[path_found]);
+		strcpy(game_dir, zip_dir);
+		strcat(game_dir, "/");
+#endif
 
-	printf("cache folder name: cache%c%s_cache\n", delimiter, game_name);
+		total_games = build_game_list();
 
-	printf("Checking ROM file... (%s)\n", game_name);
-
-	chdir(launchDir);
-
-	if ((res = load_rom_info(game_name)) != 0)
-	{
-		switch (res)
+		for (i = 0; i < total_games; i++)
 		{
-		case 1: printf("ERROR: This game is not supported.\n"); break;
-		case 2: printf("ERROR: ROM not found. (zip file name incorrect)\n"); break;
-		case 3: printf("ERROR: rominfo.mvs not found.\n"); break;
-		}
-		res = 1;
-		goto error;
-	}
+			int j = 0;
 
-	if (strlen(parent_name))
-		printf("Clone set (parent: %s)\n", parent_name);
+			res = 1;
 
-	chdir(launchDir);
-	chdir("cache");
-	sprintf(path, "%s_cache", game_name);
-	if (chdir(path) != 0)
-	{
-		if (mkdir(path) != 0)
-		{
-			chdir("..");
-			printf("Error: Could not create directory \"cache%c%s\".\n", delimiter, path);
-			goto error;
-		}
-		chdir(path);
-	}
+			strcpy(game_name, game_names[i]);
 
-	if (encrypt_usr1)
-	{
-		printf("decrypt biosrom\n");
+			convert_crom = 1;
+			convert_srom = 1;
+			convert_vrom = 1;
 
-		if (load_rom_user1() == 0)
-		{
-			printf("ERROR: Could not load BIOS program rom.\n");
-			goto error;
-		}
-
-		switch (machine_init_type)
-		{
-		case INIT_kf2k3pcb:
-			kof2003biosdecode();
-			break;
-
-		default:
-			printf("This romset not supported.\n");
-			goto error;
-		}
-	}
-
-	if (encrypt_cpu1)
-	{
-		if (load_rom_cpu1() == 0)
-		{
-			printf("ERROR: Could not load program rom (p rom).\n");
-			goto error;
-		}
-
-		printf("decrypt prom\n");
-
-		switch (machine_init_type)
-		{
-		case INIT_kof98:	kof98_decrypt_68k();	break;
-		case INIT_kof99:	kof99_decrypt_68k();	break;
-		case INIT_garou:	garou_decrypt_68k();	break;
-		case INIT_garouo:	garouo_decrypt_68k();	break;
-		case INIT_mslug3:	mslug3_decrypt_68k();	break;
-		case INIT_kof2000:	kof2000_decrypt_68k();	break;
-		case INIT_kof2002:	kof2002_decrypt_68k();	break;
-		case INIT_mslug5:	mslug5_decrypt_68k();	break;
-		case INIT_svchaosa:	svcchaos_px_decrypt();	break;
-		case INIT_samsho5:	samsho5_decrypt_68k();	break;
-		case INIT_kof2003:	kof2003_decrypt_68k();	break;
-		case INIT_samsh5sp:	samsh5p_decrypt_68k();	break;
-		case INIT_matrim:	matrim_decrypt_68k();	break;
-
-		case INIT_ms5pcb:	mslug5_decrypt_68k();	break;
-		case INIT_svcpcb:	svcchaos_px_decrypt();	break;
-		case INIT_kf2k3pcb:	kf2k3pcb_decrypt_68k();	break;
-
-		default:
-			printf("This romset not supported.\n");
-			goto error;
-		}
-	}
-
-	if (encrypt_snd1 || disable_sound)
-	{
-		if (load_rom_sound1() == 0)
-		{
-			printf("ERROR: Could not load program rom (v rom).\n");
-			goto error;
-		}
-
-		if (encrypt_snd1)
-		{
-			printf("decrypt vrom\n");
-
-			switch (machine_init_type)
+			while (MVS_cacheinfo[j].name)
 			{
-			case INIT_kof2002:	neo_pcm2_swap(0);		break;
-			case INIT_mslug5:	neo_pcm2_swap(2);		break;
-			case INIT_svchaosa:	neo_pcm2_swap(3);		break;
-			case INIT_samsho5:	neo_pcm2_swap(4);		break;
-			case INIT_kof2003:	neo_pcm2_swap(5);		break;
-			case INIT_samsh5sp:	neo_pcm2_swap(6);		break;
-			case INIT_pnyaa:	neo_pcm2_snk_1999(4);	break;
-			case INIT_mslug4:	neo_pcm2_snk_1999(8);	break;
-			case INIT_rotd:		neo_pcm2_snk_1999(16);	break;
-			case INIT_matrim:	neo_pcm2_swap(1);		break;
-
-			case INIT_ms5pcb:	neo_pcm2_swap(2);		break;
-			case INIT_svcpcb:	neo_pcm2_swap(3);		break;
-			case INIT_kf2k3pcb:	neo_pcm2_swap(5);		break;
-
-			default:
-				printf("This romset not supported.\n");
-				goto error;
+				if (strcmp(game_name, MVS_cacheinfo[j].name) == 0)
+				{
+					convert_crom = MVS_cacheinfo[j].crom;
+					convert_srom = MVS_cacheinfo[j].srom;
+					convert_vrom = MVS_cacheinfo[j].vrom;
+					break;
+				}
+				j++;
 			}
-		}
-	}
+			if (!convert_crom && !convert_srom && !convert_vrom)
+				continue;
 
-	if (encrypt_gfx)
-	{
-		if (load_rom_gfx2() == 0)
-		{
-			printf("ERROR: Could not allocate memory (s rom).\n");
-			goto error;
-		}
-		if (load_rom_gfx3(0) == 0)
-		{
-			printf("ERROR: Could not load sprite rom (c rom).\n");
-			goto error;
-		}
+			printf("\n-------------------------------------------\n");
+			printf("  ROM set: %s\n", game_name);
+			printf("-------------------------------------------\n\n");
 
-		printf("decrypt gfx\n");
-
-		switch (machine_init_type)
-		{
-		case INIT_kof99:	kof99_neogeo_gfx_decrypt(0x00);		break;
-		case INIT_kof99n:	kof99_neogeo_gfx_decrypt(0x00);		break;
-		case INIT_garou:	kof99_neogeo_gfx_decrypt(0x06);		break;
-		case INIT_garouo:	kof99_neogeo_gfx_decrypt(0x06);		break;
-		case INIT_mslug3:	kof99_neogeo_gfx_decrypt(0xad);		break;
-		case INIT_mslug3n:	kof99_neogeo_gfx_decrypt(0xad);		break;
-		case INIT_kof2000:	kof2000_neogeo_gfx_decrypt(0x00);	break;
-		case INIT_kof2000n:	kof2000_neogeo_gfx_decrypt(0x00);	break;
-		case INIT_zupapa:	kof99_neogeo_gfx_decrypt(0xbd);		break;
-		case INIT_sengoku3:	kof99_neogeo_gfx_decrypt(0xfe);		break;
-		case INIT_kof2001:	kof2000_neogeo_gfx_decrypt(0x1e);	break;
-		case INIT_kof2002:	kof2000_neogeo_gfx_decrypt(0xec);	break;
-		case INIT_mslug5:	kof2000_neogeo_gfx_decrypt(0x19);	break;
-		case INIT_svchaosa:	kof2000_neogeo_gfx_decrypt(0x57);	break;
-		case INIT_samsho5:	kof2000_neogeo_gfx_decrypt(0x0f);	break;
-		case INIT_kof2003:	kof2000_neogeo_gfx_decrypt(0x9d);	break;
-		case INIT_samsh5sp:	kof2000_neogeo_gfx_decrypt(0x0d);	break;
-		case INIT_nitd:		kof99_neogeo_gfx_decrypt(0xff);		break;
-		case INIT_s1945p:	kof99_neogeo_gfx_decrypt(0x05);		break;
-		case INIT_pnyaa:	kof2000_neogeo_gfx_decrypt(0x2e);	break;
-		case INIT_preisle2:	kof99_neogeo_gfx_decrypt(0x9f);		break;
-		case INIT_ganryu:	kof99_neogeo_gfx_decrypt(0x07);		break;
-		case INIT_bangbead:	kof99_neogeo_gfx_decrypt(0xf8);		break;
-		case INIT_mslug4:	kof2000_neogeo_gfx_decrypt(0x31);	break;
-		case INIT_rotd:		kof2000_neogeo_gfx_decrypt(0x3f);	break;
-		case INIT_matrim:	kof2000_neogeo_gfx_decrypt(0x6a);	break;
-
-		case INIT_ms5pcb:
-			svcpcb_gfx_decrypt();
-			kof2000_neogeo_gfx_decrypt(0x19);
-			svcpcb_s1data_decrypt();
-			break;
-
-		case INIT_svcpcb:
-			svcpcb_gfx_decrypt();
-			kof2000_neogeo_gfx_decrypt(0x57);
-			svcpcb_s1data_decrypt();
-			break;
-
-		case INIT_kf2k3pcb:
-			kf2k3pcb_gfx_decrypt();
-			kof2000_neogeo_gfx_decrypt(0x9d);
-			kf2k3pcb_decrypt_s1data();
-			break;
-
-		case INIT_jockeygp:	kof2000_neogeo_gfx_decrypt(0xac);	break;
-
-		default:
-			printf("This romset not supported.\n");
-			goto error;
+			chdir(launchDir);
+			if (!convert_rom(game_name))
+			{
+				printf("Skip.\n\n");
+			}
+			else
+			{
+				if (create_raw_cache(game_name))
+				{
+					printf("Done.\n\n");
+				}
+			}
+			free_memory();
 		}
 
-		neogeo_decode_spr(memory_region_gfx3, memory_length_gfx3, video_spr_usage);
+		printf("complete.\n");
+		printf("Please copy these files to directory \"/PSP/GAMES/mvspsp/cache\".\n");
 	}
 	else
 	{
-		if (load_rom_gfx3(1) == 0)
+#ifdef WIN32
+		if (!path_found)
 		{
-			printf("ERROR: Could not load sprite rom (c rom).\n");
+			printf("Please select ROM file.\n");
+
+			if (!file_dialog(NULL, "zip file (*.zip)\0*.zip\0", game_dir, OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY))
+				goto error;
+		}
+		else
+		{
+			strcpy(path, argv[path_found]);
+			strcpy(game_dir, strtok(path, "\""));
+		}
+		convert_delimiter(game_dir);
+#else
+		strcpy(game_dir, argv[path_found]);
+#endif
+
+		if ((p = strrchr(game_dir, delimiter)) != NULL)
+		{
+			strcpy(game_name, p + 1);
+			strcpy(zip_dir, game_dir);
+			*strrchr(zip_dir, delimiter) = '\0';
+		}
+		else
+		{
+			strcpy(game_name, game_dir);
+			strcpy(zip_dir, "");
+		}
+
+		p = game_name;
+		while (*p)
+		{
+			*p = tolower(*p);
+			*p++;
+		}
+
+		printf("path: %s\n", zip_dir);
+		printf("filename: %s\n", game_name);
+
+		if ((p = strrchr(game_name, '.')) == NULL)
+		{
+			printf("Please input correct path.\n");
 			goto error;
 		}
-	}
+		*p = '\0';
 
-	printf("Create cache file...\n");
-	sprintf(version, "MVS_V%d%d\0", VERSION_MAJOR, VERSION_MINOR);
+		printf("cache folder name: cache%c%s_cache\n", delimiter, game_name);
 
-	if ((fp = fopen("cache_info", "wb")) == NULL)
-	{
-		printf("ERROR: Could not create file.\n");
-		goto error2;
-	}
-	fwrite(version, 1, 8, fp);
-	fwrite(video_spr_usage, 1, memory_length_gfx3 / 128, fp);
-	fclose(fp);
+		convert_crom = 1;
+		convert_srom = 1;
+		convert_vrom = 1;
 
-	if ((fp = fopen("crom", "wb")) == NULL)
-	{
-		printf("ERROR: Could not create file.\n");
-		goto error2;
-	}
-	fwrite(memory_region_gfx3, 1, memory_length_gfx3, fp);
-	fclose(fp);
-
-	if (encrypt_gfx)
-	{
-		if ((fp = fopen("srom", "wb")) == NULL)
+		chdir(launchDir);
+		if (!convert_rom(game_name))
 		{
-			printf("ERROR: Could not create file.\n");
-			goto error2;
+			res = 0;
 		}
-		fwrite(memory_region_gfx2, 1, memory_length_gfx2, fp);
-		fclose(fp);
-	}
-
-	if (encrypt_snd1 || disable_sound)
-	{
-		if ((fp = fopen("vrom", "wb")) == NULL)
+		else
 		{
-			printf("ERROR: Could not create file.\n");
-			goto error2;
+			res = create_raw_cache(game_name);
 		}
-		fwrite(memory_region_sound1, 1, memory_length_sound1, fp);
-		fclose(fp);
-	}
-
-	if (encrypt_cpu1)
-	{
-		if ((fp = fopen("prom", "wb")) == NULL)
+#ifdef WIN32
+		if (res && pause)
+#else
+		if (res)
+#endif
 		{
-			printf("ERROR: Could not create file.\n");
-			goto error2;
+			printf("complete.\n");
+			printf("Please copy \"cache%c%s_cache\" folder to directory \"/PSP/GAMES/mvspsp/cache\".\n", delimiter, game_name);
 		}
-		fwrite(memory_region_cpu1, 1, memory_length_cpu1, fp);
-		fclose(fp);
+		free_memory();
 	}
-
-	if (encrypt_usr1)
-	{
-		if ((fp = fopen("biosrom", "wb")) == NULL)
-		{
-			printf("ERROR: Could not create file.\n");
-			goto error2;
-		}
-		fwrite(memory_region_user1, 1, memory_length_user1, fp);
-		fclose(fp);
-	}
-
-	printf("complete.\n");
-	printf("Please copy \"cache%c%s\" folder to directory \"/PSP/GAMES/mvspsp/cache\".\n", delimiter, game_name);
-	res = 0;
-	goto error;
-
-error2:
-	remove("crom");
-	remove("cache_info");
-
-	if (encrypt_gfx) remove("srom");
-	if (encrypt_snd1 || disable_sound) remove("vrom");
-	if (encrypt_cpu1) remove("prom");
-	if (encrypt_usr1) remove("biosrom");
 
 error:
-	if (memory_region_cpu1)   free(memory_region_cpu1);
-	if (memory_region_gfx2)   free(memory_region_gfx2);
-	if (memory_region_gfx3)   free(memory_region_gfx3);
-	if (memory_region_sound1) free(memory_region_sound1);
-	if (memory_region_user1)  free(memory_region_user1);
-	if (video_spr_usage)      free(video_spr_usage);
-	if (video_fix_usage)      free(video_fix_usage);
-
-	printf("Press any key to exit.\n");
-	getch();
-
+#ifdef WIN32
+	if (pause)
+	{
+		printf("Press any key to exit.\n");
+		getch();
+	}
+#endif
 	return res;
 }

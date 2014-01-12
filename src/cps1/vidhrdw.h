@@ -36,7 +36,7 @@ enum
 extern int cps_rotate_screen;
 extern int cps_flip_screen;
 extern int cps_raster_enable;
-extern u16 video_palette[3072];
+extern UINT16 video_palette[3072];
 
 void cps1_scan_object(void);
 void cps1_scan_scroll1(void);

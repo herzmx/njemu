@@ -15,7 +15,7 @@
 	グローバル変数/構造体
 ******************************************************************************/
 
-u8 ALIGN_PSPDATA gulist[GULIST_SIZE];
+UINT8 ALIGN_PSPDATA gulist[GULIST_SIZE];
 int video_mode = 0;
 void *show_frame;
 void *draw_frame;
@@ -34,8 +34,8 @@ void *(*video_frame_addr)(void *frame, int x, int y);
 void (*video_clear_screen)(void);
 void (*video_clear_frame)(void *frame);
 void (*video_clear_rect)(void *frame, RECT *rect);
-void (*video_fill_rect)(void *frame, u32 color, RECT *rect);
-void (*video_fill_frame)(void *frame, u32 color);
+void (*video_fill_rect)(void *frame, UINT32 color, RECT *rect);
+void (*video_fill_frame)(void *frame, UINT32 color);
 void (*video_copy_rect)(void *src, void *dst, RECT *src_rect, RECT *dst_rect);
 void (*video_copy_rect_flip)(void *src, void *dst, RECT *src_rect, RECT *dst_rect);
 void (*video_copy_rect_rotate)(void *src, void *dst, RECT *src_rect, RECT *dst_rect);
@@ -45,8 +45,8 @@ static void *video_frame_addr16(void *frame, int x, int y);
 static void video_clear_screen16(void);
 static void video_clear_frame16(void *frame);
 static void video_clear_rect16(void *frame, RECT *rect);
-static void video_fill_rect16(void *frame, u32 color, RECT *rect);
-static void video_fill_frame16(void *frame, u32 color);
+static void video_fill_rect16(void *frame, UINT32 color, RECT *rect);
+static void video_fill_frame16(void *frame, UINT32 color);
 static void video_copy_rect16(void *src, void *dst, RECT *src_rect, RECT *dst_rect);
 static void video_copy_rect_flip16(void *src, void *dst, RECT *src_rect, RECT *dst_rect);
 static void video_copy_rect_rotate16(void *src, void *dst, RECT *src_rect, RECT *dst_rect);
@@ -56,8 +56,8 @@ static void *video_frame_addr32(void *frame, int x, int y);
 static void video_clear_screen32(void);
 static void video_clear_frame32(void *frame);
 static void video_clear_rect32(void *frame, RECT *rect);
-static void video_fill_rect32(void *frame, u32 color, RECT *rect);
-static void video_fill_frame32(void *frame, u32 color);
+static void video_fill_rect32(void *frame, UINT32 color, RECT *rect);
+static void video_fill_frame32(void *frame, UINT32 color);
 static void video_copy_rect32(void *src, void *dst, RECT *src_rect, RECT *dst_rect);
 static void video_copy_rect_flip32(void *src, void *dst, RECT *src_rect, RECT *dst_rect);
 static void video_copy_rect_rotate32(void *src, void *dst, RECT *src_rect, RECT *dst_rect);
@@ -74,7 +74,7 @@ static void video_copy_rect_rotate32(void *src, void *dst, RECT *src_rect, RECT 
 static void clear_vram(int flag)
 {
 	int i;
-	u32 *vptr = (u32 *)(u8 *)0x44000000;
+	UINT32 *vptr = (UINT32 *)(UINT8 *)0x44000000;
 
 	if (flag)
 		i = 2048 * 1024 >> 2;	// clear all VRAM
@@ -181,13 +181,21 @@ void video_flip_screen(int vsync)
 
 static void video_init16(void)
 {
-	show_frame = (void *)(FRAMESIZE * 0);
-	draw_frame = (void *)(FRAMESIZE * 1);
-	work_frame = (void *)(FRAMESIZE * 2);
-	tex_frame  = (void *)(FRAMESIZE * 3);
+	sceDisplaySetMode(PSP_DISPLAY_PIXEL_FORMAT_5551, SCR_WIDTH, SCR_HEIGHT);
+	sceDisplaySetFrameBuf((void *)0x4000000, BUF_WIDTH, PSP_DISPLAY_PIXEL_FORMAT_5551, PSP_DISPLAY_SETBUF_IMMEDIATE);
 
 	sceGuInit();
 	sceGuDisplay(GU_FALSE);
+
+	draw_frame = sceGuSwapBuffers();
+
+	if ((UINT32)draw_frame == 0)
+		show_frame = (void *)(FRAMESIZE * 1);
+	else
+		show_frame = (void *)(FRAMESIZE * 0);
+	work_frame = (void *)(FRAMESIZE * 2);
+	tex_frame  = (void *)(FRAMESIZE * 3);
+
 	sceGuStart(GU_DIRECT, gulist);
 
 	sceGuDrawBuffer(GU_PSM_5551, draw_frame, BUF_WIDTH);
@@ -221,8 +229,6 @@ static void video_init16(void)
 	sceGuFinish();
 	sceGuSync(0, 0);
 
-	video_flip_screen(1);
-
 	sceGuDisplay(GU_TRUE);
 
 	video_clear_screen();
@@ -236,7 +242,7 @@ static void video_init16(void)
 
 static void *video_frame_addr16(void *frame, int x, int y)
 {
-	return (void *)(((u32)frame | 0x44000000) + ((x + (y << 9)) << 1));
+	return (void *)(((UINT32)frame | 0x44000000) + ((x + (y << 9)) << 1));
 }
 
 
@@ -285,7 +291,7 @@ static void video_clear_rect16(void *frame, RECT *rect)
 	指定したフレームを塗りつぶし
 --------------------------------------------------------*/
 
-static void video_fill_frame16(void *frame, u32 color)
+static void video_fill_frame16(void *frame, UINT32 color)
 {
 	sceGuStart(GU_DIRECT, gulist);
 	sceGuDrawBufferList(GU_PSM_5551, frame, BUF_WIDTH);
@@ -301,7 +307,7 @@ static void video_fill_frame16(void *frame, u32 color)
 	指定した矩形範囲を塗りつぶし
 --------------------------------------------------------*/
 
-static void video_fill_rect16(void *frame, u32 color, RECT *rect)
+static void video_fill_rect16(void *frame, UINT32 color, RECT *rect)
 {
 	sceGuStart(GU_DIRECT, gulist);
 	sceGuDrawBufferList(GU_PSM_5551, frame, BUF_WIDTH);
@@ -389,7 +395,7 @@ static void video_copy_rect16(void *src, void *dst, RECT *src_rect, RECT *dst_re
 
 static void video_copy_rect_flip16(void *src, void *dst, RECT *src_rect, RECT *dst_rect)
 {
-	s16 j, sw, dw, sh, dh;
+	INT16 j, sw, dw, sh, dh;
 	struct Vertex *vertices;
 
 	sw = src_rect->right - src_rect->left;
@@ -455,7 +461,7 @@ static void video_copy_rect_flip16(void *src, void *dst, RECT *src_rect, RECT *d
 
 static void video_copy_rect_rotate16(void *src, void *dst, RECT *src_rect, RECT *dst_rect)
 {
-	s16 sw, dw, sh, dh;
+	INT16 sw, dw, sh, dh;
 	struct Vertex *vertices;
 
 	sw = src_rect->right - src_rect->left;
@@ -505,13 +511,21 @@ static void video_copy_rect_rotate16(void *src, void *dst, RECT *src_rect, RECT 
 
 static void video_init32(void)
 {
-	show_frame = (void *)(FRAMESIZE32 * 0);
-	draw_frame = (void *)(FRAMESIZE32 * 1);
-	work_frame = (void *)(FRAMESIZE32 * 2);
-	tex_frame  = (void *)(FRAMESIZE32 * 3);
+	sceDisplaySetMode(PSP_DISPLAY_PIXEL_FORMAT_8888, SCR_WIDTH, SCR_HEIGHT);
+	sceDisplaySetFrameBuf((void *)0x4000000, BUF_WIDTH, PSP_DISPLAY_PIXEL_FORMAT_8888, PSP_DISPLAY_SETBUF_IMMEDIATE);
 
 	sceGuInit();
 	sceGuDisplay(GU_FALSE);
+
+	draw_frame = sceGuSwapBuffers();
+
+	if ((UINT32)draw_frame == 0)
+		show_frame = (void *)(FRAMESIZE32 * 1);
+	else
+		show_frame = (void *)(FRAMESIZE32 * 0);
+	work_frame = (void *)(FRAMESIZE32 * 2);
+	tex_frame  = (void *)(FRAMESIZE32 * 3);
+
 	sceGuStart(GU_DIRECT, gulist);
 
 	sceGuDrawBuffer(GU_PSM_8888, draw_frame, BUF_WIDTH);
@@ -542,8 +556,6 @@ static void video_init32(void)
 	sceGuFinish();
 	sceGuSync(0, 0);
 
-	video_flip_screen(1);
-
 	sceGuDisplay(GU_TRUE);
 
 	video_clear_screen();
@@ -556,7 +568,7 @@ static void video_init32(void)
 
 static void *video_frame_addr32(void *frame, int x, int y)
 {
-	return (void *)(((u32)frame | 0x44000000) + ((x + (y << 9)) << 2));
+	return (void *)(((UINT32)frame | 0x44000000) + ((x + (y << 9)) << 2));
 }
 
 
@@ -605,7 +617,7 @@ static void video_clear_rect32(void *frame, RECT *rect)
 	指定したフレームを塗りつぶし
 --------------------------------------------------------*/
 
-static void video_fill_frame32(void *frame, u32 color)
+static void video_fill_frame32(void *frame, UINT32 color)
 {
 	sceGuStart(GU_DIRECT, gulist);
 	sceGuDrawBufferList(GU_PSM_8888, frame, BUF_WIDTH);
@@ -621,7 +633,7 @@ static void video_fill_frame32(void *frame, u32 color)
 	指定した矩形範囲を塗りつぶし
 --------------------------------------------------------*/
 
-static void video_fill_rect32(void *frame, u32 color, RECT *rect)
+static void video_fill_rect32(void *frame, UINT32 color, RECT *rect)
 {
 	sceGuStart(GU_DIRECT, gulist);
 	sceGuDrawBufferList(GU_PSM_8888, frame, BUF_WIDTH);
@@ -726,7 +738,7 @@ static void video_copy_rect_rotate32(void *src, void *dst, RECT *src_rect, RECT 
 	グローバル変数/構造体
 ******************************************************************************/
 
-u8 ALIGN_PSPDATA gulist[GULIST_SIZE];
+UINT8 ALIGN_PSPDATA gulist[GULIST_SIZE];
 void *show_frame;
 void *draw_frame;
 void *work_frame;
@@ -746,7 +758,7 @@ RECT full_rect = { 0, 0, SCR_WIDTH, SCR_HEIGHT };
 static void clear_vram(int flag)
 {
 	int i;
-	u32 *vptr = (u32 *)(u8 *)0x44000000;
+	UINT32 *vptr = (UINT32 *)(UINT8 *)0x44000000;
 
 	if (flag)
 		i = 2048 * 1024 >> 2;	// clear all VRAM
@@ -789,13 +801,21 @@ void video_flip_screen(int vsync)
 
 void video_init(void)
 {
-	draw_frame = (void *)(FRAMESIZE * 0);
-	show_frame = (void *)(FRAMESIZE * 1);
-	work_frame = (void *)(FRAMESIZE * 2);
-	tex_frame  = (void *)(FRAMESIZE * 3);
+	sceDisplaySetMode(PSP_DISPLAY_PIXEL_FORMAT_5551, SCR_WIDTH, SCR_HEIGHT);
+	sceDisplaySetFrameBuf((void *)0x4000000, BUF_WIDTH, PSP_DISPLAY_PIXEL_FORMAT_5551, PSP_DISPLAY_SETBUF_IMMEDIATE);
 
 	sceGuInit();
 	sceGuDisplay(GU_FALSE);
+
+	draw_frame = sceGuSwapBuffers();
+
+	if ((UINT32)draw_frame == 0)
+		show_frame = (void *)(FRAMESIZE * 1);
+	else
+		show_frame = (void *)(FRAMESIZE * 0);
+	work_frame = (void *)(FRAMESIZE * 2);
+	tex_frame  = (void *)(FRAMESIZE * 3);
+
 	sceGuStart(GU_DIRECT, gulist);
 
 	sceGuDrawBuffer(GU_PSM_5551, draw_frame, BUF_WIDTH);
@@ -858,7 +878,7 @@ void video_exit(int flag)
 
 void *video_frame_addr(void *frame, int x, int y)
 {
-	return (void *)(((u32)frame | 0x44000000) + ((x + (y << 9)) << 1));
+	return (void *)(((UINT32)frame | 0x44000000) + ((x + (y << 9)) << 1));
 }
 
 
@@ -907,7 +927,7 @@ void video_clear_rect(void *frame, RECT *rect)
 	指定したフレームを塗りつぶし
 --------------------------------------------------------*/
 
-void video_fill_frame(void *frame, u32 color)
+void video_fill_frame(void *frame, UINT32 color)
 {
 	sceGuStart(GU_DIRECT, gulist);
 	sceGuDrawBufferList(GU_PSM_5551, frame, BUF_WIDTH);
@@ -924,7 +944,7 @@ void video_fill_frame(void *frame, u32 color)
 	指定した矩形範囲を塗りつぶし
 --------------------------------------------------------*/
 
-void video_fill_rect(void *frame, u32 color, RECT *rect)
+void video_fill_rect(void *frame, UINT32 color, RECT *rect)
 {
 	sceGuStart(GU_DIRECT, gulist);
 	sceGuDrawBufferList(GU_PSM_5551, frame, BUF_WIDTH);
@@ -958,7 +978,7 @@ void video_clear_depth(void *frame)
 
 void video_copy_rect(void *src, void *dst, RECT *src_rect, RECT *dst_rect)
 {
-	s16 j, sw, dw, sh, dh;
+	INT16 j, sw, dw, sh, dh;
 	struct Vertex *vertices;
 
 	sw = src_rect->right - src_rect->left;
@@ -1024,7 +1044,7 @@ void video_copy_rect(void *src, void *dst, RECT *src_rect, RECT *dst_rect)
 
 void video_copy_rect_flip(void *src, void *dst, RECT *src_rect, RECT *dst_rect)
 {
-	s16 j, sw, dw, sh, dh;
+	INT16 j, sw, dw, sh, dh;
 	struct Vertex *vertices;
 
 	sw = src_rect->right - src_rect->left;
@@ -1090,7 +1110,7 @@ void video_copy_rect_flip(void *src, void *dst, RECT *src_rect, RECT *dst_rect)
 
 void video_copy_rect_rotate(void *src, void *dst, RECT *src_rect, RECT *dst_rect)
 {
-	s16 sw, dw, sh, dh;
+	INT16 sw, dw, sh, dh;
 	struct Vertex *vertices;
 
 	sw = src_rect->right - src_rect->left;

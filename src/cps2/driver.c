@@ -15,6 +15,7 @@
 
 struct driver_t CPS2_driver[] =
 {
+#if USE_CACHE
 //    name        cache      kludge              flags player & coin chuter
 	{ "ssf2",     0xb50000,  CPS2_KLUDGE_SSF2,    1,   0x00, { COIN_NONE } },
 	{ "ddtod",    0xc00000,  0,                   0,   0x0e, { COIN_4P4C, COIN_4P1C, COIN_3P3C, COIN_3P1C, COIN_2P1C } },
@@ -48,20 +49,59 @@ struct driver_t CPS2_driver[] =
 	{ "sfa3",     0x1f60000, 0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
 	{ "gigawing", 0xf90000,  0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
 	{ "mmatrix",  0x1d70000, CPS2_KLUDGE_MMATRIX, 0,   0x11, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
-#if 1
 	{ "mpangj",   0x790000,  0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
-#endif
 	{ "mpang",    0x790000,  0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
-	{ "puzloop2", 0xab0000,  CPS2_KLUDGE_PUZLOOP2,0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
-	{ "choko",    0,         0,                   0,   0x00, { COIN_NONE } },
+	{ "pzloop2",  0xab0000,  CPS2_KLUDGE_PUZLOOP2,0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "choko",    0x630000,  0,                   0,   0x05, { COIN_2P2C, COIN_2P1C, COIN_2P1C } },
 	{ "dimahoo",  0xfb0000,  CPS2_KLUDGE_DIMAHOO, 0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
 	{ "1944",     0x1390000, 0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
 	{ "progear",  0xfe0000,  0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
-#if !RELEASE
-	{ "hsf2d",    0x1d80000, CPS2_KLUDGE_HSF2D,   1,   0x00, { COIN_NONE } },
-#endif
 	{ "hsf2",     0x1d80000, CPS2_KLUDGE_SSF2T,   1,   0x00, { COIN_NONE } },
-	{ "jyangoku", 0,         0,                   0,   0x00, { COIN_NONE } },
+	{ "jyangoku", 0x170000,  0,                   0,   0x00, { COIN_NONE } },
+#else
+//    name        kludge              flags player & coin chuter
+	{ "ssf2",     CPS2_KLUDGE_SSF2,    1,   0x00, { COIN_NONE } },
+	{ "ddtod",    0,                   0,   0x0e, { COIN_4P4C, COIN_4P1C, COIN_3P3C, COIN_3P1C, COIN_2P1C } },
+	{ "ecofghtr", 0,                   0,   0x00, { COIN_NONE } },
+	{ "ssf2t",    CPS2_KLUDGE_SSF2T,   1,   0x00, { COIN_NONE } },
+	{ "xmcota",   CPS2_KLUDGE_XMCOTA,  1|2, 0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "armwar",   0,                   0,   0x06, { COIN_2P1C, COIN_2P2C, COIN_2P2C, COIN_3P1C, COIN_3P2C, COIN_3P3C, COIN_3P3C } },
+	{ "avsp",     0,                   0,   0x05, { COIN_3P3C, COIN_3P1C, COIN_2P1C } },
+	{ "dstlk",    0,                   0,   0x00, { COIN_NONE } },
+	{ "ringdest", 0,                   0,   0x06, { COIN_2P1C, COIN_2P2C, COIN_2P2C } },
+	{ "cybots",   0,                   0,   0x26, { COIN_2P1C, COIN_2P2C, COIN_2P2C } },
+	{ "msh",      0,                   1,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "nwarr",    0,                   0,   0x1d, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "sfa",      0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "mmancp2u", 0,                   0,   0x00, { COIN_NONE } },
+	{ "19xx",     0,                   0,   0x26, { COIN_2P1C, COIN_2P2C, COIN_2P2C } },
+	{ "ddsom",    0,                   0,   0x01, { COIN_2P1C, COIN_2P2C, COIN_2P2C, COIN_3P1C, COIN_3P2C, COIN_3P3C, COIN_3P3C, COIN_4P1C, COIN_4P2C, COIN_4P2C, COIN_4P4C, COIN_4P4C } },
+	{ "megaman2", 0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "qndream",  0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "sfa2",     0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "spf2t",    0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "xmvsf",    0,                   1|2, 0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "batcir",   0,                   0,   0x26, { COIN_2P1C, COIN_2P2C, COIN_2P2C, COIN_4P1C, COIN_4P2C, COIN_4P2C, COIN_4P4C, COIN_4P4C } },
+	{ "csclub",   0,                   0,   0x21, { COIN_2P1C, COIN_2P2C, COIN_2P2C } },
+	{ "mshvsf",   0,                   1|2, 0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "sgemf",    0,                   2,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "vhunt2",   0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "vsav",     0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "vsav2",    0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "mvsc",     0,                   1|2, 0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "sfa3",     0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "gigawing", 0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "mmatrix",  CPS2_KLUDGE_MMATRIX, 0,   0x11, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "mpangj",   0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "mpang",    0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "pzloop2",  CPS2_KLUDGE_PUZLOOP2,0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "choko",    0,                   0,   0x05, { COIN_2P2C, COIN_2P1C, COIN_2P1C } },
+	{ "dimahoo",  CPS2_KLUDGE_DIMAHOO, 0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "1944",     0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "progear",  0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "hsf2",     CPS2_KLUDGE_SSF2T,   1,   0x00, { COIN_NONE } },
+	{ "jyangoku", 0,                   0,   0x00, { COIN_NONE } },
+#endif
 	{ NULL }
 };
 
@@ -72,7 +112,7 @@ struct driver_t *driver;
 	ローカル変数
 ******************************************************************************/
 
-static u32 z80_bank;
+static UINT32 z80_bank;
 static int readpaddle;
 static int next_update_first_line;
 
@@ -85,7 +125,7 @@ static int next_update_first_line;
 	Z80 ROMバンク切り替え
 --------------------------------------------------------*/
 
-static void z80_set_bank(u32 offset)
+static void z80_set_bank(UINT32 offset)
 {
 	if (offset != z80_bank)
 	{
@@ -153,7 +193,7 @@ TIMER_CALLBACK( cps2_vblank_interrupt )
 
 READ16_HANDLER( cps2_inputport0_r )
 {
-	if (machine_input_type == INPTYPE_puzloop2)
+	if (machine_input_type == INPTYPE_pzloop2)
 	{
 		if (!readpaddle) return cps2_port_value[3];
 	}
@@ -191,7 +231,7 @@ WRITE8_HANDLER( qsound_banksw_w )
 		Z80 bank register for music note data. It's odd that it isn't encrypted
 		though.
 	*/
-	u32 bankaddress = 0x10000 + ((data & 0x0f) << 14);
+	UINT32 bankaddress = 0x10000 + ((data & 0x0f) << 14);
 
 	if (bankaddress >= memory_length_cpu2)
 		bankaddress = 0x10000;
@@ -317,7 +357,7 @@ WRITE16_HANDLER( cps2_eeprom_port_w )
 
 int cps2_driver_init(void)
 {
-	cps2_decrypt_68k();
+	cps2_init_68k();
 
 	z80_init();
 	z80_bank = -1;

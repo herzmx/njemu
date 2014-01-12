@@ -13,14 +13,14 @@
 #define Z80_AMASK 0x0000ffff
 
 #define READ_BYTE(mem, offset)			mem[offset ^ 1]
-#define READ_WORD(mem, offset)			*(u16 *)&mem[offset]
+#define READ_WORD(mem, offset)			*(UINT16 *)&mem[offset]
 #define WRITE_BYTE(mem, offset, data)	mem[offset ^ 1] = data
-#define WRITE_WORD(mem, offset, data)	*(u16 *)&mem[offset] = data
+#define WRITE_WORD(mem, offset, data)	*(UINT16 *)&mem[offset] = data
 
 #define READ_MIRROR_BYTE(mem, offset, amask)			mem[(offset & amask) ^ 1]
-#define READ_MIRROR_WORD(mem, offset, amask)			*(u16 *)&mem[offset & amask]
+#define READ_MIRROR_WORD(mem, offset, amask)			*(UINT16 *)&mem[offset & amask]
 #define WRITE_MIRROR_BYTE(mem, offset, data, amask)		mem[(offset & amask) ^ 1] = data
-#define WRITE_MIRROR_WORD(mem, offset, data, amask)		*(u16 *)&mem[offset & amask] = data
+#define WRITE_MIRROR_WORD(mem, offset, data, amask)		*(UINT16 *)&mem[offset & amask] = data
 
 #define str_cmp(s1, s2)		strnicmp(s1, s2, strlen(s2))
 
@@ -40,21 +40,21 @@ enum
 	グローバル変数
 ******************************************************************************/
 
-u8 *memory_region_cpu1;
-u8 *memory_region_cpu2;
-u8 *memory_region_gfx1;
-u8 *memory_region_gfx2;
-u8 *memory_region_sound1;
-u8 *memory_region_user1;
+UINT8 *memory_region_cpu1;
+UINT8 *memory_region_cpu2;
+UINT8 *memory_region_gfx1;
+UINT8 *memory_region_gfx2;
+UINT8 *memory_region_sound1;
+UINT8 *memory_region_user1;
 
-u32 memory_length_cpu1;
-u32 memory_length_cpu2;
-u32 memory_length_gfx1;
-u32 memory_length_gfx2;
-u32 memory_length_sound1;
-u32 memory_length_user1;
+UINT32 memory_length_cpu1;
+UINT32 memory_length_cpu2;
+UINT32 memory_length_gfx1;
+UINT32 memory_length_gfx2;
+UINT32 memory_length_sound1;
+UINT32 memory_length_user1;
 
-u8 neogeo_memcard[0x2000];
+UINT8 neogeo_memcard[0x2000];
 
 
 /******************************************************************************
@@ -65,9 +65,9 @@ u8 neogeo_memcard[0x2000];
 	メモリ確保
 --------------------------------------------------------*/
 
-static u8 *memory_allocate(int type, u32 length)
+static UINT8 *memory_allocate(int type, UINT32 length)
 {
-	u8 *mem;
+	UINT8 *mem;
 	const char *region_name[6] =
 	{
 		"CPU1","CPU2","GFX1","GFX2","SOUND1","USER1"
@@ -80,7 +80,7 @@ static u8 *memory_allocate(int type, u32 length)
 	}
 	memset(mem, 0, length);
 
-	return (u8 *)mem;
+	return (UINT8 *)mem;
 }
 
 /*--------------------------------------------------------
@@ -102,7 +102,7 @@ static int load_rom_user1(void)
 
 		if (crc32(0, memory_region_user1, 0x80000) == 0xdf9de490)
 		{
-			u16 *mem16 = (u16 *)memory_region_user1;
+			UINT16 *mem16 = (UINT16 *)memory_region_user1;
 
 			// load CD-ROM
 			mem16[0xdb70 >> 1] = 0xfac0;
@@ -263,10 +263,10 @@ void memory_shutdown(void)
 	M68000メモリリード (byte)
 ------------------------------------------------------*/
 
-u8 m68000_read_memory_8(u32 offset)
+UINT8 m68000_read_memory_8(UINT32 offset)
 {
 	int shift = (~offset & 1) << 3;
-	u16 mem_mask = ~(0xff << shift);
+	UINT16 mem_mask = ~(0xff << shift);
 
 	offset &= M68K_AMASK;
 
@@ -301,7 +301,7 @@ u8 m68000_read_memory_8(u32 offset)
 	M68000リードメモリ (word)
 ------------------------------------------------------*/
 
-u16 m68000_read_memory_16(u32 offset)
+UINT16 m68000_read_memory_16(UINT32 offset)
 {
 	offset &= M68K_AMASK;
 
@@ -336,7 +336,7 @@ u16 m68000_read_memory_16(u32 offset)
 	M68000リードメモリ (long)
 ------------------------------------------------------*/
 
-u32 m68000_read_memory_32(u32 offset)
+UINT32 m68000_read_memory_32(UINT32 offset)
 {
 	return (m68000_read_memory_16(offset) << 16) | m68000_read_memory_16(offset + 2);
 }
@@ -346,10 +346,10 @@ u32 m68000_read_memory_32(u32 offset)
 	M68000ライトメモリ (byte)
 ------------------------------------------------------*/
 
-void m68000_write_memory_8(u32 offset, u8 data)
+void m68000_write_memory_8(UINT32 offset, UINT8 data)
 {
 	int shift = (~offset & 1) << 3;
-	u16 mem_mask = ~(0xff << shift);
+	UINT16 mem_mask = ~(0xff << shift);
 
 	offset &= M68K_AMASK;
 
@@ -380,7 +380,7 @@ void m68000_write_memory_8(u32 offset, u8 data)
 	M68000ライトメモリ (word)
 ------------------------------------------------------*/
 
-void m68000_write_memory_16(u32 offset, u16 data)
+void m68000_write_memory_16(UINT32 offset, UINT16 data)
 {
 	offset &= M68K_AMASK;
 
@@ -411,7 +411,7 @@ void m68000_write_memory_16(u32 offset, u16 data)
 	M68000ライトメモリ (long)
 ------------------------------------------------------*/
 
-void m68000_write_memory_32(u32 offset, u32 data)
+void m68000_write_memory_32(UINT32 offset, UINT32 data)
 {
 	m68000_write_memory_16(offset, data >> 16);
 	m68000_write_memory_16(offset + 2, data);
@@ -426,7 +426,7 @@ void m68000_write_memory_32(u32 offset, u32 data)
 	Z80リードメモリ (byte)
 ------------------------------------------------------*/
 
-u8 z80_read_memory_8(u32 offset)
+UINT8 z80_read_memory_8(UINT32 offset)
 {
 	offset &= Z80_AMASK;
 
@@ -438,7 +438,7 @@ u8 z80_read_memory_8(u32 offset)
 	Z80ライトメモリ (byte)
 ------------------------------------------------------*/
 
-void z80_write_memory_8(u32 offset, u8 data)
+void z80_write_memory_8(UINT32 offset, UINT8 data)
 {
 	offset &= Z80_AMASK;
 

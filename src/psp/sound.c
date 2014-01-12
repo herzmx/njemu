@@ -20,7 +20,7 @@ static SceUID sound_thread;
 static int sound_volume;
 static int sound_enable;
 static int sound_pause;
-static s16 ALIGN_PSPDATA sound_buffer[2][SOUND_BUFFER_SIZE];
+static INT16 ALIGN_PSPDATA sound_buffer[2][SOUND_BUFFER_SIZE];
 
 static struct sound_t sound_info;
 
@@ -30,10 +30,6 @@ static struct sound_t sound_info;
 ******************************************************************************/
 
 struct sound_t *sound = &sound_info;
-
-#if (EMU_SYSTEM != MVS)
-volatile int sound_thread_locked;
-#endif
 
 
 /******************************************************************************
@@ -48,10 +44,6 @@ static int sound_update_thread(SceSize args, void *argp)
 {
 	int flip = 0;
 
-#if (EMU_SYSTEM != MVS)
-	sound_thread_locked = 0;
-#endif
-
 	while (sound_active)
 	{
 		if (Sleep)
@@ -64,14 +56,6 @@ static int sound_update_thread(SceSize args, void *argp)
 
 		if (sound_enable)
 		{
-#if (EMU_SYSTEM != MVS)
-			if (sound_thread_locked)
-			{
-				while (sound_thread_locked)
-					sceKernelDelayThread(50);
-			}
-#endif
-
 			(*sound->update)(sound_buffer[flip]);
 			sceAudioOutputPannedBlocking(sound_handle, sound_volume, sound_volume, (char *)sound_buffer[flip]);
 		}

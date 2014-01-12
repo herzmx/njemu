@@ -23,7 +23,7 @@ volatile int cdda_command_ack = 0;
 	ƒ[ƒJƒ‹•Ï”
 ******************************************************************************/
 
-static u32 cdda_play_start = 0;
+static UINT32 cdda_play_start = 0;
 
 
 /******************************************************************************
@@ -85,6 +85,10 @@ void cdda_play(int track)
 			mp3_play(path);
 			autoframeskip_reset();
 		}
+		else
+		{
+			cdda_command_ack = 1;
+		}
 	}
 }
 
@@ -133,7 +137,7 @@ void cdda_resume(void)
 void neogeo_cdda_control(void)
 {
 	int command, track;
-	u32 offset;
+	UINT32 offset;
 
 	command = m68000_get_reg(M68K_D0);
 	track   = command & 0xff;
@@ -175,11 +179,11 @@ void neogeo_cdda_control(void)
 
 void neogeo_cdda_check(void)
 {
-	u32 offset = m68000_read_memory_32(0x108000 + 0x76ea);
+	UINT32 offset = m68000_read_memory_32(0x108000 + 0x76ea);
 
 	if (offset)
 	{
-		u8 command, track;
+		UINT8 command, track;
 
 		offset  = (offset - 0xe00000) >> 1;
 
@@ -223,12 +227,15 @@ static void neogeo_cdda_command(int command, int track)
 			cdda_play_start = frames_displayed;
 			cdda_autoloop = loop;
 			cdda_play(track);
-			if (flag)
+			if (option_mp3_enable)
 			{
-				do
+				if (flag)
 				{
-					sceKernelDelayThread(10);
-				} while (!cdda_command_ack);
+					do
+					{
+						sceKernelDelayThread(10);
+					} while (!cdda_command_ack);
+				}
 			}
 		}
 		break;
@@ -262,7 +269,7 @@ STATE_SAVE( cdda )
 {
 	int playing = cdda_playing;
 	int autoloop = cdda_autoloop;
-	u32 frame = mp3_get_current_frame();
+	UINT32 frame = mp3_get_current_frame();
 
 	state_save_long(&cdda_current_track, 1);
 	state_save_long(&playing,  1);
@@ -276,7 +283,7 @@ STATE_LOAD( cdda )
 	{
 		int playing;
 		int autoloop;
-		u32 frame;
+		UINT32 frame;
 
 		state_load_long(&cdda_current_track, 1);
 		state_load_long(&playing, 1);
@@ -307,6 +314,7 @@ STATE_LOAD( cdda )
 		}
 		else cdda_stop();
 	}
+	else cdda_stop();
 }
 
 #endif

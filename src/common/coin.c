@@ -15,9 +15,9 @@
 
 #define COIN_COUNTERS	4
 
-static u32 coins[COIN_COUNTERS];
-static u32 lastcoin[COIN_COUNTERS];
-static u32 coinlockedout[COIN_COUNTERS];
+static UINT32 coins[COIN_COUNTERS];
+static UINT32 lastcoin[COIN_COUNTERS];
+static UINT32 coinlockedout[COIN_COUNTERS];
 
 
 /******************************************************************************

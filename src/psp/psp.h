@@ -16,6 +16,7 @@
 #include "emucfg.h"
 
 #include <psptypes.h>
+#include "include/osd_cpu.h"
 #include <pspaudio.h>
 #include <pspctrl.h>
 #include <pspdisplay.h>
@@ -24,6 +25,9 @@
 #include <pspkernel.h>
 #include <psppower.h>
 #include <psprtc.h>
+#ifdef PSP_SLIM
+#include <kubridge.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -51,6 +55,14 @@
 #include "psp/wallpaper.h"
 #endif
 
+#ifdef PSP_SLIM
+//#define PSP2K_MEM_TOP		0xa000000
+#define PSP2K_MEM_TOP		0xa200000	//AHMAN
+#define PSP2K_MEM_BOTTOM	0xbffffff
+//#define PSP2K_MEM_SIZE		0x2000000
+#define PSP2K_MEM_SIZE		0x1e00000	//AHMAN
+#endif
+
 enum
 {
 	LOOP_EXIT = 0,
@@ -73,7 +85,7 @@ extern volatile int Sleep;
 extern char launchDir[MAX_PATH];
 extern int psp_cpuclock;
 #ifdef KERNEL_MODE
-extern volatile u32 home_button;
+extern volatile UINT32 home_button;
 #endif
 
 void set_cpu_clock(int value);

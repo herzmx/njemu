@@ -8,14 +8,25 @@
 
 #include "mvs.h"
 
-#define MENU_BLANK					{ "\n", 0, 0x00, 0, 0, { NULL } }
+#define MENU_BLANK		{ "\n", 0, 0x00, 0, 0, { NULL } }
 #if JAPANESE_UI
-#define MENU_RETURN					{ "メインメニューに戻る", 1, 0x00, 0, 0, { NULL } }
+#define MENU_RETURN		{ "メインメニューに戻る", 1, 0x00, 0, 0, { NULL } }
 #else
-#define MENU_RETURN					{ "Return to main menu", 1, 0x00, 0, 0, { NULL } }
+#define MENU_RETURN		{ "Return to main menu", 1, 0x00, 0, 0, { NULL } }
 #endif
-#define MENU_END					{ "\0", 0, 0x00, 0, 0, { NULL } }
+#define MENU_END		{ "\0", 0, 0x00, 0, 0, { NULL } }
 
+
+/******************************************************************************
+	グローバル変数
+******************************************************************************/
+
+int neogeo_hard_dipsw;
+
+
+/******************************************************************************
+	ローカル構造体
+******************************************************************************/
 
 /*--------------------------------------
   標準
@@ -29,6 +40,24 @@ static dipswitch_t dipswitch_default[] =
 	{ "COMM Settings",            1, 0x38, 0, 4, { "Off","1","2","3","4" } },
 	{ "Free Play",                1, 0x40, 0, 1, { "Off","On" } },
 	{ "Freeze",                   1, 0x80, 0, 1, { "Off","On" } },
+	MENU_BLANK,
+	MENU_RETURN,
+	MENU_END,
+};
+
+/*--------------------------------------
+  PCB
+--------------------------------------*/
+
+static dipswitch_t dipswitch_pcb[] =
+{
+	{ "Test Switch",              1, 0x01, 0, 1, { "Off","On" } },
+	{ "Coin Chutes",              1, 0x02, 0, 1, { "2?", "1?" } },
+	{ "Autofire (in some games)", 1, 0x04, 0, 1, { "Off","On" } },
+	{ "COMM Settings",            1, 0x38, 0, 4, { "Off","1","2","3","4" } },
+	{ "Free Play",                1, 0x40, 0, 1, { "Off","On" } },
+	{ "Freeze",                   1, 0x80, 0, 1, { "Off","On" } },
+	{ "Hard Dip 3 (Region)",      1, 0x01, 0, 1, { "Asia","Japan" } },
 	MENU_BLANK,
 	MENU_RETURN,
 	MENU_END,
@@ -52,9 +81,30 @@ static dipswitch_t dipswitch_mjneogeo[] =
 };
 
 
+/*--------------------------------------
+  kog
+--------------------------------------*/
+
+#if !RELEASE
+static dipswitch_t dipswitch_kog[] =
+{
+	{ "Test Switch",              1, 0x01, 0, 1, { "Off","On" } },
+	{ "Coin Chutes",              1, 0x02, 0, 1, { "2?", "1?" } },
+	{ "Autofire (in some games)", 1, 0x04, 0, 1, { "Off","On" } },
+	{ "COMM Settings",            1, 0x38, 0, 4, { "Off","1","2","3","4" } },
+	{ "Free Play",                1, 0x40, 0, 1, { "Off","On" } },
+	{ "Freeze",                   1, 0x80, 0, 1, { "Off","On" } },
+	{ "Jumper (Title)",           1, 0x01, 0, 1, { "Non-English","English" } },
+	MENU_BLANK,
+	MENU_RETURN,
+	MENU_END,
+};
+#endif
+
+
 dipswitch_t *load_dipswitch(void)
 {
-	u8 value = ~neogeo_dipswitch;
+	UINT8 value = ~neogeo_dipswitch;
 	dipswitch_t *dipswitch = NULL;
 
 	switch (neogeo_ngh)
@@ -70,6 +120,20 @@ dipswitch_t *load_dipswitch(void)
 		dipswitch = dipswitch_default;
 		break;
 	}
+
+	if (machine_init_type == INIT_ms5pcb
+	||	machine_init_type == INIT_svcpcb)
+	{
+		dipswitch = dipswitch_pcb;
+		dipswitch[6].value = neogeo_hard_dipsw;
+	}
+#if !RELEASE
+	else if (machine_init_type == INIT_kog)
+	{
+		dipswitch = dipswitch_kog;
+		dipswitch[6].value = neogeo_hard_dipsw;
+	}
+#endif
 
 	dipswitch[0].value = (value & 0x01) != 0;
 	dipswitch[1].value = (value & 0x02) != 0;
@@ -92,7 +156,7 @@ dipswitch_t *load_dipswitch(void)
 
 void save_dipswitch(void)
 {
-	u8 value;
+	UINT8 value;
 	dipswitch_t *dipswitch = NULL;
 
 	switch (neogeo_ngh)
@@ -108,6 +172,20 @@ void save_dipswitch(void)
 		dipswitch = dipswitch_default;
 		break;
 	}
+
+	if (machine_init_type == INIT_ms5pcb
+	||	machine_init_type == INIT_svcpcb)
+	{
+		dipswitch = dipswitch_pcb;
+		neogeo_hard_dipsw = dipswitch[6].value;
+	}
+#if !RELEASE
+	else if (machine_init_type == INIT_kog)
+	{
+		dipswitch = dipswitch_kog;
+		neogeo_hard_dipsw = dipswitch[6].value;
+	}
+#endif
 
 	value = 0;
 	value |= (dipswitch[0].value != 0) ? 0x00: 0x01;

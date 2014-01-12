@@ -26,8 +26,8 @@ void z80_exit(void);
 int  z80_execute(int cycles);
 void z80_set_irq_line(int irqline, int state);
 void z80_set_irq_callback(int (*callback)(int line));
-u32  z80_get_reg(int regnum);
-void z80_set_reg(int regnum, u32 val);
+UINT32  z80_get_reg(int regnum);
+void z80_set_reg(int regnum, UINT32 val);
 
 #ifdef SAVE_STATE
 STATE_SAVE( z80 );

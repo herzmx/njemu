@@ -18,7 +18,7 @@
 	gryph data
 ------------------------------------------------------*/
 
-static const u8 ALIGN_DATA jpn_h14[] = {
+static const UINT8 ALIGN_DATA jpn_h14[] = {
 	0x6f,0x00,0xaf,0xca,0x60,0x0f,0xf4,0xc4,0x0a,0xc0,0xfc,0x04,0x60,0xcf,0x00,0x44,
 	0xaf,0x04,0xff,0xff,0x4f,0x88,0xcf,0x08,0xcc,0xcf,0x2c,0x00,0x8f,0x00,0x00,0x8f,
 	0x00,0x00,0x04,0x00,0x60,0x6c,0x00,0xc6,0xc4,0x06,0x4c,0x40,0x0c,0xc6,0xc4,0x06,
@@ -179,7 +179,7 @@ static const int ALIGN_DATA jpn_h14_pos[NUM_FONTS] = {
 
 };
 
-static const s8 ALIGN_DATA jpn_h14_width[NUM_FONTS] = {
+static const INT8 ALIGN_DATA jpn_h14_width[NUM_FONTS] = {
 	 6, 6, 4, 4, 4, 4, 8, 8, 6, 8, 6, 8, 8, 8, 6, 6,
 	 8, 8, 8, 8, 8, 8, 8, 8, 6, 6, 8, 8, 8, 6, 6, 8,
 	 8, 8, 8, 8, 6, 8, 8, 8, 6, 6, 6, 8, 8, 8, 8, 8,
@@ -187,7 +187,7 @@ static const s8 ALIGN_DATA jpn_h14_width[NUM_FONTS] = {
 
 };
 
-static const s8 ALIGN_DATA jpn_h14_height[NUM_FONTS] = {
+static const INT8 ALIGN_DATA jpn_h14_height[NUM_FONTS] = {
 	12, 5,11,11, 3, 4,11, 9,10,12, 8,12,10, 7, 9, 9,
 	 2,11,12,13,10,14,13,13,13,12, 9,12,12,11,12,11,
 	13,11,11,12,12,12, 8,10,13,10, 9,11,11, 6,14,10,
@@ -195,7 +195,7 @@ static const s8 ALIGN_DATA jpn_h14_height[NUM_FONTS] = {
 
 };
 
-static const s8 ALIGN_DATA jpn_h14_skipx[NUM_FONTS] = {
+static const INT8 ALIGN_DATA jpn_h14_skipx[NUM_FONTS] = {
 	 1, 0, 2, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0,
 	 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0,
@@ -203,7 +203,7 @@ static const s8 ALIGN_DATA jpn_h14_skipx[NUM_FONTS] = {
 
 };
 
-static const s8 ALIGN_DATA jpn_h14_skipy[NUM_FONTS] = {
+static const INT8 ALIGN_DATA jpn_h14_skipy[NUM_FONTS] = {
 	 1, 9, 0, 3,10, 5, 2, 4, 3, 2, 4, 2, 3, 5, 4, 4,
 	 6, 2, 1, 0, 2, 0, 0, 0, 1, 1, 3, 1, 1, 2, 1, 2,
 	 1, 2, 2, 1, 1, 1, 3, 2, 0, 2, 3, 2, 2, 3, 0, 2,
@@ -216,7 +216,7 @@ static const s8 ALIGN_DATA jpn_h14_skipy[NUM_FONTS] = {
 	functions
 ------------------------------------------------------*/
 
-int jpn_h14_get_gryph(struct font_t *font, u16 code)
+int jpn_h14_get_gryph(struct font_t *font, UINT16 code)
 {
 	if (code < NUM_FONTS)
 	{

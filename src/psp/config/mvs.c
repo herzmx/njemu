@@ -22,7 +22,7 @@ static const char *inifile_name = "mvspsp.ini";
 	ç\ë¢ëÃ
 ******************************************************************************/
 
-static cfg_type gamecfg_neogeo[] =
+static cfg_type gamecfg_mvs[] =
 {
 	{ CFG_NONE,	"[Emulation Settings]", },
 	{ CFG_INT,	"NeogeoRegion",			&neogeo_region,			0,	3	},
@@ -50,10 +50,10 @@ static cfg_type gamecfg_neogeo[] =
 	{ CFG_PAD,	"Down",			&input_map[P1_DOWN],	PSP_CTRL_DOWN,		0	},
 	{ CFG_PAD,	"Left",			&input_map[P1_LEFT],	PSP_CTRL_LEFT,		0	},
 	{ CFG_PAD,	"Right",		&input_map[P1_RIGHT],	PSP_CTRL_RIGHT,		0	},
-	{ CFG_PAD,	"ButtonA",		&input_map[P1_BUTTONA],	PSP_CTRL_CROSS,		0	},
-	{ CFG_PAD,	"ButtonB",		&input_map[P1_BUTTONB],	PSP_CTRL_CIRCLE,	0	},
-	{ CFG_PAD,	"ButtonC",		&input_map[P1_BUTTONC],	PSP_CTRL_SQUARE,	0	},
-	{ CFG_PAD,	"ButtonD",		&input_map[P1_BUTTOND],	PSP_CTRL_TRIANGLE,	0	},
+	{ CFG_PAD,	"ButtonA",		&input_map[P1_BUTTONA],	PSP_CTRL_SQUARE,	0	},
+	{ CFG_PAD,	"ButtonB",		&input_map[P1_BUTTONB],	PSP_CTRL_TRIANGLE,	0	},
+	{ CFG_PAD,	"ButtonC",		&input_map[P1_BUTTONC],	PSP_CTRL_CROSS,		0	},
+	{ CFG_PAD,	"ButtonD",		&input_map[P1_BUTTOND],	PSP_CTRL_CIRCLE,	0	},
 	{ CFG_PAD,	"Start",		&input_map[P1_START],	PSP_CTRL_START,		0	},
 	{ CFG_PAD,	"Coin",			&input_map[P1_COIN],	PSP_CTRL_SELECT,	0	},
 
@@ -61,6 +61,7 @@ static cfg_type gamecfg_neogeo[] =
 	{ CFG_PAD,	"ServiceCoin",	&input_map[SERV_COIN],		0,		0		},
 	{ CFG_PAD,	"TestSwitch",	&input_map[TEST_SWITCH],	0,		0		},
 	{ CFG_INT,	"DipSwitch",	&neogeo_dipswitch,			0xff,	0xff	},
+	{ CFG_INT,	"HardDipSwitch",&neogeo_hard_dipsw,			0,		1		},
 
 	{ CFG_NONE,	"[Autofire Settings]", },
 	{ CFG_PAD,	"AutofireA",	&input_map[P1_AF_A],	0,	0	},
@@ -127,6 +128,7 @@ static cfg_type gamecfg_irrmaze[] =
 	{ CFG_PAD,	"ServiceCoin",	&input_map[SERV_COIN],		0,		0		},
 	{ CFG_PAD,	"TestSwitch",	&input_map[TEST_SWITCH],	0,		0		},
 	{ CFG_INT,	"DipSwitch",	&neogeo_dipswitch,			0xff,	0xff	},
+	{ CFG_INT,	"HardDipSwitch",&neogeo_hard_dipsw,			0,		1		},
 
 	{ CFG_NONE,	"[System Key Settings]", },
 	{ CFG_PAD,	"Snapshot",		&input_map[SNAPSHOT],	0,	0	},
@@ -166,6 +168,7 @@ static cfg_type gamecfg_popbounc[] =
 	{ CFG_PAD,	"ButtonA",		&input_map[P1_BUTTONA],	PSP_CTRL_CROSS,		0	},
 	{ CFG_PAD,	"ButtonB",		&input_map[P1_BUTTONB],	PSP_CTRL_CIRCLE,	0	},
 	{ CFG_PAD,	"ButtonC",		&input_map[P1_BUTTONC],	PSP_CTRL_SQUARE,	0	},
+	{ CFG_PAD,	"ButtonD",		&input_map[P1_BUTTOND],	0,					0	},
 	{ CFG_PAD,	"Start",		&input_map[P1_START],	PSP_CTRL_START,		0	},
 	{ CFG_PAD,	"Coin",			&input_map[P1_COIN],	PSP_CTRL_SELECT,	0	},
 	{ CFG_INT,	"Sensitivity",	&analog_sensitivity,	1,					2	},
@@ -174,6 +177,7 @@ static cfg_type gamecfg_popbounc[] =
 	{ CFG_PAD,	"ServiceCoin",	&input_map[SERV_COIN],		0,		0		},
 	{ CFG_PAD,	"TestSwitch",	&input_map[TEST_SWITCH],	0,		0		},
 	{ CFG_INT,	"DipSwitch",	&neogeo_dipswitch,			0xff,	0xff	},
+	{ CFG_INT,	"HardDipSwitch",&neogeo_hard_dipsw,			0,		1		},
 
 	{ CFG_NONE,	"[System Key Settings]", },
 	{ CFG_PAD,	"Snapshot",		&input_map[SNAPSHOT],	0,	0	},
@@ -223,6 +227,7 @@ static cfg_type gamecfg_vliner[] =
 	{ CFG_PAD,	"Clear Credit",	&input_map[OTHER2],			0,		0		},
 	{ CFG_PAD,	"Hopper Out",	&input_map[OTHER3],			0,		0		},
 	{ CFG_INT,	"DipSwitch",	&neogeo_dipswitch,			0xff,	0xff	},
+	{ CFG_INT,	"HardDipSwitch",&neogeo_hard_dipsw,			0,		1		},
 
 	{ CFG_NONE,	"[System Key Settings]", },
 	{ CFG_PAD,	"Snapshot",		&input_map[SNAPSHOT],	0,	0	},
@@ -268,6 +273,7 @@ static cfg_type gamecfg_jockeygp[] =
 	{ CFG_NONE,	"[Switch Settings]", },
 	{ CFG_PAD,	"TestSwitch",	&input_map[TEST_SWITCH],	0,		0		},
 	{ CFG_INT,	"DipSwitch",	&neogeo_dipswitch,			0xff,	0xff	},
+	{ CFG_INT,	"HardDipSwitch",&neogeo_hard_dipsw,			0,		1		},
 
 	{ CFG_NONE,	"[System Key Settings]", },
 	{ CFG_PAD,	"Snapshot",		&input_map[SNAPSHOT],	0,	0	},
@@ -288,7 +294,7 @@ static cfg_type gamecfg_jockeygp[] =
 	case NGH_popbounc: gamecfg = gamecfg_popbounc; break;
 	case NGH_vliner:   gamecfg = gamecfg_vliner; break;
 	case NGH_jockeygp: gamecfg = gamecfg_jockeygp; break;
-	default: gamecfg = gamecfg_neogeo; break;
+	default: gamecfg = gamecfg_mvs; break;
 	}
 
 #endif

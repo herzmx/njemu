@@ -241,6 +241,44 @@ enum
 	INIT_jockeygp,		// 33
 	INIT_vliner,		// 34
 
+	// bootleg
+	INIT_garoubl,		// 35
+	INIT_kf2k2pls,		// 36
+	INIT_kf2k2mp,		// 37
+	INIT_kf2k2mp2,		// 38
+	INIT_ms5plus,		// 39
+	INIT_svcboot,		// 40
+	INIT_svcplus,		// 41
+	INIT_svcplusa,		// 42
+	INIT_svcsplus,		// 43
+	INIT_samsho5b,		// 44
+	INIT_kf2k3bl,		// 45
+	INIT_kf2k3pl,		// 46
+	INIT_kf2k3upl,		// 47
+	INIT_kog,			// 48
+	INIT_kof10th,		// 49
+	INIT_kf10thep,		// 50
+	INIT_kf2k5uni,		// 51
+	INIT_cthd2003,		// 52
+	INIT_ct2k3sp,		// 53
+	INIT_kof2k4se,		// 54
+	INIT_lans2004,		// 55
+	INIT_mslug3b6,		// 56
+	INIT_ms4plus,		// 57
+
+	// bootleg (MAME plus)
+	INIT_kof96ep,		// 58
+	INIT_kf2k1pls,		// 59
+	INIT_kf2k1pa,		// 60
+	INIT_cthd2k3a,		// 61
+	INIT_kof2002b,		// 62
+	INIT_matrimbl,		// 63
+	INIT_kf2k2plc,		// 64
+	INIT_kf2k4pls,		// 65
+	INIT_kof97pla,		// 66
+	INIT_fr2ch,			// 67
+	INIT_mslug5b,		// 68
+
 	MAX_INIT
 };
 
@@ -248,25 +286,26 @@ enum
 
 void kof99_neogeo_gfx_decrypt(int extra_xor);
 void kof2000_neogeo_gfx_decrypt(int extra_xor);
-void kof99_decrypt_68k(void);
-void garou_decrypt_68k(void);
-void garouo_decrypt_68k(void);
-void mslug3_decrypt_68k(void);
-void kof2000_decrypt_68k(void);
-void kof98_decrypt_68k(void);
-void kof2002_decrypt_68k(void);
-void matrim_decrypt_68k(void);
-void mslug5_decrypt_68k(void);
-void svcchaos_px_decrypt(void);
 void svcpcb_gfx_decrypt(void);
 void svcpcb_s1data_decrypt(void);
-void samsho5_decrypt_68k(void);
-void kf2k3pcb_gfx_decrypt(void);
-void kf2k3pcb_decrypt_68k(void);
-void kf2k3pcb_decrypt_s1data(void);
-void kof2003_decrypt_68k(void);
-void kof2003biosdecode(void);
-void samsh5p_decrypt_68k(void);
+void kf2k3pcb_cx_decrypt(void);
+void kf2k3pcb_sx_decrypt(void);
 
 void neo_pcm2_snk_1999(int value);
 void neo_pcm2_swap(int value);
+
+// bootleg
+void cmc42_neogeo_gfx_decrypt(int extra_xor);
+void cmc50_neogeo_gfx_decrypt(int extra_xor);
+int neogeo_bootleg_cx_decrypt(void);
+int neogeo_bootleg_sx_decrypt(int value);
+int cthd2003_cx_decrypt(void);
+int ct2k3sp_sx_decrypt(void);
+int svcboot_cx_decrypt(void);
+void lans2004_vx_decrypt(void);
+
+// bootleg (MAME plus)
+int samsho5b_cx_decrypt(void);
+int kof2002b_cx_decrypt(void);
+int kof2002b_sx_decrypt(void);
+void samsho5b_vx_decrypt(void);

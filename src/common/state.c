@@ -20,9 +20,9 @@
 char date_str[16];
 char time_str[16];
 char stver_str[16];
-int  state_version;
-u8   *state_buffer;
-int  current_state_version;
+int state_version;
+UINT8 *state_buffer;
+int current_state_version;
 #if (EMU_SYSTEM == MVS)
 int  state_reload_bios;
 #endif
@@ -33,11 +33,11 @@ int  state_reload_bios;
 ******************************************************************************/
 
 #if (EMU_SYSTEM == CPS1)
-static const char *current_version_str = "CPS1SV08";
+static const char *current_version_str = "CPS1SV09";
 #elif (EMU_SYSTEM == CPS2)
 static const char *current_version_str = "CPS2SV08";
 #elif (EMU_SYSTEM == MVS)
-static const char *current_version_str = "MVSSV008";
+static const char *current_version_str = "MVSSV010";
 #elif (EMU_SYSTEM == NCDZ)
 static const char *current_version_str = "NCDZSV08";
 #endif
@@ -55,10 +55,10 @@ static void save_thumbnail(void)
 {
 	int x, y, w, h;
 #if PSP_VIDEO_32BPP
-	u32 *src = (u32 *)video_frame_addr(tex_frame, 152, 0);
-	u16 data;
+	UINT32 *src = (UINT32 *)video_frame_addr(tex_frame, 152, 0);
+	UINT16 data;
 #else
-	u16 *src = (u16 *)video_frame_addr(tex_frame, 152, 0);
+	UINT16 *src = (UINT16 *)video_frame_addr(tex_frame, 152, 0);
 #endif
 
 #if (EMU_SYSTEM == CPS1 || EMU_SYSTEM == CPS2)
@@ -98,10 +98,10 @@ static void load_thumbnail(FILE *fp)
 {
 	int x, y, w, h;
 #if PSP_VIDEO_32BPP
-	u32 *dst = (u32 *)video_frame_addr(tex_frame, 0, 0);
-	u16 data;
+	UINT32 *dst = (UINT32 *)video_frame_addr(tex_frame, 0, 0);
+	UINT16 data;
 #else
-	u16 *dst = (u16 *)video_frame_addr(tex_frame, 0, 0);
+	UINT16 *dst = (UINT16 *)video_frame_addr(tex_frame, 0, 0);
 #endif
 
 #if (EMU_SYSTEM == CPS1 || EMU_SYSTEM == CPS2)
@@ -150,9 +150,9 @@ static void clear_thumbnail(void)
 {
 	int x, y, w, h;
 #if PSP_VIDEO_32BPP
-	u32 *dst = (u32 *)video_frame_addr(tex_frame, 0, 0);
+	UINT32 *dst = (UINT32 *)video_frame_addr(tex_frame, 0, 0);
 #else
-	u16 *dst = (u16 *)video_frame_addr(tex_frame, 0, 0);
+	UINT16 *dst = (UINT16 *)video_frame_addr(tex_frame, 0, 0);
 #endif
 
 #if (EMU_SYSTEM == CPS1 || EMU_SYSTEM == CPS2)
@@ -195,11 +195,11 @@ int state_save(int slot)
 	char error_mes[128];
 	char buf[128];
 #if (EMU_SYSTEM == NCDZ)
-	u8 *inbuf, *outbuf;
+	UINT8 *inbuf, *outbuf;
 	unsigned long insize, outsize;
 #else
-	u8 *state_buffer_base;
-	u32 size;
+	UINT8 *state_buffer_base;
+	UINT32 size;
 #endif
 
 	sprintf(path, "%sstate/%s.sv%d", launchDir, game_name, slot);
@@ -228,7 +228,7 @@ int state_save(int slot)
 		save_thumbnail();
 		update_progress();
 
-		sceIoWrite(fd, inbuf, (u32)state_buffer - (u32)inbuf);
+		sceIoWrite(fd, inbuf, (UINT32)state_buffer - (UINT32)inbuf);
 		update_progress();
 
 		memset(inbuf, 0, 3*1024*1024);
@@ -246,7 +246,7 @@ int state_save(int slot)
 		state_save_cdrom();
 		update_progress();
 
-		insize = (u32)state_buffer - (u32)inbuf;
+		insize = (UINT32)state_buffer - (UINT32)inbuf;
 		outsize = insize * 1.1 + 12;
 		if ((outbuf = memalign(MEM_ALIGN, outsize)) == NULL)
 		{
@@ -277,7 +277,7 @@ int state_save(int slot)
 	}
 #else
 	{
-#if (EMU_SYSTEM == CPS1)
+#if (EMU_SYSTEM == CPS1 || (EMU_SYSTEM == CPS2 && defined(PSP_SLIM)))
 		state_buffer_base = state_buffer = memalign(MEM_ALIGN, STATE_BUFFER_SIZE);
 #else
 		state_buffer_base = state_buffer = cache_alloc_state_buffer(STATE_BUFFER_SIZE);
@@ -330,12 +330,12 @@ int state_save(int slot)
 #endif
 		update_progress();
 
-		size = (u32)state_buffer - (u32)state_buffer_base;
+		size = (UINT32)state_buffer - (UINT32)state_buffer_base;
 		sceIoWrite(fd, state_buffer_base, size);
 		sceIoClose(fd);
 		update_progress();
 
-#if (EMU_SYSTEM == CPS1)
+#if (EMU_SYSTEM == CPS1 || (EMU_SYSTEM == CPS2 && defined(PSP_SLIM)))
 		free(state_buffer_base);
 #else
 		cache_free_state_buffer(STATE_BUFFER_SIZE);
@@ -375,7 +375,7 @@ int state_load(int slot)
 	char error_mes[128];
 	char buf[128];
 #if (EMU_SYSTEM == NCDZ)
-	u8 *inbuf, *outbuf;
+	UINT8 *inbuf, *outbuf;
 	unsigned long insize, outsize;
 #endif
 
@@ -545,9 +545,9 @@ void state_make_thumbnail(void)
 {
 #if PSP_VIDEO_32BPP
 	int x, y, w, h;
-	u16 *p, buf[152 * 112];
-	u16 *src = (u16 *)video_frame_addr(tex_frame, 152, 0);
-	u32 *dst;
+	UINT16 *p, buf[152 * 112];
+	UINT16 *src = (UINT16 *)video_frame_addr(tex_frame, 152, 0);
+	UINT32 *dst;
 
 #if (EMU_SYSTEM == CPS1 || EMU_SYSTEM == CPS2)
 	RECT clip1 = { 64, 16, 64 + 384, 16 + 224 };
@@ -596,7 +596,7 @@ void state_make_thumbnail(void)
 	video_clear_rect(tex_frame, &clip3);
 
 	src = buf;
-	dst = (u32 *)video_frame_addr(tex_frame, 152, 0);
+	dst = (UINT32 *)video_frame_addr(tex_frame, 152, 0);
 
 	for (y = 0; y < h; y++)
 	{

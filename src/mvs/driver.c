@@ -29,10 +29,77 @@
 
 int neogeo_driver_type;
 int neogeo_raster_enable;
-u16 neogeo_ngh;
-u32 neogeo_frame_counter;
-u32 neogeo_frame_counter_speed;
+UINT16 neogeo_ngh;
+UINT32 neogeo_frame_counter;
+UINT32 neogeo_frame_counter_speed;
 int neogeo_selected_vectors;
+
+struct cacheinfo_t MVS_cacheinfo[] =
+{
+	{ "aof2a",    "aof2",     0, 0, 0 },
+	{ "fatfursa", "fatfursp", 0, 0, 0 },
+	{ "kof95a",   "kof95",    0, 0, 0 },
+	{ "samsho3a", "samsho3",  0, 0, 0 },
+	{ "fswords",  "samsho3",  0, 0, 0 },
+	{ "aof3k",    "aof3",     0, 0, 0 },
+	{ "kof96h",   "kof96",    0, 0, 0 },
+	{ "kof96ep",  "kof96",    0, 0, 0 },
+	{ "kizuna",   "savagere", 1, 1, 1 },
+	{ "kof97a",   "kof97",    0, 0, 0 },
+	{ "kof97pls", "kof97",    0, 0, 0 },
+	{ "kof97pla", "kof97",    0, 1, 0 },
+	{ "kog",      "kof97",    1, 1, 0 },
+	{ "lastbldh", "lastblad", 0, 0, 0 },
+	{ "lastsold", "lastblad", 0, 0, 0 },
+	{ "shocktra", "shocktro", 0, 0, 0 },
+	{ "rbff2h",   "rbff2",    0, 0, 0 },
+	{ "rbff2k",   "rbff2",    0, 0, 0 },
+	{ "kof98k",   "kof98",    0, 0, 0 },
+	{ "kof98n",   "kof98",    0, 0, 0 },
+	{ "breakrev", "breakers", 1, 1, 1 },
+	{ "lans2004", "shocktr2", 1, 1, 1 },
+	{ "kof99a",   "kof99",    0, 0, 0 },
+	{ "kof99e",   "kof99",    0, 0, 0 },
+	{ "kof99n",   "kof99",    0, 0, 0 },
+	{ "kof99p",   "kof99",    1, 1, 0 },
+	{ "garouo",   "garou",    0, 0, 0 },
+	{ "garoubl",  "garoup",   0, 1, 1 },
+	{ "mslug3n",  "mslug3",   0, 0, 0 },
+	{ "mslug3b6", "mslug3",   0, 1, 0 },
+	{ "kof2000n", "kof2000",  0, 0, 0 },
+	{ "kof2001h", "kof2001",  0, 0, 0 },
+	{ "kf2k1pls", "kof2001",  0, 0, 0 },
+	{ "kf2k1pa",  "kof2001",  0, 0, 0 },
+	{ "cthd2003", "kof2001",  1, 1, 0 },
+	{ "cthd2k3a", "kof2001",  1, 1, 1 },
+	{ "ct2k3sp",  "kof2001",  1, 1, 0 },
+	{ "ms4plus",  "mslug4",   0, 0, 0 },
+	{ "kof2002b", "kof2002",  1, 0, 0 },
+	{ "kf2k2pls", "kof2002",  0, 0, 0 },
+	{ "kf2k2pla", "kof2002",  0, 0, 0 },
+	{ "kf2k2plb", "kof2002",  0, 0, 0 },
+	{ "kf2k2plc", "kof2002",  0, 1, 0 },
+	{ "kf2k2mp",  "kof2002",  0, 1, 0 },
+	{ "kf2k2mp2", "kof2002",  0, 1, 0 },
+	{ "matrimbl", "matrim",   0, 0, 1 },
+	{ "mslug5b",  "mslug5",   0, 0, 0 },
+	{ "ms5plus",  "mslug5",   0, 1, 0 },
+	{ "svcpcba",  "svcpcb",   0, 0, 0 },
+	{ "samsho5h", "samsho5",  0, 0, 0 },
+	{ "samsho5b", "samsho5",  1, 1, 1 },
+	{ "samsh5sh", "samsh5sp", 0, 0, 0 },
+	{ "samsh5sn", "samsh5sp", 0, 0, 0 },
+	{ "kf2k4pls", "kof2k4se", 0, 1, 0 },
+	{ "kf10thep", "kof10th",  1, 1, 0 },
+	{ "kf2k5uni", "kof10th",  0, 0, 0 },
+	{ "svcplus",  "svcboot",  0, 1, 0 },
+	{ "svcplusa", "svcboot",  0, 0, 0 },
+	{ "svcsplus", "svcboot",  0, 1, 0 },
+	{ "kf2k3bla", "kf2k3bl",  0, 0, 0 },
+	{ "kf2k3pl",  "kf2k3bl",  0, 1, 0 },
+	{ "kf2k3upl", "kf2k3bl",  0, 1, 0 },
+	{ NULL }
+};
 
 
 /******************************************************************************
@@ -43,13 +110,13 @@ static int current_rasterline;
 static int current_rastercounter;
 static int irq2start;
 static int irq2control;
-static u32 irq2pos_value;
-static int vblank_int;
-static int scanline_int;
+static UINT32 display_counter;
+static int vblank_interrupt_pending;
+static int display_position_interrupt_pending;
 static int scanline_read;
 static int raster_enable;
 
-static u32 frame_counter;
+static UINT32 frame_counter;
 
 static int sound_code;
 static int result_code;
@@ -58,28 +125,28 @@ static int pending_command;
 static int trackball_select;
 static int neogeo_sram_unlocked;
 
-static u32 m68k_second_bank;
-static u32 z80_bank[4];
+static UINT32 m68k_second_bank;
+static UINT32 z80_bank[4];
 
-static u16 *neogeo_cpu1_second_bank;
+static UINT16 *neogeo_cpu1_second_bank;
 
-static u8 ALIGN_DATA neogeo_game_vectors[0x80];
-static u8 *neogeo_vectors[2];
+static UINT8 ALIGN_DATA neogeo_game_vectors[0x80];
+static UINT8 *neogeo_vectors[2];
 
-static s32 neogeo_rng = 0x2345;
+static INT32 neogeo_rng = 0x2345;
 
 
 /*------------------------------------------------------
 	Set CPU1 second ROM bank
 ------------------------------------------------------*/
 
-static void neogeo_set_cpu1_second_bank(u32 offset)
+static void neogeo_set_cpu1_second_bank(UINT32 offset)
 {
 	if (m68k_second_bank != offset)
 	{
 		m68k_second_bank = offset;
-		neogeo_cpu1_second_bank = (u16 *)((u32)memory_region_cpu1 + offset - 0x200000);
-		C68k_Set_Fetch(&C68K, 0x200000, 0x2fffff, (u32)&memory_region_cpu1[offset]);
+		neogeo_cpu1_second_bank = (UINT16 *)((UINT32)memory_region_cpu1 + offset - 0x200000);
+		C68k_Set_Fetch(&C68K, 0x200000, 0x2fffff, (UINT32)&memory_region_cpu1[offset]);
 	}
 }
 
@@ -88,7 +155,7 @@ static void neogeo_set_cpu1_second_bank(u32 offset)
 	Set CPU2 ROM bank
 ------------------------------------------------------*/
 
-static void neogeo_set_cpu2_bank(int bank, u32 offset)
+static void neogeo_set_cpu2_bank(int bank, UINT32 offset)
 {
 	if (z80_bank[bank] != offset)
 	{
@@ -185,14 +252,14 @@ void neogeo_driver_reset(void)
 
 	irq2start = 1000;
 	irq2control = 0;
-	irq2pos_value = 0;
+	display_counter = 0;
 	scanline_read = 0;
 
 	current_rasterline = 0;
 	current_rastercounter = RASTER_COUNTER_START;
 
-	vblank_int = 0;
-	scanline_int = 0;
+	vblank_interrupt_pending = 0;
+	display_position_interrupt_pending = 0;
 
 	sound_code = 0;
 	result_code = 0;
@@ -209,6 +276,18 @@ void neogeo_driver_reset(void)
 
 	neogeo_reset_driver_type();
 
+	if (machine_init_type == INIT_ms5pcb
+	||	machine_init_type == INIT_svcpcb)
+	{
+		memcpy(memory_region_user1, memory_region_user1 + 0x20000 + neogeo_hard_dipsw * 0x20000, 0x20000);
+	}
+#if !RELEASE
+	if (machine_init_type == INIT_kog)
+	{
+		memory_region_cpu1[0x1ffffc/2] = neogeo_hard_dipsw;
+	}
+#endif
+
 	m68000_reset();
 	z80_reset();
 }
@@ -220,6 +299,12 @@ void neogeo_driver_reset(void)
 
 void neogeo_reset_driver_type(void)
 {
+	if (neogeo_ngh == NGH_tpgolf
+	||	neogeo_ngh == NGH_trally
+	||	neogeo_ngh == NGH_spinmast
+	||	neogeo_ngh == NGH_neodrift)
+		neogeo_raster_enable = 1;
+
 	raster_enable = neogeo_raster_enable;
 
 	if (neogeo_bios >= UNI_V20 && neogeo_bios <= UNI_V22)
@@ -234,10 +319,7 @@ void neogeo_reset_driver_type(void)
 	}
 	else
 	{
-		if (neogeo_ngh == NGH_spinmast)
-			neogeo_driver_type = RASTER;
-		else
-			neogeo_driver_type = NORMAL;
+		neogeo_driver_type = NORMAL;
 	}
 
 	timer_set_update_handler();
@@ -253,8 +335,8 @@ static void update_interrupts(void)
 	int level = 0;
 
 	/* determine which interrupt is active */
-	if (vblank_int)   level = 1;
-	if (scanline_int) level = 2;
+	if (vblank_interrupt_pending)   level = 1;
+	if (display_position_interrupt_pending) level = 2;
 
 	/* either set or clear the appropriate lines */
 	if (level)
@@ -286,7 +368,7 @@ void neogeo_interrupt(void)
 		}
 	}
 
-	vblank_int = 1; /* vertical blank */
+	vblank_interrupt_pending = 1; /* vertical blank */
 
 	update_interrupts();
 }
@@ -325,16 +407,16 @@ void neogeo_raster_interrupt(int line, int busy)
 			if (!busy) do_refresh = neogeo_raster_enable;
 
 			if (irq2control & IRQ2CTRL_AUTOLOAD_REPEAT)
-				irq2start += (irq2pos_value + 3) / 0x180;	/* ridhero gives 0x17d */
+				irq2start += (display_counter + 3) / 0x180;	/* ridhero gives 0x17d */
 
-			scanline_int = 1;
+			display_position_interrupt_pending = 1;
 		}
 	}
 
 	if (line == RASTER_LINES)
 	{
 		if (irq2control & IRQ2CTRL_AUTOLOAD_VBLANK)
-			irq2start = (irq2pos_value + 3) / 0x180;	/* ridhero gives 0x17d */
+			irq2start = (display_counter + 3) / 0x180;	/* ridhero gives 0x17d */
 		else
 			irq2start = 1000;
 
@@ -351,7 +433,7 @@ void neogeo_raster_interrupt(int line, int busy)
 			}
 		}
 
-		vblank_int = 1; /* vertical blank */
+		vblank_interrupt_pending = 1; /* vertical blank */
 	}
 
 	if (do_refresh && !skip_this_frame())
@@ -376,7 +458,8 @@ INLINE void neogeo_select_vectors(int vector)
 {
 	memcpy(memory_region_cpu1, neogeo_vectors[vector], 0x80);
 	neogeo_selected_vectors = vector;
-	blit_set_sprite_clear_flag();
+	blit_set_fix_clear_flag();
+	blit_set_spr_clear_flag();
 	autoframeskip_reset();
 }
 
@@ -385,7 +468,7 @@ INLINE void neogeo_select_vectors(int vector)
 	Select palette RAM bank  (0x3a000f / 0x3a001f)
 ------------------------------------------------------*/
 
-INLINE void neogeo_setpalbank(u32 bank)
+INLINE void neogeo_setpalbank(UINT32 bank)
 {
 	if (neogeo_palette_index != bank)
 	{
@@ -413,7 +496,7 @@ INLINE WRITE16_HANDLER( neogeo_vidram16_data_w )
 	Read video control data ($3c0006)
 ---------------------------------------------------------*/
 
-INLINE u16 neogeo_control_16_r(void)
+INLINE UINT16 neogeo_control_16_r(void)
 {
 	int res;
 
@@ -443,7 +526,7 @@ INLINE u16 neogeo_control_16_r(void)
 	Write video control data ($3c0006)
 ---------------------------------------------------------*/
 
-INLINE void neogeo_control_16_w(u16 data)
+INLINE void neogeo_control_16_w(UINT16 data)
 {
 	/* Auto-Anim Speed Control */
 	neogeo_frame_counter_speed = (data >> 8) & 0xff;
@@ -453,20 +536,25 @@ INLINE void neogeo_control_16_w(u16 data)
 
 
 /*------------------------------------------------------
-	Write IRQ position     (0x3c0008, 0x3c000a)
+	Set display counter (MSB) (0x3c0008)
 ------------------------------------------------------*/
 
-INLINE void neogeo_irq2pos_16_w(u32 offset, u16 data)
+INLINE void neogeo_set_display_counter_msb(UINT16 data)
 {
-	if (neogeo_driver_type == NORMAL) return;
+	display_counter = (display_counter & 0x0000ffff) | ((UINT32)data << 16);
+}
 
-	if (offset)
-		irq2pos_value = (irq2pos_value & 0xffff0000) | (u32)data;
-	else
-		irq2pos_value = (irq2pos_value & 0x0000ffff) | ((u32)data << 16);
+
+/*------------------------------------------------------
+	Set display counter (LSB) (0x3c000a)
+------------------------------------------------------*/
+
+INLINE void neogeo_set_display_counter_lsb(UINT16 data)
+{
+	display_counter = (display_counter & 0xffff0000) | (UINT32)data;
 
 	if (irq2control & IRQ2CTRL_LOAD_RELATIVE)
-		irq2start = current_rasterline + (irq2pos_value + 0x3b) / 0x180;
+		irq2start = current_rasterline + (display_counter + 0x3b) / 0x180;
 }
 
 
@@ -474,14 +562,12 @@ INLINE void neogeo_irq2pos_16_w(u32 offset, u16 data)
 	Write IRQ acknowledge ($3c000c)
 ------------------------------------------------------*/
 
-INLINE WRITE16_HANDLER( neogeo_irqack_16_w )
+INLINE void neogeo_acknowledge_interrupt(UINT16 data)
 {
-	if (ACCESSING_LSB)
-	{
-		if (data & 4) vblank_int = 0;
-		if (data & 2) scanline_int = 0;
-		update_interrupts();
-	}
+	if (data & 0x02) display_position_interrupt_pending = 0;
+	if (data & 0x04) vblank_interrupt_pending = 0;
+
+	update_interrupts();
 }
 
 
@@ -497,7 +583,7 @@ WRITE16_HANDLER( neogeo_bankswitch_16_w )
 {
 	if ((offset & (0x2ffff0/2)) == (0x2ffff0/2))
 	{
-		u32 bankaddress;
+		UINT32 bankaddress;
 
 		if (memory_length_cpu1 <= 0x100000)
 			return;
@@ -577,9 +663,7 @@ READ16_HANDLER( neogeo_controller1and4_16_r )
 		case NGH_irrmaze:
 			if (trackball_select)
 				return (input_analog_value[1] << 8) + neogeo_port_value[3];
-			else
-				return (input_analog_value[0] << 8) + neogeo_port_value[3];
-			break;
+			return (input_analog_value[0] << 8) + neogeo_port_value[3];
 
 		case NGH_popbounc:
 			if (!trackball_select)
@@ -598,12 +682,12 @@ READ16_HANDLER( neogeo_controller1and4_16_r )
 
 READ16_HANDLER( neogeo_timer16_r )
 {
-	u16 res;
+	UINT16 res;
 	int coinflip = pd4990a_testbit_r(0);
 	int databit = pd4990a_databit_r(0);
 
 	res = (neogeo_ngh == NGH_vliner) ? 0x3f : neogeo_port_value[4];
-	res = res ^ (coinflip << 6) ^ (databit << 7);
+	res ^= (coinflip << 6) ^ (databit << 7);
 
 	res |= result_code << 8;
 	if (pending_command) res &= 0x7fff;
@@ -660,6 +744,7 @@ WRITE16_HANDLER( neogeo_syscontrol2_16_w )
 		fix_bank   = flag;
 		fix_usage  = gfx_pen_usage[flag];
 		fix_memory = (flag) ? memory_region_gfx2 : memory_region_gfx1;
+		blit_set_fix_clear_flag();
 		break;
 	case 6: neogeo_sram_unlocked = flag; break;
 	case 7: neogeo_setpalbank(flag); break;
@@ -692,16 +777,24 @@ READ16_HANDLER( neogeo_video_16_r )
 
 WRITE16_HANDLER( neogeo_video_16_w )
 {
-	switch (offset & 7)
+	/* accessing the LSB only is not mapped */
+	if (mem_mask != 0xff00)
 	{
-	case 0: COMBINE_DATA(&neogeo_vidram16_offset); break;
-	case 1: neogeo_vidram16_data_w(0, data, mem_mask); break;
-	case 2: COMBINE_DATA(&neogeo_vidram16_modulo); break;
-	case 3: neogeo_control_16_w(data); break;
-	case 4: neogeo_irq2pos_16_w(0, data); break;
-	case 5: neogeo_irq2pos_16_w(1, data); break;
-	case 6: neogeo_irqack_16_w(0, data, mem_mask); break;
-	case 7: break; /* Unknown, see control_r */
+		/* accessing the MSB only stores same data in MSB and LSB */
+		if (mem_mask == 0x00ff)
+			data = (data & 0xff00) | (data >> 8);
+
+		switch (offset & 7)
+		{
+		case 0: COMBINE_DATA(&neogeo_vidram16_offset); break;
+		case 1: neogeo_vidram16_data_w(0, data, mem_mask); break;
+		case 2: COMBINE_DATA(&neogeo_vidram16_modulo); break;
+		case 3: neogeo_control_16_w(data); break;
+		case 4: neogeo_set_display_counter_msb(data); break;
+		case 5: neogeo_set_display_counter_lsb(data); break;
+		case 6: neogeo_acknowledge_interrupt(data); break;
+		case 0x07: break; /* unknown, see get_video_control */
+		}
 	}
 }
 
@@ -712,7 +805,7 @@ WRITE16_HANDLER( neogeo_video_16_w )
 
 WRITE16_HANDLER( neogeo_paletteram16_w )
 {
-	u16 color;
+	UINT16 color;
 
 	offset &= 0xfff;
 	color = COMBINE_DATA(&neogeo_paletteram16[offset]);
@@ -776,7 +869,7 @@ WRITE16_HANDLER( neogeo_sram16_w )
 	Read Z80 port
 ------------------------------------------------------*/
 
-u8 neogeo_z80_port_r(u16 port)
+UINT8 neogeo_z80_port_r(UINT16 port)
 {
 	switch (port & 0xff)
 	{
@@ -818,7 +911,7 @@ u8 neogeo_z80_port_r(u16 port)
 	Write Z80 port
 ------------------------------------------------------*/
 
-void neogeo_z80_port_w(u16 port, u8 data)
+void neogeo_z80_port_w(UINT16 port, UINT8 data)
 {
 	switch (port & 0xff)
 	{
@@ -868,7 +961,7 @@ void neogeo_sound_irq(int irq)
 void mslugx_install_protection(void)
 {
 	int i;
-	u16 *mem16 = (u16 *)memory_region_cpu1;
+	UINT16 *mem16 = (UINT16 *)memory_region_cpu1;
 
 	for (i = 0;i < (0x100000/2) - 4;i++)
 	{
@@ -912,11 +1005,11 @@ WRITE16_HANDLER( neogeo_secondbank_16_w )
 	Fatal Fury 2
 ------------------------------------------------------*/
 
-static u32 neogeo_prot_data;
+static UINT32 neogeo_prot_data;
 
 READ16_HANDLER( fatfury2_protection_16_r )
 {
-	u16 res = (neogeo_prot_data >> 24) & 0xff;
+	UINT16 res = (neogeo_prot_data >> 24) & 0xff;
 
 	switch (offset & (0xfffff/2))
 	{
@@ -985,10 +1078,10 @@ WRITE16_HANDLER( fatfury2_protection_16_w )
 
 WRITE16_HANDLER( kof98_protection_16_w )
 {
-	if ((offset & (0x2ffff/2)) == (0x2aaaa/2))
+	if (offset == 0x20aaaa/2)
 	{
 		/* info from razoola */
-		u16 *mem16 = (u16 *)memory_region_cpu1;
+		UINT16 *mem16 = (UINT16 *)memory_region_cpu1;
 
 		switch (data)
 		{
@@ -1019,7 +1112,7 @@ WRITE16_HANDLER( kof98_protection_16_w )
 /* information about the sma random number generator provided by razoola */
 /* this RNG is correct for KOF99, other games might be different */
 
-static u16 sma_random_r(void)
+static UINT16 sma_random_r(void)
 {
 	int old = neogeo_rng;
 
@@ -1276,21 +1369,21 @@ WRITE16_HANDLER( kof2000_protection_16_w )
   mslug5, svcchaos, kof2003
 ------------------------------------------------------*/
 
-static u16 CartRAM[0x1000];
+static UINT16 CartRAM[0x1000];
 
-static void pvc_w8(u32 offset, u8 data)
+static void pvc_w8(UINT32 offset, UINT8 data)
 {
-	*(((u8 *)CartRAM) + offset) = data;
+	*(((UINT8 *)CartRAM) + offset) = data;
 }
 
-static u8 pvc_r8(u32 offset)
+static UINT8 pvc_r8(UINT32 offset)
 {
-	return *(((u8 *)CartRAM) + offset);
+	return *(((UINT8 *)CartRAM) + offset);
 }
 
 static void pvc_prot1(void)
 {
-	u8 b1, b2;
+	UINT8 b1, b2;
 
 	b1 = pvc_r8(0x1fe1);
 	b2 = pvc_r8(0x1fe0);
@@ -1304,7 +1397,7 @@ static void pvc_prot1(void)
 // on writes to e8/e9/ea/eb
 static void pvc_prot2(void)
 {
-	u8 b1, b2, b3, b4;
+	UINT8 b1, b2, b3, b4;
 
 	b1 = pvc_r8(0x1fe9);
 	b2 = pvc_r8(0x1fe8);
@@ -1317,31 +1410,32 @@ static void pvc_prot2(void)
 
 static void pvc_write_bankswitch(void)
 {
-	u32 bankaddress;
+	UINT32 bankaddress;
 
 	bankaddress = ((CartRAM[0xff8] >> 8) | (CartRAM[0xff9] << 8));
 
-	*(((u8 *)CartRAM) + 0x1ff0)  = 0xa0;
-	*(((u8 *)CartRAM) + 0x1ff1) &= 0xfe;
-	*(((u8 *)CartRAM) + 0x1ff3) &= 0x7f;
+	*(((UINT8 *)CartRAM) + 0x1ff0)  = 0xa0;
+	*(((UINT8 *)CartRAM) + 0x1ff1) &= 0xfe;
+	*(((UINT8 *)CartRAM) + 0x1ff3) &= 0x7f;
 
 	neogeo_set_cpu1_second_bank(bankaddress + 0x100000);
 }
 
 READ16_HANDLER( pvc_protection_16_r )
 {
-	if ((offset & 0x2fe000/2) == 0x2fe000/2)
+	if (offset >= 0x2fe000/2)
 	{
-		return CartRAM[offset & 0xfff];
+		offset -= 0x2fe000/2;
+		return CartRAM[offset];
 	}
 	return neogeo_cpu1_second_bank[offset];
 }
 
 WRITE16_HANDLER( pvc_protection_16_w )
 {
-	if ((offset & 0x2fe000/2) == 0x2fe000/2)
+	if (offset >= 0x2fe000/2)
 	{
-		offset &= 0xfff;
+		offset -= 0x2fe000/2;
 
 		COMBINE_DATA(&CartRAM[offset]);
 
@@ -1361,31 +1455,265 @@ WRITE16_HANDLER( pvc_protection_16_w )
 	実際にはプロテクトではないがプロテクトとして処理
 ------------------------------------------------------*/
 
-u16 *brza_sram = NULL;
-
 READ16_HANDLER( brza_sram_16_r )
 {
-	if ((offset & 0x2f0000/2) == 0x200000/2)
-		return brza_sram[offset & 0xfff];
+	if (offset < 0x210000/2)
+	{
+		offset -= 0x200000/2;
+		return CartRAM[offset];
+	}
 	return 0xffff;
 }
 
 WRITE16_HANDLER( brza_sram_16_w )
 {
-	if ((offset & 0x2f0000/2) == 0x200000/2)
-		COMBINE_DATA(&brza_sram[offset & 0xfff]);
+	if (offset < 0x210000/2)
+	{
+		offset -= 0x200000/2;
+		COMBINE_DATA(&CartRAM[offset]);
+	}
 }
 
 READ16_HANDLER( vliner_16_r )
 {
 	switch (offset & 0x2f0000/2)
 	{
-	case 0x200000/2: return brza_sram[offset & 0xfff];
+	case 0x200000/2: return CartRAM[offset & 0xfff];
 	case 0x280000/2: return neogeo_port_value[4];
 	case 0x2c0000/2: return 0x0003;
 	}
 	return 0xffff;
 }
+
+
+/************************ AES Protection************************
+  To allow console mode
+***************************************************************/
+
+void kof2000_AES_protection(void)
+{
+	/* Patch out loop to disable console mode */
+	UINT16 *mem16 = (UINT16 *)memory_region_cpu1;
+	mem16[0xa226e >> 1] = 0x4e75;
+}
+
+void mslug5_AES_protection(void)
+{
+	/* Patch out loop to disable console mode */
+	UINT16 *mem16 = (UINT16 *)memory_region_cpu1;
+	mem16[0x122a >> 1] = 0x4e75;
+}
+
+void nitd_AES_protection(void)
+{
+	/* Patch out loop to disable console mode */
+	UINT16 *mem16 = (UINT16 *)memory_region_cpu1;
+	mem16[0x19978 >> 1] = 0x4e75;
+}
+
+void zupapa_AES_protection(void)
+{
+	/* Patch out loop to disable console mode */
+	UINT16 *mem16 = (UINT16 *)memory_region_cpu1;
+	mem16[0x80290 >> 1] = 0x4e71;
+}
+
+void sengoku3_AES_protection(void)
+{
+	/* Patch out loop to disable console mode */
+	UINT16 *mem16 = (UINT16 *)memory_region_cpu1;
+	mem16[0x00d04 >> 1] = 0x4e71;
+}
+
+void mslug4_AES_protection(void)
+{
+	/* Patch out loop to disable console mode */
+	UINT16 *mem16 = (UINT16 *)memory_region_cpu1;
+	mem16[0xad8c >> 1] = 0x4e75;
+}
+
+void rotd_AES_protection(void)
+{
+	/* Patch out loop to disable console mode */
+	UINT16 *mem16 = (UINT16 *)memory_region_cpu1;
+	mem16[0x1020 >> 1] = 0x4e71;
+	mem16[0x2400 >> 1] = 0x4e71;
+}
+
+void matrim_AES_protection(void)
+{
+	/* Patch out loop to disable console mode */
+	UINT16 *mem16 = (UINT16 *)memory_region_cpu1;
+	mem16[0x1050 >> 1] = 0x4e75;
+}
+
+/*------------------------------------------------------
+	bootleg set
+------------------------------------------------------*/
+
+#if !RELEASE
+
+WRITE16_HANDLER( kof10th_protection_16_w )
+{
+	if (offset < 0x240000/2)
+	{
+		offset -= 0x200000/2;
+
+		if (!CartRAM[0xffe])
+		{
+			UINT16 *prom = (UINT16 *)memory_region_cpu1;
+			COMBINE_DATA(&prom[(0xe0000/2) + (offset & 0xffff)]);
+		}
+		else
+		{
+			UINT8 *srom1 = memory_region_user2;
+			UINT8 *srom2 = memory_region_gfx2;
+			UINT32 tile = offset & ~31;
+
+			srom1[offset] = BITSWAP8(data,7,6,0,4,3,2,1,5);
+			memcpy(&srom2[tile], &srom1[tile], 32);
+			neogeo_decode_fix(&srom2[tile], 32, &gfx_pen_usage[1][tile >> 5]);
+			blit_set_fix_clear_flag();
+		}
+	}
+	else
+	{
+		offset -= 0x240000/2;
+
+		if (offset >= 0x5f000)
+		{
+			if (offset == 0x5fff8)
+			{
+				UINT32 bankaddress = 0x100000 + ((data & 7) << 20);
+
+				if (bankaddress >= 0x700000)
+					bankaddress = 0x100000;
+
+				neogeo_set_cpu1_second_bank(bankaddress);
+			}
+			else if (offset == 0x5fffc && CartRAM[0xffc] != data)
+			{
+				UINT8 *src = memory_region_cpu1;
+
+				memcpy(src + 0x10000, src + ((data & 1) ? 0x810000 : 0x710000), 0xcffff);
+			}
+			COMBINE_DATA(&CartRAM[offset & 0xfff]);
+		}
+	}
+}
+
+WRITE16_HANDLER( cthd2003_protection_16_w )
+{
+	if (offset >= 0x2ffff0/2)
+	{
+		UINT8 cthd2003_banks[8] = { 1,0,1,0,1,0,3,2 };
+
+		offset -= 0x2ffff0/2;
+
+		if (offset == 0)
+		{
+			neogeo_set_cpu1_second_bank(0x100000 + (cthd2003_banks[data & 7] << 20));
+		}
+	}
+}
+
+READ16_HANDLER( ms5plus_protection_16_r )
+{
+	if (offset >= 0x2ffff0/2)
+	{
+		return 0xa0;
+	}
+	return neogeo_cpu1_second_bank[offset];
+}
+
+WRITE16_HANDLER( ms5plus_protection_16_w )
+{
+	if (offset == 0x2ffff0/2 && data == 0xa0)
+	{
+		neogeo_set_cpu1_second_bank(0xa0);
+	}
+	else if (offset == 0x2ffff4/2)
+	{
+		data >>= 4;
+		neogeo_set_cpu1_second_bank(data << 20);
+	}
+}
+
+WRITE16_HANDLER( kf2k3bl_protection_16_w)
+{
+	if (offset >= 0x2fe000/2)
+	{
+		offset -= 0x2fe000/2;
+
+		data = COMBINE_DATA(&CartRAM[offset]);
+
+		if (offset == 0x1ff0/2 || offset == 0x1ff2/2)
+		{
+			UINT8 *cr = (UINT8 *)CartRAM;
+			UINT32 address = (cr[0x1ff3] << 16) | (cr[0x1ff2] << 8) | cr[0x1ff1];
+			UINT8 prt = cr[0x1ff2];
+
+			cr[0x1ff0] =  0xa0;
+			cr[0x1ff1] &= 0xfe;
+			cr[0x1ff3] &= 0x7f;
+			neogeo_set_cpu1_second_bank(address + 0x100000);
+
+			memory_region_cpu1[0x58196] = prt;
+		}
+	}
+}
+
+WRITE16_HANDLER( kf2k3pl_protection_16_w)
+{
+	if (offset >= 0x2fe000/2)
+	{
+		offset -= 0x2fe000/2;
+
+		data = COMBINE_DATA(&CartRAM[offset]);
+
+		if (offset == 0x1ff0/2 || offset == 0x1ff2/2)
+		{
+			UINT8 *cr = (UINT8 *)CartRAM;
+			UINT32 address = (cr[0x1ff3] << 16) | (cr[0x1ff2] << 8) | cr[0x1ff0];
+			UINT8 prt = cr[0x1ff2];
+
+			cr[0x1ff0] &= 0xfe;
+			cr[0x1ff3] &= 0x7f;
+			neogeo_set_cpu1_second_bank(address + 0x100000);
+
+			memory_region_cpu1[0x58196] = prt;
+		}
+	}
+}
+
+WRITE16_HANDLER( fr2ch_protection_16_w )
+{
+	int i, n;
+	UINT8 *src = memory_region_gfx3;
+
+	if (offset == 1)
+	{
+		for (i = 0; i < 0x200000; i++)
+		{
+			n = src[0x200000 + i];
+			src[0x200000 + i] = src[0x400000 + i];
+			src[0x400000 + i] = n;
+		}
+	}
+}
+
+void cthd2003_AES_protection(void)
+{
+	UINT16 *mem16 = (UINT16 *)memory_region_cpu1;
+
+	// Game sets itself to MVS & English mode, patch this out
+	mem16[0xed00e/2] = 0x4e71;
+	mem16[0xed394/2] = 0x4e71;
+
+	// Fix for AES mode (stop loop that triggers Watchdog)
+	mem16[0xa2b7e/2] = 0x4e71;
+}
+#endif /* RELEASE */
 
 
 /******************************************************************************
@@ -1399,9 +1727,9 @@ STATE_SAVE( driver )
 	state_save_long(&neogeo_driver_type, 1);
 	state_save_long(&irq2start, 1);
 	state_save_long(&irq2control, 1);
-	state_save_long(&irq2pos_value, 1);
-	state_save_long(&vblank_int, 1);
-	state_save_long(&scanline_int, 1);
+	state_save_long(&display_counter, 1);
+	state_save_long(&vblank_interrupt_pending, 1);
+	state_save_long(&display_position_interrupt_pending, 1);
 	state_save_long(&scanline_read, 1);
 	state_save_long(&frame_counter, 1);
 	state_save_long(&sound_code, 1);
@@ -1424,15 +1752,15 @@ STATE_SAVE( driver )
 
 STATE_LOAD( driver )
 {
-	u32 _m68k_second_bank;
-	u32 _z80_bank[4];
+	UINT32 _m68k_second_bank;
+	UINT32 _z80_bank[4];
 
 	state_load_long(&neogeo_driver_type, 1);
 	state_load_long(&irq2start, 1);
 	state_load_long(&irq2control, 1);
-	state_load_long(&irq2pos_value, 1);
-	state_load_long(&vblank_int, 1);
-	state_load_long(&scanline_int, 1);
+	state_load_long(&display_counter, 1);
+	state_load_long(&vblank_interrupt_pending, 1);
+	state_load_long(&display_position_interrupt_pending, 1);
 	state_load_long(&scanline_read, 1);
 	state_load_long(&frame_counter, 1);
 	state_load_long(&sound_code, 1);

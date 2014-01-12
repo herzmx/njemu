@@ -12,7 +12,7 @@
 	gamecfg ç\ë¢ëÃ
 -----------------------------------------------------------------------------*/
 
-gamecfg2_t gamecfg_neogeo[] =
+gamecfg2_t gamecfg_mvs[] =
 {
 	{ MACHINE_REGION, &neogeo_region,        CFG_RESTART,  3,  { DEFAULT,REGION_JAPAN,REGION_USA,REGION_EUROPE } },
 	{ MACHINE_MODE,   &neogeo_machine_mode,  CFG_RESTART,  2,  { DEFAULT,MODE_AES,MODE_MVS } },
@@ -20,7 +20,7 @@ gamecfg2_t gamecfg_neogeo[] =
 	{ RASTER_EFFECTS, &neogeo_raster_enable, CFG_CONTINUE, 1,  { OFF, ON } },
 	MENU_BLANK,
 	{ STRETCH_SCREEN, &option_stretch,       CFG_CONTINUE, 3,  { OFF, STRETCH1, STRETCH2, STRETCH3 } },
-	{ VIDEO_SYNC,     &option_vsync,         CFG_CONTINUE, 1,  { OFF, ON } },
+	{ VIDEO_SYNC,     &option_vsync,         CFG_RESET,    1,  { OFF, ON } },
 	{ AUTO_FRAMESKIP, &option_autoframeskip, CFG_CONTINUE, 1,  { DISABLE, ENABLE } },
 	{ FRAMESKIP,      &option_frameskip,     CFG_CONTINUE, 11, { OFF,SKIP1,SKIP2,SKIP3,SKIP4,SKIP5,SKIP6,SKIP7,SKIP8,SKIP9,SKIP10,SKIP11 } },
 	{ SHOW_FPS,       &option_showfps,       CFG_CONTINUE, 1,  { OFF, ON } },
@@ -44,7 +44,23 @@ gamecfg2_t gamecfg_neogeo[] =
 	gamecfg menu èâä˙âª
 -----------------------------------------------------------------------------*/
 
-	gamecfg2 = gamecfg_neogeo;
+	gamecfg2 = gamecfg_mvs;
+
+	if (machine_init_type == INIT_ms5pcb
+	||	machine_init_type == INIT_svcpcb
+	||	machine_init_type == INIT_kf2k3pcb
+	||	neogeo_bios >= ASIA_AES)
+	{
+		gamecfg[0].enable = 0;
+		gamecfg[1].enable = 0;
+	}
+	if (neogeo_ngh == NGH_tpgolf
+	||	neogeo_ngh == NGH_trally
+	||	neogeo_ngh == NGH_spinmast
+	||	neogeo_ngh == NGH_neodrift)
+	{
+		gamecfg[3].enable = 0;
+	}
 
 #elif defined(INCLUDE_KEYCFG_STRUCT)
 
@@ -52,8 +68,10 @@ gamecfg2_t gamecfg_neogeo[] =
 	keycfg ç\ë¢ëÃ
 -----------------------------------------------------------------------------*/
 
-static keycfg2_t keycfg_default[] =
+static keycfg2_t keycfg_mvs[] =
 {
+	{ BUTTON_LAYOUT,    KEYCFG_LAYOUT, NEOGEO_MVS  },
+	MENU_BLANK,
 	{ INPUT_UP,         KEYCFG_BUTTON, P1_UP       },
 	{ INPUT_DOWN,       KEYCFG_BUTTON, P1_DOWN     },
 	{ INPUT_LEFT,       KEYCFG_BUTTON, P1_LEFT     },
@@ -93,8 +111,10 @@ static keycfg2_t keycfg_default[] =
 	MENU_END
 };
 
-static keycfg2_t keycfg_irrmaze[] =
+static keycfg2_t keycfg_analog[] =
 {
+	{ BUTTON_LAYOUT,    KEYCFG_LAYOUT, NEOGEO_MVS  },
+	MENU_BLANK,
 	{ INPUT_UP,         KEYCFG_BUTTON, P1_UP       },
 	{ INPUT_DOWN,       KEYCFG_BUTTON, P1_DOWN     },
 	{ INPUT_LEFT,       KEYCFG_BUTTON, P1_LEFT     },
@@ -118,32 +138,10 @@ static keycfg2_t keycfg_irrmaze[] =
 	MENU_END
 };
 
-static keycfg2_t keycfg_popbounc[] =
-{
-	{ INPUT_UP,         KEYCFG_BUTTON, P1_UP       },
-	{ INPUT_DOWN,       KEYCFG_BUTTON, P1_DOWN     },
-	{ INPUT_LEFT,       KEYCFG_BUTTON, P1_LEFT     },
-	{ INPUT_RIGHT,      KEYCFG_BUTTON, P1_RIGHT    },
-	{ INPUT_BUTTON1,    KEYCFG_BUTTON, P1_BUTTONA  },
-	{ INPUT_BUTTON2,    KEYCFG_BUTTON, P1_BUTTONB  },
-	{ INPUT_BUTTON3,    KEYCFG_BUTTON, P1_BUTTONC  },
-	{ INPUT_START,      KEYCFG_BUTTON, P1_START    },
-	{ INPUT_COIN,       KEYCFG_BUTTON, P1_COIN     },
-	MENU_BLANK,
-	{ ANALOG_SENS,      KEYCFG_ANALOG, 0           },
-	MENU_BLANK,
-	{ INPUT_SERVCOIN,   KEYCFG_BUTTON, SERV_COIN   },
-	{ INPUT_SERVSWITCH, KEYCFG_BUTTON, TEST_SWITCH },
-	MENU_BLANK,
-	{ SAVE_SCREENSHOT,  KEYCFG_BUTTON, SNAPSHOT    },
-	{ SWITCH_PLAYER,    KEYCFG_BUTTON, SWPLAYER    },
-	MENU_BLANK,
-	MENU_RETURN,
-	MENU_END
-};
-
 static keycfg2_t keycfg_vliner[] =
 {
+	{ BUTTON_LAYOUT,    KEYCFG_LAYOUT, NEOGEO_MVS  },
+	MENU_BLANK,
 	{ INPUT_UP,         KEYCFG_BUTTON, P1_UP       },
 	{ INPUT_DOWN,       KEYCFG_BUTTON, P1_DOWN     },
 	{ INPUT_LEFT,       KEYCFG_BUTTON, P1_LEFT     },
@@ -168,6 +166,8 @@ static keycfg2_t keycfg_vliner[] =
 
 static keycfg2_t keycfg_jockeygp[] =
 {
+	{ BUTTON_LAYOUT,    KEYCFG_LAYOUT, NEOGEO_MVS  },
+	MENU_BLANK,
 	{ INPUT_UP,         KEYCFG_BUTTON, P1_UP       },
 	{ INPUT_DOWN,       KEYCFG_BUTTON, P1_DOWN     },
 	{ INPUT_LEFT,       KEYCFG_BUTTON, P1_LEFT     },
@@ -195,11 +195,22 @@ static keycfg2_t keycfg_jockeygp[] =
 
 	switch (neogeo_ngh)
 	{
-	case NGH_irrmaze:  keycfg2 = keycfg_irrmaze; break;
-	case NGH_popbounc: keycfg2 = keycfg_popbounc; break;
-	case NGH_vliner:   keycfg2 = keycfg_vliner; break;
-	case NGH_jockeygp: keycfg2 = keycfg_jockeygp; break;
-	default: keycfg2 = keycfg_default; break;
+	case NGH_irrmaze:
+	case NGH_popbounc:
+		keycfg2 = keycfg_analog;
+		break;
+
+	case NGH_vliner:
+		keycfg2 = keycfg_vliner;
+		break;
+
+	case NGH_jockeygp:
+		keycfg2 = keycfg_jockeygp;
+		break;
+
+	default:
+		keycfg2 = keycfg_mvs;
+		break;
 	}
 
 #elif defined(INCLUDE_LOAD_DIPSWITCH)
@@ -209,6 +220,7 @@ static keycfg2_t keycfg_jockeygp[] =
 -----------------------------------------------------------------------------*/
 
 	int old_value = neogeo_dipswitch & 0xff;
+	int old_harddip = neogeo_hard_dipsw;
 
 	dipswitch = load_dipswitch();
 
@@ -223,6 +235,11 @@ static keycfg2_t keycfg_jockeygp[] =
 	if (neogeo_dipswitch != old_value)
 	{
 		menu_restart();
+		return 1;
+	}
+	if (neogeo_hard_dipsw != old_harddip)
+	{
+		menu_reset();
 		return 1;
 	}
 

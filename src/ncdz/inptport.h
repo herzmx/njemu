@@ -63,7 +63,7 @@ extern int input_map[MAX_INPUTS];
 extern int af_interval;
 extern int analog_sensitivity;
 
-extern u8 neogeo_port_value[NCDZ_PORT_MAX];
+extern UINT8 neogeo_port_value[NCDZ_PORT_MAX];
 
 #ifdef ADHOC
 void adhoc_input_init(void);

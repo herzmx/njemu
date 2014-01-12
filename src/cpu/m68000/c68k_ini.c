@@ -9,8 +9,8 @@
 	typedef struct
 	{
 		void *label; /* opcode label */
-		u16  mask;   /* mask on opcode */
-		u16  match;  /* what to match after masking */
+		UINT16  mask;   /* mask on opcode */
+		UINT16  match;  /* what to match after masking */
 	} opcode_struct;
 
 	opcode_struct c68k_opcode_jump_table[] =

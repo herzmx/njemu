@@ -19,7 +19,7 @@
 	gryph data
 ------------------------------------------------------*/
 
-static const u8 ALIGN_DATA icon_l[] = {
+static const UINT8 ALIGN_DATA icon_l[] = {
 	0x00,0x00,0x21,0x12,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
 	0x00,0x71,0xcb,0xbc,0x06,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
 	0x30,0xec,0xdd,0xed,0xae,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
@@ -182,19 +182,19 @@ static const int ALIGN_DATA icon_l_pos[NUM_FONTS] = {
 	0x000000,0x000180,0x0002ca,0x0003e2,0x000542,0x00066e,0x00076d,0x000885
 };
 
-static const s8 ALIGN_DATA icon_l_width[NUM_FONTS] = {
+static const INT8 ALIGN_DATA icon_l_width[NUM_FONTS] = {
 	32,30,28,32,30,30,28,28
 };
 
-static const s8 ALIGN_DATA icon_l_height[NUM_FONTS] = {
+static const INT8 ALIGN_DATA icon_l_height[NUM_FONTS] = {
 	24,22,20,22,20,17,20,22
 };
 
-static const s8 ALIGN_DATA icon_l_skipx[NUM_FONTS] = {
+static const INT8 ALIGN_DATA icon_l_skipx[NUM_FONTS] = {
 	 1, 1, 2, 0, 2, 1, 2, 2
 };
 
-static const s8 ALIGN_DATA icon_l_skipy[NUM_FONTS] = {
+static const INT8 ALIGN_DATA icon_l_skipy[NUM_FONTS] = {
 	 0, 1, 2, 1, 2, 4, 2, 1
 };
 
@@ -205,7 +205,7 @@ static const s8 ALIGN_DATA icon_l_skipy[NUM_FONTS] = {
 	shadow data
 ------------------------------------------------------*/
 
-static const u8 ALIGN_DATA icon_l_shadow[] = {
+static const UINT8 ALIGN_DATA icon_l_shadow[] = {
 	0x00,0x10,0x42,0x76,0x46,0x02,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
 	0x00,0x00,0x41,0x96,0xbb,0x8b,0x35,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
 	0x00,0x00,0x10,0x84,0xdb,0xee,0xce,0x7a,0x13,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
@@ -407,19 +407,19 @@ static const int ALIGN_DATA icon_l_shadow_pos[NUM_FONTS] = {
 	0x000000,0x0001ba,0x000363,0x0004d3,0x00067c,0x0007ec,0x000940,0x000ab0
 };
 
-static const s8 ALIGN_DATA icon_l_shadow_width[NUM_FONTS] = {
+static const INT8 ALIGN_DATA icon_l_shadow_width[NUM_FONTS] = {
 	34,34,32,34,32,34,32,30
 };
 
-static const s8 ALIGN_DATA icon_l_shadow_height[NUM_FONTS] = {
+static const INT8 ALIGN_DATA icon_l_shadow_height[NUM_FONTS] = {
 	26,25,23,25,23,20,23,25
 };
 
-static const s8 ALIGN_DATA icon_l_shadow_skipx[NUM_FONTS] = {
+static const INT8 ALIGN_DATA icon_l_shadow_skipx[NUM_FONTS] = {
 	 1, 1, 2, 1, 3, 1, 2, 2
 };
 
-static const s8 ALIGN_DATA icon_l_shadow_skipy[NUM_FONTS] = {
+static const INT8 ALIGN_DATA icon_l_shadow_skipy[NUM_FONTS] = {
 	 1, 1, 2, 1, 2, 4, 2, 1
 };
 
@@ -428,7 +428,7 @@ static const s8 ALIGN_DATA icon_l_shadow_skipy[NUM_FONTS] = {
 	light data
 ------------------------------------------------------*/
 
-static const u8 ALIGN_DATA icon_l_light[] = {
+static const UINT8 ALIGN_DATA icon_l_light[] = {
 	0x00,0x00,0x10,0x21,0x12,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
 	0x00,0x00,0x00,0x10,0x32,0x54,0x45,0x23,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
 	0x00,0x00,0x00,0x00,0x00,0x21,0x64,0x98,0x89,0x46,0x13,0x00,0x00,0x00,0x00,0x00,
@@ -647,19 +647,19 @@ static const int ALIGN_DATA icon_l_light_pos[NUM_FONTS] = {
 	0x000000,0x0001f8,0x0003b2,0x000552,0x000726,0x0008be,0x000a23,0x000b93
 };
 
-static const s8 ALIGN_DATA icon_l_light_width[NUM_FONTS] = {
+static const INT8 ALIGN_DATA icon_l_light_width[NUM_FONTS] = {
 	36,34,32,36,34,34,32,32
 };
 
-static const s8 ALIGN_DATA icon_l_light_height[NUM_FONTS] = {
+static const INT8 ALIGN_DATA icon_l_light_height[NUM_FONTS] = {
 	28,26,26,26,24,21,23,26
 };
 
-static const s8 ALIGN_DATA icon_l_light_skipx[NUM_FONTS] = {
+static const INT8 ALIGN_DATA icon_l_light_skipx[NUM_FONTS] = {
 	 3, 3, 4, 2, 4, 3, 5, 3
 };
 
-static const s8 ALIGN_DATA icon_l_light_skipy[NUM_FONTS] = {
+static const INT8 ALIGN_DATA icon_l_light_skipy[NUM_FONTS] = {
 	 2, 3, 3, 3, 4, 6, 5, 3
 };
 
@@ -670,7 +670,7 @@ static const s8 ALIGN_DATA icon_l_light_skipy[NUM_FONTS] = {
 	functions
 ------------------------------------------------------*/
 
-int icon_l_get_gryph(struct font_t *font, u16 code)
+int icon_l_get_gryph(struct font_t *font, UINT16 code)
 {
 	if (code < NUM_FONTS)
 	{
@@ -686,7 +686,7 @@ int icon_l_get_gryph(struct font_t *font, u16 code)
 }
 
 #if PSP_VIDEO_32BPP
-int icon_l_get_shadow(struct font_t *font, u16 code)
+int icon_l_get_shadow(struct font_t *font, UINT16 code)
 {
 	if (code < NUM_FONTS)
 	{
@@ -701,7 +701,7 @@ int icon_l_get_shadow(struct font_t *font, u16 code)
 	return 0;
 }
 
-int icon_l_get_light(struct font_t *font, u16 code)
+int icon_l_get_light(struct font_t *font, UINT16 code)
 {
 	if (code < NUM_FONTS)
 	{

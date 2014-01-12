@@ -309,7 +309,7 @@ static keycfg2_t keycfg_progear[] =
 	MENU_END
 };
 
-static keycfg2_t keycfg_puzloop2[] =
+static keycfg2_t keycfg_pzloop2[] =
 {
 	{ INPUT_UP,         KEYCFG_BUTTON, P1_UP       },
 	{ INPUT_DOWN,       KEYCFG_BUTTON, P1_DOWN     },
@@ -344,7 +344,7 @@ static keycfg2_t keycfg_puzloop2[] =
 	switch (machine_input_type)
 	{
 	case INPTYPE_forgottn:
-		keycfg2 =  keycfg_forgottn;
+		keycfg2 = keycfg_forgottn;
 		break;
 
 	case INPTYPE_dynwar:
@@ -356,27 +356,30 @@ static keycfg2_t keycfg_puzloop2[] =
 	case INPTYPE_megaman:
 	case INPTYPE_rockmanj:
 	case INPTYPE_slammast:
-		keycfg2 =  keycfg_3buttons;
+#if !RELEASE
+	case INPTYPE_knightsh:
+#endif
+		keycfg2 = keycfg_3buttons;
 		break;
 
 	case INPTYPE_sf2:
 	case INPTYPE_sf2j:
-		keycfg2 =  keycfg_6buttons;
+		keycfg2 = keycfg_6buttons;
 		break;
 
 	case INPTYPE_sfzch:
-		keycfg2 =  keycfg_sfzch;
+		keycfg2 = keycfg_sfzch;
 		break;
 
 	case INPTYPE_cworld2j:
 	case INPTYPE_qad:
 	case INPTYPE_qadj:
 	case INPTYPE_qtono2:
-		keycfg2 =  keycfg_quiz;
+		keycfg2 = keycfg_quiz;
 		break;
 
 	default:
-		keycfg2 =  keycfg_2buttons;
+		keycfg2 = keycfg_2buttons;
 		break;
 	}
 #else
@@ -384,29 +387,29 @@ static keycfg2_t keycfg_puzloop2[] =
 	{
 	case INPTYPE_19xx:
 	case INPTYPE_batcir:
-		keycfg2 =  keycfg_2buttons;
+		keycfg2 = keycfg_2buttons;
 		break;
 
 	case INPTYPE_cybots:
 	case INPTYPE_ddtod:
-		keycfg2 =  keycfg_4buttons;
+		keycfg2 = keycfg_4buttons;
 		break;
 
 	case INPTYPE_cps2:
 	case INPTYPE_ssf2:
-		keycfg2 =  keycfg_6buttons;
+		keycfg2 = keycfg_6buttons;
 		break;
 
 	case INPTYPE_qndream:
-		keycfg2 =  keycfg_quiz;
+		keycfg2 = keycfg_quiz;
 		break;
 
-	case INPTYPE_puzloop2:
-		keycfg2 =  keycfg_puzloop2;
+	case INPTYPE_pzloop2:
+		keycfg2 = keycfg_pzloop2;
 		break;
 
 	default:
-		keycfg2 =  keycfg_3buttons;
+		keycfg2 = keycfg_3buttons;
 		break;
 	}
 

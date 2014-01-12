@@ -1,6 +1,6 @@
 ----------------------------------------------------------------------
 
-                   NEOGEO Emulator for PSP 2.0
+                   NEOGEO Emulator for PSP 2.2.1
 
                                  NJ (http://nj-emu.hp.infoseek.co.jp)
 ----------------------------------------------------------------------
@@ -12,7 +12,7 @@ PSP用のNEOGEO(MVS/AES)エミュレータです。
 ----------------------------------------------------------------------
 対応ROMセットについて
 
-  MAME 0.106以降に準拠させているため、zipファイル名はMAME 0.106が
+  MAME 0.119以降に準拠させているため、zipファイル名はMAME 0.119が
   要求するROMセット名と一致させる必要があります。
 
   全てのROMイメージファイルはzipファイルに圧縮する必要があります。
@@ -21,16 +21,15 @@ PSP用のNEOGEO(MVS/AES)エミュレータです。
 
   ファイルブラウザ上で白く表示されているゲームは全て動作します。
   動作しない場合はROMセットが要求するものと異なっているということです。
-  ClrMame ProやRomCenter等のツールを使って、MAME 0.106以降のROMセットに
-  一致させてください。
+  ClrMame ProやRomCenter等のツールを使って、MAME 0.119以降のROMセット
+  に一致させてください。
 
   どうしても他のエミュレータや古いMAMEのROMセットを動作させたいと
   いうのであれば、rominfo.datをnotepad等で書き換えればいいのですが、
   お勧めはしません。rominfo.datの内容を見て意味がわからなければ
   変更しないでください。
 
-  ファイルブラウザ上でグレーで表示されているゲームは暗号化キーが解読
-  されていないもので、現状ではこれらは起動できません。
+  ファイルブラウザ上でグレーで表示されているゲームは、起動できません。
 
 ----------------------------------------------------------------------
 ディレクトリ設定
@@ -67,7 +66,7 @@ PSP用のNEOGEO(MVS/AES)エミュレータです。
 
 ・BIOSはneogeo.zipというファイルにまとめ、romsフォルダに置いてください。
 
-・各ゲームのROMファイル名はどんな名前でも構いませんが、"CRCはMAME 0.106
+・各ゲームのROMファイル名はどんな名前でも構いませんが、"CRCはMAME 0.112u3
   のROMセットのCRCと一致"している必要があります。
 
 ・uni-bios等のhack BIOSにも対応していますが、基本的にはこれらの使用は
@@ -85,14 +84,110 @@ resource_jp.zipについて
   /PSP/GAME/MVSPSP/にそのままコピーしてください。
 
 ----------------------------------------------------------------------
+ROMセットについての補足
+
+・bootleg setについては、bootleg対応版のみで動作します。
+  通常版と分けているのは、bootleg対応版は余分な処理が増えるため、確保
+  できるメモリが減り、実行速度も若干落ちるためです。
+
+・以下のゲームはMAMEでは動作しますが、このエミュレータではメモリ不足に
+  より起動できないため未対応です。
+
+
+・以下のROMセットは、MAMEのROMセットと親子関係が異なるため注意して
+  ください。(※いずれもbootleg対応版のみ動作可能)
+
+   親セット    クローンセット
+
+   garoup   --- garoubl
+
+   svcboot  -+- svcplus
+             +- svcplusa
+             +- svcsplus
+
+   kof2k4se --- kf2k4pls
+
+   kof10th  -+- kf10thep
+             +- kf2k5uni
+
+   kf2k3bl  -+- kf2k3bla
+             +- kf2k3pl
+             +- kf2k3upl
+
 キャッシュファイルの作成
 
-  ROM読み込み時に"メモリが足りない"というエラーが表示される場合は、
+・ROM読み込み時に"メモリが足りない"というエラーが表示される場合は、
   グラフィックデータのキャッシュを作成する必要があります。
   付属のromcnv_mvs.exeで作成してください。使い方はromcnv_mvs.exeの
   readme_mvs.txtを参照してください。
-  なお、キャッシュファイルを使用する場合は、CPS2PSPと異なり全てのゲーム
-  で個別に作成する必要があります。
+
+・以下のクローンセットは親セットのキャッシュがあればそちらを使用する
+  ので、親セットのみ作成すればOKです。
+  (括弧内が親セット名、bootlegはbootleg対応版でのみ動作)
+
+   aof2a     (aof2)
+   fatfursa  (fatfursp)
+   kof95a    (kof95)
+   samsho3a  (samsho3)
+   fswords   (samsho3)
+   aof3k     (aof3)
+   kof96h    (kof96)
+   kof96ep   (kof96)      ※bootleg
+   kof97a    (kof97)
+   kof97pls  (kof97)      ※bootleg
+   lastbldh  (lastblad)
+   lastsold  (lastblad)
+   shocktra  (shocktro)
+   rbff2h    (rbff2)
+   rbff2k    (rbff2)
+   kof98k    (kof98)
+   kof98n    (kof98)
+   kof99a    (kof99)
+   kof99e    (kof99)
+   kof99n    (kof99)
+   garouo    (garou)
+   mslug3n   (mslug3)
+   kof2000n  (kof2000)
+   kof2001h  (kof2001)
+   kf2k1pls  (kof2001)    ※bootleg
+   kf2k1pa   (kof2001)    ※bootleg
+   ms4plus   (mslug4)     ※bootleg
+   kf2k2pls  (kof2002)    ※bootleg
+   kf2k2pla  (kof2002)    ※bootleg
+   kf2k2plb  (kof2002)    ※bootleg
+   mslug5b   (mslug5)     ※bootleg
+   svcpcba   (svcpcb)
+   samsho5h  (samsho5)
+   samsh5sh  (samsh5sp)
+   samsh5sn  (samsh5sp)
+   kf2k5uni  (kof10th)    ※bootleg / MAMEと親セットが異なる
+   svcplusa  (svcboot)    ※bootleg / MAMEと親セットが異なる
+   kf2k3bla  (kf2k3bl)    ※bootleg / MAMEと親セットが異なる
+
+・以下のクローンセットは一部のキャッシュファイルを親セットの
+  キャッシュと共有します。[]内のファイルが親セットのキャッシュに
+  あればそちらを使用します。
+  (括弧内が親セット名、bootkegはbootleg対応版でのみ動作)
+
+   kof97pla  (kof97)    [crom/vrom] ※bootleg
+   kog       (kof97)    [vrom]      ※bootleg
+   kof99p    (kof99)    [vrom]
+   garoubl   (garoup)   [crom]      ※bootleg / MAMEと親セットが異なる
+   mslug3b6  (mslug3)   [crom/vrom] ※bootleg
+   cthd2003  (kof2001)  [vrom]      ※bootleg
+   ct2k3sp   (kof2001)  [vrom]      ※bootleg
+   kof2002b  (kof2002)  [srom/vrom] ※bootleg
+   kf2k2plc  (kof2002)  [crom/vrom] ※bootleg
+   kf2k2mp   (kof2002)  [crom/vrom] ※bootleg
+   kf2k2mp2  (kof2002)  [crom/vrom] ※bootleg
+   matrimbl  (matrim)   [crom/srom] ※bootleg
+   ms5plus   (mslug5)   [crom/srom] ※bootleg
+   kf2k4pls  (kof2k4se) [crom/srom] ※bootleg / MAMEと親セットが異なる
+   kf10thep  (kof10th)  [vrom]      ※bootleg / MAMEと親セットが異なる
+   svcplus   (svcboot)  [crom/vrom] ※bootleg / MAMEと親セットが異なる
+   svcsplus  (svcboot)  [crom/vrom] ※bootleg / MAMEと親セットが異なる
+   kf2k3pl   (kf2k3bl)  [crom/vrom] ※bootleg / MAMEと親セットが異なる
+   kf2k3upl  (kf2k3bl)  [crom/vrom] ※bootleg / MAMEと親セットが異なる
 
 ----------------------------------------------------------------------
 操作方法
@@ -137,8 +232,7 @@ BIOSのRegion/Machine Modeの変更について
   また、AESのBIOSでMVSのゲームを動作させようとした場合も、同様に
   プロテクトに引っかかって動作しない場合があります。
 
-・確実に変更したいのであれば、uni-bios v1.0/1.1/1.2/1.3/2.0を使用して
-  ください。
+・確実に変更したいのであれば、uni-biosを使用してください。
 
 ----------------------------------------------------------------------
 その他
@@ -146,32 +240,10 @@ BIOSのRegion/Machine Modeの変更について
 ・メモリカードのファイルはゲームごとに作成されます。
   また、メモリカードは常に認識した状態になっています。
 
-・以下のゲームはMAMEでは動作しますが、このエミュレータでは未対応です。
-  今後も対応予定はありません。
+・以下のゲームはMAMEでは動作しますが、このエミュレータではメモリ不足に
+  より起動できないため未対応です。
 
   svcpcb    SvC Chaos - SNK vs Capcom (JAMMA PCB)
-  kof97pls  The King of Fighters '97 Plus (bootleg)
-  zintrckb  Zintrick (hack / bootleg)
-  mslug3b6  Metal Slug 6 (Metal Slug 3 bootleg)
-  cthd2003  Crouching Tiger Hidden Dragon 2003 (The King of Fighters 2001 bootleg)
-  ct2k3sp   Crouching Tiger Hidden Dragon 2003 Super Plus (The King of Fighters 2001 bootleg)
-  kf2k2pls  The King of Fighters 2002 Plus (set 1, bootleg)
-  kf2k2pla  The King of Fighters 2002 Plus (set 2, bootleg)
-  kf2k2mp   The King of Fighters 2002 Magic Plus (bootleg)
-  kf2k2mp2  The King of Fighters 2002 Magic Plus II (bootleg)
-  kof10th   The King Of Fighters 10th Anniversary (The King of Fighters 2002 bootleg)
-  kf2k5uni  The King of Fighters 10th Anniversary 2005 Unique (The King of Fighters 2002 bootleg)
-  kf10thep  The King of Fighters 10th Anniversary Extra Plus (The King of Fighters 2002 bootleg)
-  kof2k4se  The King of Fighters Special Edition 2004 (The King of Fighters 2002 bootleg)
-  ms5plus   Metal Slug 5 Plus (bootleg)
-  kf2k3bl   The King of Fighters 2003 (bootleg, set 1)
-  kf2k3bla  The King of Fighters 2003 (bootleg, set 2)
-  kf2k3pl   The King of Fighters 2004 Plus / Hero (The King of Fighters 2003 bootleg)
-  kf2k3upl  The King of Fighters 2004 Ultra Plus (The King of Fighters 2003 bootleg)
-  svcboot   SvC Chaos - SNK vs Capcom (MVS) (bootleg)
-  svcplus   SvC Chaos - SNK vs Capcom Plus (set 1, bootleg)
-  svcplusa  SvC Chaos - SNK vs Capcom Plus (set 2, bootleg)
-  svcsplus  SvC Chaos - SNK vs Capcom Super Plus (bootleg)
-  samsho5b  Samurai Shodown V / Samurai Spirits Zero (bootleg)
-  lans2004  Lansquenet 2004 (Shock Troopers - 2nd Squad bootleg)
-  ms4plus   Metal Slug 4 Plus (bootleg)
+
+・bootleg setはbootleg対応版でのみ動作します。通常版と分けているのは、
+  bootleg対応版は余分な処理が増えるため、実行速度が若干落ちるためです。

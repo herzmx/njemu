@@ -13,8 +13,8 @@
 	定数/マクロ
 ******************************************************************************/
 
-#define vram_pos16(x, y)	(u16 *)video_frame_addr(draw_frame, x, y)
-#define vram_pos32(x, y)	(u32 *)video_frame_addr(draw_frame, x, y)
+#define vram_pos16(x, y)	(UINT16 *)video_frame_addr(draw_frame, x, y)
+#define vram_pos32(x, y)	(UINT32 *)video_frame_addr(draw_frame, x, y)
 
 #if PSP_VIDEO_32BPP
 #define MAKECOL16(r, g, b)	MAKECOL15(r, g, b)
@@ -92,7 +92,7 @@ static int light_level = 0;
 #endif
 
 #ifdef COMMAND_LIST
-static u32 command_font_color[11] =
+static UINT32 command_font_color[11] =
 {
 #if PSP_VIDEO_32BPP
 	MAKECOL32(255,255,255),
@@ -133,10 +133,10 @@ static u32 command_font_color[11] =
 	フォントコード取得 (コマンドリスト用)
 ------------------------------------------------------*/
 
-static u16 command_font_get_code(const u8 *s)
+static UINT16 command_font_get_code(const UINT8 *s)
 {
-	u8 c1 = s[0];
-	u8 c2 = s[1];
+	UINT8 c1 = s[0];
+	UINT8 c2 = s[1];
 
 	if (c1 == '_')
 	{
@@ -272,9 +272,9 @@ static u16 command_font_get_code(const u8 *s)
 	フォントコード取得 (Latin-1デコード)
 ------------------------------------------------------*/
 
-static u16 latin1_get_code(const u8 *s, int *type)
+static UINT16 latin1_get_code(const UINT8 *s, int *type)
 {
-	u16 code;
+	UINT16 code;
 
 	if ((code = command_font_get_code(s)) != CODE_NOTFOUND)
 	{
@@ -301,11 +301,11 @@ static u16 latin1_get_code(const u8 *s, int *type)
 
 #if JAPANESE_UI
 
-static u16 sjis_get_code(const u8 *s, int *type)
+static UINT16 sjis_get_code(const UINT8 *s, int *type)
 {
-	u8 c1 = s[0];
-	u8 c2 = s[1];
-	u16 code;
+	UINT8 c1 = s[0];
+	UINT8 c2 = s[1];
+	UINT16 code;
 
 	if ((code = command_font_get_code(s)) != CODE_NOTFOUND)
 	{
@@ -341,11 +341,11 @@ static u16 sjis_get_code(const u8 *s, int *type)
 
 #else
 
-static u16 sjis_get_code(const u8 *s, int *type)
+static UINT16 sjis_get_code(const UINT8 *s, int *type)
 {
-	u8 c1 = s[0];
-	u8 c2 = s[1];
-	u16 code;
+	UINT8 c1 = s[0];
+	UINT8 c2 = s[1];
+	UINT16 code;
 
 	if ((code = command_font_get_code(s)) != CODE_NOTFOUND)
 	{
@@ -396,10 +396,10 @@ static u16 sjis_get_code(const u8 *s, int *type)
 
 #if JAPANESE_UI
 
-INLINE u16 uifont_get_code(const u8 *s, int *type)
+INLINE UINT16 uifont_get_code(const UINT8 *s, int *type)
 {
-	u8 c1 = s[0];
-	u8 c2 = s[1];
+	UINT8 c1 = s[0];
+	UINT8 c2 = s[1];
 
 	if (issjis1(c1) && issjis2(c2))
 	{
@@ -440,10 +440,10 @@ INLINE u16 uifont_get_code(const u8 *s, int *type)
 
 #else
 
-INLINE u16 uifont_get_code(const u8 *s, int *type)
+INLINE UINT16 uifont_get_code(const UINT8 *s, int *type)
 {
-	u8 c1 = s[0];
-	u8 c2 = s[1];
+	UINT8 c1 = s[0];
+	UINT8 c2 = s[1];
 
 	if (issjis1(c1) && issjis2(c2))
 	{
@@ -505,8 +505,8 @@ INLINE u16 uifont_get_code(const u8 *s, int *type)
 int uifont_get_string_width(const char *s)
 {
 	int width, type;
-	u16 code;
-	const u8 *p = (const u8 *)s;
+	UINT16 code;
+	const UINT8 *p = (const UINT8 *)s;
 
 	width = 0;
 
@@ -566,8 +566,8 @@ static int internal_font_putc32(struct font_t *font, int sx, int sy, int src_r, 
 {
 	int x, y, p;
 	int dst_r, dst_g, dst_b, alpha;
-	u32 *dst, *vptr, color;
-	u8 data;
+	UINT32 *dst, *vptr, color;
+	UINT8 data;
 
 	if (sx + font->pitch < 0 || sx >= SCR_WIDTH)
 		return 0;
@@ -637,8 +637,8 @@ static int internal_shadow_putc32(struct font_t *font, int sx, int sy)
 {
 	int x, y, p;
 	int dst_r, dst_g, dst_b, alpha;
-	u32 *dst, *vptr, color;
-	u8 data;
+	UINT32 *dst, *vptr, color;
+	UINT8 data;
 
 	if (sx + font->pitch < 0 || sx >= SCR_WIDTH)
 		return 0;
@@ -708,8 +708,8 @@ static int internal_light_putc32(struct font_t *font, int sx, int sy)
 {
 	int x, y, p, level;
 	int dst_r, dst_g, dst_b, alpha;
-	u32 *dst, *vptr, color;
-	u8 data;
+	UINT32 *dst, *vptr, color;
+	UINT8 data;
 
 	if (sx + font->pitch < 0 || sx >= SCR_WIDTH)
 		return 0;
@@ -781,8 +781,8 @@ static int internal_font_putc16(struct font_t *font, int sx, int sy, int src_r, 
 {
 	int x, y, p;
 	int dst_r, dst_g, dst_b, alpha;
-	u16 *dst, *vptr, color;
-	u8 data;
+	UINT16 *dst, *vptr, color;
+	UINT8 data;
 
 	if (sx + font->pitch < 0 || sx >= SCR_WIDTH)
 		return 0;
@@ -853,8 +853,8 @@ static int internal_shadow_putc16(struct font_t *font, int sx, int sy)
 {
 	int x, y, p;
 	int dst_r, dst_g, dst_b, alpha;
-	u16 *dst, *vptr, color;
-	u8 data;
+	UINT16 *dst, *vptr, color;
+	UINT8 data;
 
 	if (sx + font->pitch < 0 || sx >= SCR_WIDTH)
 		return 0;
@@ -923,8 +923,8 @@ static int internal_light_putc16(struct font_t *font, int sx, int sy)
 {
 	int x, y, p, level;
 	int dst_r, dst_g, dst_b, alpha;
-	u16 *dst, *vptr, color;
-	u8 data;
+	UINT16 *dst, *vptr, color;
+	UINT8 data;
 
 	if (sx + font->pitch < 0 || sx >= SCR_WIDTH)
 		return 0;
@@ -1001,8 +1001,8 @@ static int internal_light_putc16(struct font_t *font, int sx, int sy)
 INLINE void uifont_draw32(int sx, int sy, int r, int g, int b, const char *s)
 {
 	int type, res = 1;
-	u16 code;
-	const u8 *p = (const u8 *)s;
+	UINT16 code;
+	const UINT8 *p = (const UINT8 *)s;
 	struct font_t font;
 
 	while (*p && res)
@@ -1065,8 +1065,8 @@ INLINE void uifont_draw32(int sx, int sy, int r, int g, int b, const char *s)
 INLINE void uifont_draw_shadow32(int sx, int sy, const char *s)
 {
 	int type, res = 1;
-	u16 code;
-	const u8 *p = (const u8 *)s;
+	UINT16 code;
+	const UINT8 *p = (const UINT8 *)s;
 	struct font_t font;
 
 	while (*p && res)
@@ -1130,8 +1130,8 @@ INLINE void uifont_draw_shadow32(int sx, int sy, const char *s)
 INLINE void uifont_draw16(int sx, int sy, int r, int g, int b, const char *s)
 {
 	int type, res = 1;
-	u16 code;
-	const u8 *p = (const u8 *)s;
+	UINT16 code;
+	const UINT8 *p = (const UINT8 *)s;
 	struct font_t font;
 
 #if !PSP_VIDEO_32BPP
@@ -1201,8 +1201,8 @@ INLINE void uifont_draw16(int sx, int sy, int r, int g, int b, const char *s)
 INLINE void uifont_draw_shadow16(int sx, int sy, const char *s)
 {
 	int type, res = 1;
-	u16 code;
-	const u8 *p = (const u8 *)s;
+	UINT16 code;
+	const UINT8 *p = (const UINT8 *)s;
 	struct font_t font;
 
 	while (*p && res)
@@ -1331,8 +1331,8 @@ void uifont_print_shadow_center(int sy, int r, int g, int b, const char *s)
 INLINE void latin1_draw32(int sx, int sy, int r, int g, int b, const char *s)
 {
 	int type, res = 1;
-	u16 code;
-	const u8 *p = (const u8 *)s;
+	UINT16 code;
+	const UINT8 *p = (const UINT8 *)s;
 	struct font_t font;
 
 	while (*p && res)
@@ -1376,7 +1376,7 @@ INLINE void latin1_draw32(int sx, int sy, int r, int g, int b, const char *s)
 
 				if (CODE_HASCOLOR(code))
 				{
-					u32 color = command_font_color[code >> 8];
+					UINT32 color = command_font_color[code >> 8];
 
 					r2 = GETR32(color);
 					g2 = GETG32(color);
@@ -1414,8 +1414,8 @@ INLINE void latin1_draw32(int sx, int sy, int r, int g, int b, const char *s)
 INLINE void sjis_draw32(int sx, int sy, int r, int g, int b, const char *s)
 {
 	int type, res = 1;
-	u16 code;
-	const u8 *p = (const u8 *)s;
+	UINT16 code;
+	const UINT8 *p = (const UINT8 *)s;
 	struct font_t font;
 
 	while (*p && res)
@@ -1468,7 +1468,7 @@ INLINE void sjis_draw32(int sx, int sy, int r, int g, int b, const char *s)
 
 				if (CODE_HASCOLOR(code))
 				{
-					u32 color = command_font_color[code >> 8];
+					UINT32 color = command_font_color[code >> 8];
 
 					r2 = GETR32(color);
 					g2 = GETG32(color);
@@ -1508,8 +1508,8 @@ INLINE void sjis_draw32(int sx, int sy, int r, int g, int b, const char *s)
 INLINE void latin1_draw16(int sx, int sy, int r, int g, int b, const char *s)
 {
 	int type, res = 1;
-	u16 code;
-	const u8 *p = (const u8 *)s;
+	UINT16 code;
+	const UINT8 *p = (const UINT8 *)s;
 	struct font_t font;
 
 #if !PSP_VIDEO_32BPP
@@ -1559,7 +1559,7 @@ INLINE void latin1_draw16(int sx, int sy, int r, int g, int b, const char *s)
 
 				if (CODE_HASCOLOR(code))
 				{
-					u32 color = command_font_color[code >> 8];
+					UINT32 color = command_font_color[code >> 8];
 
 					r2 = GETR16(color);
 					g2 = GETG16(color);
@@ -1597,8 +1597,8 @@ INLINE void latin1_draw16(int sx, int sy, int r, int g, int b, const char *s)
 INLINE void sjis_draw16(int sx, int sy, int r, int g, int b, const char *s)
 {
 	int type, res = 1;
-	u16 code;
-	const u8 *p = (const u8 *)s;
+	UINT16 code;
+	const UINT8 *p = (const UINT8 *)s;
 	struct font_t font;
 
 #if !PSP_VIDEO_32BPP
@@ -1657,7 +1657,7 @@ INLINE void sjis_draw16(int sx, int sy, int r, int g, int b, const char *s)
 
 				if (CODE_HASCOLOR(code))
 				{
-					u32 color = command_font_color[code >> 8];
+					UINT32 color = command_font_color[code >> 8];
 
 					r2 = GETR16(color);
 					g2 = GETG16(color);
@@ -1941,13 +1941,13 @@ int ui_light_update(void)
 #define NUM_FONTS	0x60
 #define MAX_STR_LEN	256
 
-static u16 *tex_font;
+static UINT16 *tex_font;
 
 void create_small_font(void)
 {
 	int code, x, y;
-	u16 *dst;
-	u16 color[8] = {
+	UINT16 *dst;
+	UINT16 color[8] = {
 		MAKECOL15(248,248,248),
 		MAKECOL15(240,240,240),
 		MAKECOL15(232,232,232),
@@ -1958,15 +1958,15 @@ void create_small_font(void)
 		MAKECOL15(192,192,192)
 	};
 
-	tex_font = (u16 *)video_frame_addr(0, 0, 2032);
+	tex_font = (UINT16 *)video_frame_addr(0, 0, 2032);
 	dst = tex_font;
 
 	for (code = 0; code < NUM_FONTS; code++)
 	{
 		for (y = 0; y < 8; y++)
 		{
-			u8 data = font_s[(code << 3) + y];
-			u8 mask = 0x80;
+			UINT8 data = font_s[(code << 3) + y];
+			UINT8 mask = 0x80;
 
 			for (x = 0; x < 8; x++)
 			{
@@ -2007,7 +2007,7 @@ void small_font_print(int sx, int sy, const char *s, int bg)
 
 		for (i = 0; i < len; i++)
 		{
-			u8 code = isascii((u8)s[i]) ? s[i] - 0x20 : 0x20;
+			UINT8 code = isascii((UINT8)s[i]) ? s[i] - 0x20 : 0x20;
 			int u = (code & 63) << 3;
 			int v = (code >> 6) << 3;
 
@@ -2050,6 +2050,78 @@ void small_font_printf(int x, int y, const char *text, ...)
 }
 
 
+/*------------------------------------------------------
+	文字列描画
+------------------------------------------------------*/
+
+static void debug_font_print(void *frame, int sx, int sy, const char *s, int bg)
+{
+	int len = strlen(s);
+	struct Vertex *vertices = (struct Vertex *)sceGuGetMemory(len * 2 * sizeof(struct Vertex));
+
+	sceGuStart(GU_DIRECT, gulist);
+	sceGuDrawBufferList(GU_PSM_5551, frame, BUF_WIDTH);
+	sceGuScissor(sx, sy, sx + 8 * len, sy + 8);
+
+	if (bg)
+		sceGuDisable(GU_ALPHA_TEST);
+	else
+		sceGuEnable(GU_ALPHA_TEST);
+
+	sceGuTexMode(GU_PSM_5551, 0, 0, GU_TRUE);
+	sceGuTexImage(0, 512, 512, BUF_WIDTH, tex_font);
+	sceGuTexFilter(GU_NEAREST, GU_NEAREST);
+
+	if (vertices)
+	{
+		int i;
+		struct Vertex *vertices_tmp = vertices;
+
+		for (i = 0; i < len; i++)
+		{
+			UINT8 code = isascii((UINT8)s[i]) ? s[i] - 0x20 : 0x20;
+			int u = (code & 63) << 3;
+			int v = (code >> 6) << 3;
+
+			vertices_tmp[0].u = u;
+			vertices_tmp[0].v = v;
+			vertices_tmp[0].x = sx;
+			vertices_tmp[0].y = sy;
+
+			vertices_tmp[1].u = u + 8;
+			vertices_tmp[1].v = v + 8;
+			vertices_tmp[1].x = sx + 8;
+			vertices_tmp[1].y = sy + 8;
+
+			vertices_tmp += 2;
+			sx += 8;
+		}
+
+		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, 2 * len, 0, vertices);
+	}
+
+	sceGuFinish();
+	sceGuSync(0, 0);
+}
+
+
+/*------------------------------------------------------
+	書式付文字列描画
+------------------------------------------------------*/
+
+void debug_font_printf(void *frame, int x, int y, const char *text, ...)
+{
+	char buf[256];
+	va_list arg;
+
+	va_start(arg, text);
+	vsprintf(buf, text, arg);
+	va_end(arg);
+
+	debug_font_print(frame, x << 3, y << 3, buf, 1);
+}
+
+
 /******************************************************************************
 	図形描画
 ******************************************************************************/
@@ -2064,8 +2136,8 @@ static void hline32(int sx, int ex, int y, int r, int g, int b)
 {
 	int x;
 	int width  = (ex - sx) + 1;
-	u32 *dst = vram_pos32(sx, y);
-	u32 color = MAKECOL32(r, g, b);
+	UINT32 *dst = vram_pos32(sx, y);
+	UINT32 color = MAKECOL32(r, g, b);
 
 	for (x = 0; x < width; x++)
 		*dst++ = color;
@@ -2080,7 +2152,7 @@ static void hline_alpha32(int sx, int ex, int y, int r, int g, int b, int alpha)
 {
 	int x, dst_r, dst_g, dst_b;
 	int width  = (ex - sx) + 1;
-	u32 *dst = vram_pos32(sx, y);
+	UINT32 *dst = vram_pos32(sx, y);
 
 	for (x = 0; x < width; x++)
 	{
@@ -2108,7 +2180,7 @@ static void hline_gradation32(int sx, int ex, int y, int r1, int g1, int b1, int
 	int ir, ig, ib;
 	int cr, cg, cb;
 	int width  = (ex - sx) + 1;
-	u32 *dst = vram_pos32(sx, y);
+	UINT32 *dst = vram_pos32(sx, y);
 
 	dr = dg = db = 0;
 	cr = cg = cb = 0;
@@ -2171,8 +2243,8 @@ static void vline32(int x, int sy, int ey, int r, int g, int b)
 {
 	int y;
 	int height = (ey - sy) + 1;
-	u32 *dst = vram_pos32(x, sy);
-	u32 color = MAKECOL32(r, g, b);
+	UINT32 *dst = vram_pos32(x, sy);
+	UINT32 color = MAKECOL32(r, g, b);
 
 	for (y = 0; y < height; y++)
 	{
@@ -2190,7 +2262,7 @@ static void vline_alpha32(int x, int sy, int ey, int r, int g, int b, int alpha)
 {
 	int y, dst_r, dst_g, dst_b;
 	int height = (ey - sy) + 1;
-	u32 *dst = vram_pos32(x, sy);
+	UINT32 *dst = vram_pos32(x, sy);
 
 	for (y = 0; y < height; y++)
 	{
@@ -2220,7 +2292,7 @@ static void vline_gradation32(int x, int sy, int ey, int r1, int g1, int b1, int
 	int ir, ig, ib;
 	int cr, cg, cb;
 	int height  = (ey - sy) + 1;
-	u32 *dst = vram_pos32(x, sy);
+	UINT32 *dst = vram_pos32(x, sy);
 
 	dr = dg = db = 0;
 	cr = cg = cb = 0;
@@ -2299,7 +2371,7 @@ static void boxfill32(int sx, int sy, int ex, int ey, int r, int g, int b)
 	int x, y;
 	int width  = (ex - sx) + 1;
 	int height = (ey - sy) + 1;
-	u32 color, *dst = vram_pos32(sx, sy);
+	UINT32 color, *dst = vram_pos32(sx, sy);
 
 	color = MAKECOL32(r, g, b);
 
@@ -2324,7 +2396,7 @@ static void boxfill_alpha32(int sx, int sy, int ex, int ey, int r, int g, int b,
 	int dst_r, dst_g, dst_b;
 	int width  = (ex - sx) + 1;
 	int height = (ey - sy) + 1;
-	u32 color, *dst = vram_pos32(sx, sy);
+	UINT32 color, *dst = vram_pos32(sx, sy);
 
 	for (y = 0; y < height; y++)
 	{
@@ -2380,13 +2452,45 @@ static void boxfill_gradation32(int sx, int sy, int ex, int ey, int r1, int g1, 
 
 static void hline16(int sx, int ex, int y, int r, int g, int b)
 {
+#if 0
 	int x;
 	int width  = (ex - sx) + 1;
-	u16 *dst = vram_pos16(sx, y);
-	u16 color = MAKECOL15(r, g, b);
+	UINT16 *dst = vram_pos16(sx, y);
+	UINT16 color = MAKECOL15(r, g, b);
 
 	for (x = 0; x < width; x++)
 		*dst++ = color;
+#else
+	struct Vertex *vertices;
+
+	sceGuStart(GU_DIRECT, gulist);
+	sceGuDrawBufferList(GU_PSM_5551, draw_frame, BUF_WIDTH);
+	sceGuScissor(0, 0, SCR_WIDTH, SCR_HEIGHT);
+	sceGuDisable(GU_ALPHA_TEST);
+	sceGuDisable(GU_TEXTURE_2D);
+
+	vertices = (struct Vertex *)sceGuGetMemory(2 * sizeof(struct Vertex));
+
+	if (vertices)
+	{
+		memset(vertices, 0, 2 * sizeof(struct Vertex));
+
+		vertices[0].x = sx;
+		vertices[0].y = y;
+		vertices[0].color = MAKECOL15(r, g, b);
+
+		vertices[1].x = ex;
+		vertices[1].y = y;
+		vertices[1].color = MAKECOL15(r, g, b);
+
+		sceGuDrawArray(GU_LINES, TEXTURE_FLAGS, 2, 0, vertices);
+	}
+
+	sceGuEnable(GU_TEXTURE_2D);
+
+	sceGuFinish();
+	sceGuSync(0, 0);
+#endif
 }
 
 
@@ -2398,7 +2502,7 @@ static void hline_alpha16(int sx, int ex, int y, int r, int g, int b, int alpha)
 {
 	int x, dst_r, dst_g, dst_b;
 	int width  = (ex - sx) + 1;
-	u16 *dst = vram_pos16(sx, y);
+	UINT16 *dst = vram_pos16(sx, y);
 
 #if !PSP_VIDEO_32BPP
 	r >>= 3;
@@ -2433,7 +2537,7 @@ static void hline_gradation16(int sx, int ex, int y, int r1, int g1, int b1, int
 	int ir, ig, ib;
 	int cr, cg, cb;
 	int width  = (ex - sx) + 1;
-	u16 *dst = vram_pos16(sx, y);
+	UINT16 *dst = vram_pos16(sx, y);
 
 	dr = dg = db = 0;
 	cr = cg = cb = 0;
@@ -2499,8 +2603,8 @@ static void vline16(int x, int sy, int ey, int r, int g, int b)
 {
 	int y;
 	int height = (ey - sy) + 1;
-	u16 *dst = vram_pos16(x, sy);
-	u16 color = MAKECOL15(r, g, b);
+	UINT16 *dst = vram_pos16(x, sy);
+	UINT16 color = MAKECOL15(r, g, b);
 
 	for (y = 0; y < height; y++)
 	{
@@ -2518,7 +2622,7 @@ static void vline_alpha16(int x, int sy, int ey, int r, int g, int b, int alpha)
 {
 	int y, dst_r, dst_g, dst_b;
 	int height = (ey - sy) + 1;
-	u16 *dst = vram_pos16(x, sy);
+	UINT16 *dst = vram_pos16(x, sy);
 
 #if !PSP_VIDEO_32BPP
 	r >>= 3;
@@ -2555,7 +2659,7 @@ static void vline_gradation16(int x, int sy, int ey, int r1, int g1, int b1, int
 	int ir, ig, ib;
 	int cr, cg, cb;
 	int height  = (ey - sy) + 1;
-	u16 *dst = vram_pos16(x, sy);
+	UINT16 *dst = vram_pos16(x, sy);
 
 	dr = dg = db = 0;
 	cr = cg = cb = 0;
@@ -2638,8 +2742,8 @@ static void boxfill16(int sx, int sy, int ex, int ey, int r, int g, int b)
 	int x, y;
 	int width  = (ex - sx) + 1;
 	int height = (ey - sy) + 1;
-	u16 *dst = vram_pos16(sx, sy);
-	u16 color = MAKECOL15(r, g, b);
+	UINT16 *dst = vram_pos16(sx, sy);
+	UINT16 color = MAKECOL15(r, g, b);
 
 	for (y = 0; y < height; y++)
 	{
@@ -2662,7 +2766,7 @@ static void boxfill_alpha16(int sx, int sy, int ex, int ey, int r, int g, int b,
 	int dst_r, dst_g, dst_b;
 	int width  = (ex - sx) + 1;
 	int height = (ey - sy) + 1;
-	u16 color, *dst = vram_pos16(sx, sy);
+	UINT16 color, *dst = vram_pos16(sx, sy);
 
 #if !PSP_VIDEO_32BPP
 	r >>= 3;
@@ -2881,11 +2985,11 @@ void boxfill_gradation(int sx, int sy, int ex, int ey, int r1, int g1, int b1, i
 	矩形の影を描画 (32bit)
 ------------------------------------------------------*/
 
-static void draw_boxshadow32(u32 *vptr, int w, int h, int no)
+static void draw_boxshadow32(UINT32 *vptr, int w, int h, int no)
 {
 	int x, y;
 	int dst_r, dst_g, dst_b, a;
-	u32 *dst = vptr, color;
+	UINT32 *dst = vptr, color;
 
 	for (y = 0; y < h; y++)
 	{
@@ -2916,11 +3020,11 @@ static void draw_boxshadow32(u32 *vptr, int w, int h, int no)
 }
 
 
-static void fill_boxshadow32(u32 *vptr, int w, int h)
+static void fill_boxshadow32(UINT32 *vptr, int w, int h)
 {
 	int x, y;
 	int dst_r, dst_g, dst_b;
-	u32 *dst = vptr, color;
+	UINT32 *dst = vptr, color;
 
 	for (y = 0; y < h; y++)
 	{
@@ -2947,7 +3051,7 @@ static void draw_box_shadow32(int sx, int sy, int ex, int ey)
 {
 	int i, width, height;
 	int w, h, nw, nh, sx2, sy2;
-	u32 *vptr;
+	UINT32 *vptr;
 
 	width = (ex - sx) + 1;
 	height = (ey - sy) + 1;
@@ -3047,7 +3151,7 @@ static void draw_box_shadow32(int sx, int sy, int ex, int ey)
 static void draw_bar_shadow32(void)
 {
 	int i;
-	u32 *vptr = vram_pos32(0, 20);
+	UINT32 *vptr = vram_pos32(0, 20);
 
 	for (i = 0; i < SCR_WIDTH / 8; i++)
 	{
@@ -3066,11 +3170,11 @@ static void draw_bar_shadow32(void)
 	矩形の影を描画 (16bit)
 ------------------------------------------------------*/
 
-static void draw_boxshadow16(u16 *vptr, int w, int h, int no)
+static void draw_boxshadow16(UINT16 *vptr, int w, int h, int no)
 {
 	int x, y;
 	int dst_r, dst_g, dst_b, a;
-	u16 *dst = vptr, color;
+	UINT16 *dst = vptr, color;
 
 	for (y = 0; y < h; y++)
 	{
@@ -3101,11 +3205,11 @@ static void draw_boxshadow16(u16 *vptr, int w, int h, int no)
 }
 
 
-static void fill_boxshadow16(u16 *vptr, int w, int h)
+static void fill_boxshadow16(UINT16 *vptr, int w, int h)
 {
 	int x, y;
 	int dst_r, dst_g, dst_b;
-	u16 *dst = vptr, color;
+	UINT16 *dst = vptr, color;
 
 	for (y = 0; y < h; y++)
 	{
@@ -3132,7 +3236,7 @@ static void draw_box_shadow16(int sx, int sy, int ex, int ey)
 {
 	int i, width, height;
 	int w, h, nw, nh, sx2, sy2;
-	u16 *vptr;
+	UINT16 *vptr;
 
 	width = (ex - sx) + 1;
 	height = (ey - sy) + 1;
@@ -3232,7 +3336,7 @@ static void draw_box_shadow16(int sx, int sy, int ex, int ey)
 static void draw_bar_shadow16(void)
 {
 	int i;
-	u16 *vptr = vram_pos16(0, 20);
+	UINT16 *vptr = vram_pos16(0, 20);
 
 	for (i = 0; i < SCR_WIDTH / 8; i++)
 	{
@@ -3317,7 +3421,7 @@ void set_ui_color(UI_PALETTE *pal, int r, int g, int b)
 void logo(int sx, int sy, int r, int g, int b)
 {
 	int x, y, dst_r, dst_g, dst_b, alpha;
-	u32 color, *dst = vram_pos32(sx, sy);
+	UINT32 color, *dst = vram_pos32(sx, sy);
 
 	for (y = 0; y < 14; y++)
 	{

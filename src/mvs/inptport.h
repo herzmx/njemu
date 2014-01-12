@@ -11,6 +11,8 @@
 
 #define MVS_PORT_MAX	6
 
+#define TEST_SWITCH_FLAGS	(PSP_CTRL_SELECT|PSP_CTRL_LTRIGGER|PSP_CTRL_RTRIGGER)
+
 enum
 {
 	MVS_A = 0,
@@ -76,7 +78,7 @@ extern int af_interval;
 extern int neogeo_dipswitch;
 extern int analog_sensitivity;
 
-extern u8 neogeo_port_value[MVS_PORT_MAX];
+extern UINT8 neogeo_port_value[MVS_PORT_MAX];
 extern int input_analog_value[2];
 
 #ifdef ADHOC

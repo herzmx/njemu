@@ -8,7 +8,7 @@
 # Copyright (c) 2005 James Forshaw <tyranid@gmail.com>
 # Copyright (c) 2005 John Kelley <ps2dev@kelley.ca>
 #
-# $Id: build.mak 2088 2006-12-04 07:11:23Z loser $
+# $Id: build.mak 2214 2007-04-12 20:04:48Z jim $
 
 # Note: The PSPSDK make variable must be defined before this file is included.
 ifeq ($(PSPSDK),)
@@ -34,6 +34,12 @@ CFLAGS   := $(addprefix -I,$(INCDIR)) $(CFLAGS)
 CXXFLAGS := $(CFLAGS) $(CXXFLAGS)
 ASFLAGS  := $(CFLAGS) $(ASFLAGS)
 LDFLAGS  := $(addprefix -L,$(LIBDIR)) $(LDFLAGS)
+
+ifeq ($(PSP_FW_VERSION),)
+PSP_FW_VERSION=150
+endif
+
+CFLAGS += -D_PSP_FW_VERSION=$(PSP_FW_VERSION)
 
 # Library selection.  By default we link with Newlib's libc.  Allow the
 # user to link with PSPSDK's libc if USE_PSPSDK_LIBC is set to 1.

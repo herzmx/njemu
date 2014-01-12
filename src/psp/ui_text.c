@@ -45,6 +45,9 @@ const char *ui_text[UI_TEXT_MAX] =
 	"Don't bother.",
 #endif
 	"Do you make this directory the startup directory?",
+#ifdef PSP_SLIM
+	"This program requires PSP-2000 + FW 3.71 M33 or later.",
+#endif
 #ifdef SAVE_STATE
 	"Start save state.",
 	"Start load state.",
@@ -281,6 +284,12 @@ const char *ui_text[UI_TEXT_MAX] =
 #endif
 	"Save Screenshot",
 	"Switch Player",
+#if (EMU_SYSTEM == MVS || EMU_SYSTEM == NCDZ)
+	"Button Layout",
+	"Type 1 (NEOGEO PAD)",
+	"Type 2 (MVS)",
+	"User Define",
+#endif
 
 	"DIP switch settings menu",
 	"This game has no DIP switches.",
@@ -400,11 +409,7 @@ const char *ui_text[UI_TEXT_MAX] =
 	"Press any button.\n",
 	"Could not allocate %s memory.\n",
 	"CRC32 not correct. \"%s\"\n",
-#if (EMU_SYSTEM == NCDZ)
 	"File not found. \"%s\"\n",
-#else
-	"File not found or CRC32 not correct. \"%s\"\n",
-#endif
 
 #ifdef SAVE_STATE
 	/* common/state.c */
@@ -497,6 +502,11 @@ const char *ui_text[UI_TEXT_MAX] =
 	/* memintrf.c */
 	"rominfo.cps2 not found.\n",
 
+#ifdef PSP_SLIM
+	/* vidhrdw.c */
+	"Decoding GFX...\n",
+#endif
+
 #elif (EMU_SYSTEM == MVS)
 
 	/* biosmenu.c */
@@ -510,17 +520,12 @@ const char *ui_text[UI_TEXT_MAX] =
 	"rominfo.mvs not found.\n",
 	"Loading \"sfix.sfx\"\n",
 	"Loading \"%s (%s)\"\n",
-	"Loading decrypted CPU1 ROM...\n",
 	"Loading decrypted GFX2 ROM...\n",
-	"Loading decrypted GFX3 ROM...\n",
 	"Loading decrypted SOUND1 ROM...\n",
-	"Loading decrypted BIOS ROM...\n",
+	"Could not allocate memory for decrypt ROM.\n",
 	"Could not allocate memory for sprite data.\n",
 	"Try to use sprite cache...\n",
 	"Checking BIOS...\n",
-	"Allocate \"brza_sram\" memory.\n",
-	"Could not allocate \"brza_sram\" memory.\n",
-	"This game only work without sound.\n",
 
 #elif (EMU_SYSTEM == NCDZ)
 
@@ -576,6 +581,9 @@ const char *ui_text[UI_TEXT_MAX] =
 	"気にしないでください。",
 #endif
 	"このディレクトリを初期ディレクトリに設定します。",
+#ifdef PSP_SLIM
+	"このプログラムはPSP-2000 + FW 3.71 M33以降専用です。",
+#endif
 #ifdef SAVE_STATE
 	"ステートセーブを開始します。",
 	"ステートロードを開始します。",
@@ -813,6 +821,12 @@ const char *ui_text[UI_TEXT_MAX] =
 #endif
 	"スクリーンショット保存",
 	"プレイヤー切り替え",
+#if (EMU_SYSTEM == MVS || EMU_SYSTEM == NCDZ)
+	"ボタン配置",
+	"タイプ1 (NEO･GEOパッド)",
+	"タイプ2 (MVS)",
+	"ユーザ定義",
+#endif
 
 	"ディップスイッチ設定メニュー",
 	"このゲームにはディップスイッチはありません。",
@@ -932,11 +946,7 @@ const char *ui_text[UI_TEXT_MAX] =
 	"何かボタンを押してください。\n",
 	"メモリを確保できません。(REGION_%s)\n",
 	"CRC32が正しくありません。\"%s\"\n",
-#if (EMU_SYSTEM == NCDZ)
 	"ファイルが見つかりません。\"%s\"\n",
-#else
-	"ファイルが見つからないか、CRC32が正しくありません。\"%s\"\n",
-#endif
 
 #ifdef SAVE_STATE
 	/* common/state.c */
@@ -1028,6 +1038,11 @@ const char *ui_text[UI_TEXT_MAX] =
 
 	"rominfo.cps2が見つかりません。\n",
 
+#ifdef PSP_SLIM
+	/* vidhrdw.c */
+	"グラフィックデータを展開中...\n",
+#endif
+
 #elif (EMU_SYSTEM == MVS)
 
 	/* biosmenu.c */
@@ -1041,17 +1056,12 @@ const char *ui_text[UI_TEXT_MAX] =
 	"rominfo.mvsが見つかりません。\n",
 	"ロード中 \"sfix.sfx\"\n",
 	"ロード中 \"%s (%s)\"\n",
-	"復号済みCPU1 ROMをロード中...\n",
 	"復号済みGFX2 ROMをロード中...\n",
-	"復号済みGFX3 ROMをロード中...\n",
 	"復号済みSOUND1 ROMをロード中...\n",
-	"復号済みBIOS ROMをロード中...\n",
+	"ROM復号用のメモリを確保できません。\n",
 	"スプライトデータ用のメモリを確保できません。\n",
 	"スプライトキャッシュの使用を試みます。\n",
 	"BIOSをチェック中...\n",
-	"\"brza_sram\"用メモリを確保します。\n",
-	"\"brza_sram\"用メモリを確保できませんでした。\n",
-	"このゲームはサウンドなしでしか動作しません。\n",
 
 #elif (EMU_SYSTEM == NCDZ)
 

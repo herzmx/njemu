@@ -29,8 +29,8 @@
 	ÉOÉçÅ[ÉoÉãïœêî
 ******************************************************************************/
 
-u8 *jpnfont = NULL;
-u16 *sjis_table;
+UINT8 *jpnfont = NULL;
+UINT16 *sjis_table;
 
 
 /******************************************************************************
@@ -39,21 +39,21 @@ u16 *sjis_table;
 
 static int gryph;
 
-static u8 *jpn_h14;
+static UINT8 *jpn_h14;
 static int *jpn_h14_pos;
-static s8 *jpn_h14_width;
-static s8 *jpn_h14_height;
-static s8 *jpn_h14_skipx;
-static s8 *jpn_h14_skipy;
-static s8 *jpn_h14_pitch;
+static INT8 *jpn_h14_width;
+static INT8 *jpn_h14_height;
+static INT8 *jpn_h14_skipx;
+static INT8 *jpn_h14_skipy;
+static INT8 *jpn_h14_pitch;
 
-static u8 *jpn_z14;
+static UINT8 *jpn_z14;
 static int *jpn_z14_pos;
-static s8 *jpn_z14_width;
-static s8 *jpn_z14_height;
-static s8 *jpn_z14_skipx;
-static s8 *jpn_z14_skipy;
-static s8 *jpn_z14_pitch;
+static INT8 *jpn_z14_width;
+static INT8 *jpn_z14_height;
+static INT8 *jpn_z14_skipx;
+static INT8 *jpn_z14_skipy;
+static INT8 *jpn_z14_pitch;
 
 
 /******************************************************************************
@@ -90,32 +90,32 @@ int load_jpnfont(int gryph_type)
 	fontsize += 16;
 	if ((jpnfont = memalign(MEM_ALIGN, fontsize)) != NULL)
 	{
-		u32 offset = 0;
+		UINT32 offset = 0;
 
 		memset(jpnfont, 0, fontsize);
 
-		set_font(sjis_table,     u16)
+		set_font(sjis_table,     UINT16)
 
-		set_font(jpn_h14,        u8)
+		set_font(jpn_h14,        UINT8)
 		set_font(jpn_h14_pos,    int)
-		set_font(jpn_h14_width,  s8)
-		set_font(jpn_h14_height, s8)
-		set_font(jpn_h14_skipx,  s8)
-		set_font(jpn_h14_skipy,  s8)
+		set_font(jpn_h14_width,  INT8)
+		set_font(jpn_h14_height, INT8)
+		set_font(jpn_h14_skipx,  INT8)
+		set_font(jpn_h14_skipy,  INT8)
 		if (!gryph)
 		{
-			set_font(jpn_h14_pitch,  s8)
+			set_font(jpn_h14_pitch,  INT8)
 		}
 
-		set_font(jpn_z14,        u8)
+		set_font(jpn_z14,        UINT8)
 		set_font(jpn_z14_pos,    int)
-		set_font(jpn_z14_width,  s8)
-		set_font(jpn_z14_height, s8)
-		set_font(jpn_z14_skipx,  s8)
-		set_font(jpn_z14_skipy,  s8)
+		set_font(jpn_z14_width,  INT8)
+		set_font(jpn_z14_height, INT8)
+		set_font(jpn_z14_skipx,  INT8)
+		set_font(jpn_z14_skipy,  INT8)
 		if (!gryph)
 		{
-			set_font(jpn_z14_pitch,  s8)
+			set_font(jpn_z14_pitch,  INT8)
 		}
 
 		fclose(fp);
@@ -151,7 +151,7 @@ void free_jpnfont(void)
 #define NUM_FONTS	0x3f
 
 #if (EMU_SYSTEM != NCDZ)
-int jpn_h14p_get_gryph(struct font_t *font, u16 code)
+int jpn_h14p_get_gryph(struct font_t *font, UINT16 code)
 {
 	if (jpnfont && !gryph)
 	{
@@ -171,7 +171,7 @@ int jpn_h14p_get_gryph(struct font_t *font, u16 code)
 #endif
 
 #ifdef COMMAND_LIST
-int jpn_h14_get_gryph(struct font_t *font, u16 code)
+int jpn_h14_get_gryph(struct font_t *font, UINT16 code)
 {
 	if (jpnfont && gryph)
 	{
@@ -191,7 +191,7 @@ int jpn_h14_get_gryph(struct font_t *font, u16 code)
 #endif
 
 #if (EMU_SYSTEM != NCDZ)
-int jpn_h14p_get_pitch(u16 code)
+int jpn_h14p_get_pitch(UINT16 code)
 {
 	if (jpnfont && !gryph)
 	{
@@ -212,7 +212,7 @@ int jpn_h14p_get_pitch(u16 code)
 #define NUM_FONTS	0x1c9b
 
 #if (EMU_SYSTEM != NCDZ)
-int jpn_z14p_get_gryph(struct font_t *font, u16 code)
+int jpn_z14p_get_gryph(struct font_t *font, UINT16 code)
 {
 	if (jpnfont && !gryph)
 	{
@@ -232,7 +232,7 @@ int jpn_z14p_get_gryph(struct font_t *font, u16 code)
 #endif
 
 #ifdef COMMAND_LIST
-int jpn_z14_get_gryph(struct font_t *font, u16 code)
+int jpn_z14_get_gryph(struct font_t *font, UINT16 code)
 {
 	if (jpnfont && gryph)
 	{
@@ -252,7 +252,7 @@ int jpn_z14_get_gryph(struct font_t *font, u16 code)
 #endif
 
 #if (EMU_SYSTEM != NCDZ)
-int jpn_z14p_get_pitch(u16 code)
+int jpn_z14p_get_pitch(UINT16 code)
 {
 	if (jpnfont && !gryph)
 	{

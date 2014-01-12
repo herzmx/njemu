@@ -37,11 +37,7 @@ static cfg_type gamecfg_2buttons[] =
 
 	{ CFG_NONE,	"[Video Settings]", },
 	{ CFG_INT,	"StretchScreen",		&option_stretch,		2,	3	},
-#if (EMU_SYSTEM == CPS2)
 	{ CFG_BOOL,	"VideoSync",			&option_vsync,			1,	1	},
-#else
-	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	1	},
-#endif
 	{ CFG_BOOL,	"AutoFrameSkip",		&option_autoframeskip,	0,	1	},
 	{ CFG_INT,	"FrameSkipLevel",		&option_frameskip,		0,	11	},
 	{ CFG_BOOL,	"ShowFPS",				&option_showfps,		0,	1	},
@@ -589,7 +585,7 @@ static cfg_type gamecfg_progear[] =
 	{ CFG_NONE, NULL, }
 };
 
-static cfg_type gamecfg_puzloop2[] =
+static cfg_type gamecfg_pzloop2[] =
 {
 	{ CFG_NONE,	"[Emulation Settings]", },
 	{ CFG_INT,	"RasterEnable",			&cps_raster_enable,		1,	1	},
@@ -662,6 +658,9 @@ static cfg_type gamecfg_puzloop2[] =
 	case INPTYPE_megaman:
 	case INPTYPE_rockmanj:
 	case INPTYPE_slammast:
+#if !RELEASE
+	case INPTYPE_knightsh:
+#endif
 		gamecfg = gamecfg_3buttons;
 		break;
 
@@ -717,8 +716,8 @@ static cfg_type gamecfg_puzloop2[] =
 		gamecfg = gamecfg_quiz;
 		break;
 
-	case INPTYPE_puzloop2:
-		gamecfg = gamecfg_puzloop2;
+	case INPTYPE_pzloop2:
+		gamecfg = gamecfg_pzloop2;
 		break;
 
 	default:
@@ -758,6 +757,9 @@ static cfg_type gamecfg_puzloop2[] =
 	case INPTYPE_kod:
 	case INPTYPE_kodj:
 	case INPTYPE_knights:	// Enemy's Attack Frequency
+#if !RELEASE
+	case INPTYPE_knightsh:
+#endif
 	case INPTYPE_qtono2:
 		cps1_dipswitch[DIP_B] &= ~0x07;
 		cps1_dipswitch[DIP_B] |= 0x04;	// Difficulty

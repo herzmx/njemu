@@ -246,6 +246,46 @@ enum
 	INIT_jockeygp,		// 33
 	INIT_vliner,		// 34
 
+#if !RELEASE
+	// bootleg
+	INIT_garoubl,		// 35
+	INIT_kf2k2pls,		// 36
+	INIT_kf2k2mp,		// 37
+	INIT_kf2k2mp2,		// 38
+	INIT_ms5plus,		// 39
+	INIT_svcboot,		// 40
+	INIT_svcplus,		// 41
+	INIT_svcplusa,		// 42
+	INIT_svcsplus,		// 43
+	INIT_samsho5b,		// 44
+	INIT_kf2k3bl,		// 45
+	INIT_kf2k3pl,		// 46
+	INIT_kf2k3upl,		// 47
+	INIT_kog,			// 48
+	INIT_kof10th,		// 49
+	INIT_kf10thep,		// 50
+	INIT_kf2k5uni,		// 51
+	INIT_cthd2003,		// 52
+	INIT_ct2k3sp,		// 53
+	INIT_kof2k4se,		// 54
+	INIT_lans2004,		// 55
+	INIT_mslug3b6,		// 56
+	INIT_ms4plus,		// 57
+
+	// bootleg (MAME plus)
+	INIT_kof96ep,		// 58
+	INIT_kf2k1pls,		// 59
+	INIT_kf2k1pa,		// 60
+	INIT_cthd2k3a,		// 61
+	INIT_kof2002b,		// 62
+	INIT_matrimbl,		// 63
+	INIT_kf2k2plc,		// 64
+	INIT_kf2k4pls,		// 65
+	INIT_kof97pla,		// 66
+	INIT_fr2ch,			// 67
+	INIT_mslug5b,		// 68
+#endif
+
 	MAX_INIT
 };
 
@@ -260,10 +300,22 @@ enum
 
 extern int neogeo_driver_type;
 extern int neogeo_raster_enable;
-extern u16 neogeo_ngh;
-extern u32 neogeo_frame_counter;
-extern u32 neogeo_frame_counter_speed;
+extern UINT16 neogeo_ngh;
+extern UINT32 neogeo_frame_counter;
+extern UINT32 neogeo_frame_counter_speed;
 extern int neogeo_selected_vectors;
+
+struct cacheinfo_t
+{
+	const char *name;
+	const char *parent;
+	const int crom;
+	const int srom;
+	const int vrom;
+};
+
+extern struct cacheinfo_t MVS_cacheinfo[];
+
 
 void neogeo_driver_init(void);
 void neogeo_driver_exit(void);
@@ -300,10 +352,12 @@ WRITE16_HANDLER( neogeo_memcard16_w );
 
 WRITE16_HANDLER( neogeo_sram16_w );
 
-u8 neogeo_z80_port_r(u16 port);
-void neogeo_z80_port_w(u16 port, u8 value);
+UINT8 neogeo_z80_port_r(UINT16 port);
+void neogeo_z80_port_w(UINT16 port, UINT8 value);
 
 void neogeo_sound_irq(int irq);
+
+#define neogeo_paletteram16_r(offset, mem_mask)	neogeo_paletteram16[offset & 0xfff]
 
 
 //--------------------------------------------------------------
@@ -336,14 +390,87 @@ WRITE16_HANDLER( kof2000_protection_16_w );
 READ16_HANDLER( pvc_protection_16_r );
 WRITE16_HANDLER( pvc_protection_16_w );
 
-extern u16 *brza_sram;
-
 READ16_HANDLER( brza_sram_16_r );
 WRITE16_HANDLER( brza_sram_16_w );
 
 READ16_HANDLER( vliner_16_r );
 
-#define neogeo_paletteram16_r(offset, mem_mask)	neogeo_paletteram16[offset & 0xfff]
+void mslug4_AES_protection(void);
+void rotd_AES_protection(void);
+void matrim_AES_protection(void);
+void mslug5_AES_protection(void);
+void zupapa_AES_protection(void);
+void sengoku3_AES_protection(void);
+void nitd_AES_protection(void);
+void kof2000_AES_protection(void);
+
+#if !RELEASE
+WRITE16_HANDLER( kof10th_protection_16_w );
+WRITE16_HANDLER( cthd2003_protection_16_w );
+READ16_HANDLER( ms5plus_protection_16_r );
+WRITE16_HANDLER( ms5plus_protection_16_w );
+WRITE16_HANDLER( kf2k3bl_protection_16_w);
+WRITE16_HANDLER( kf2k3pl_protection_16_w);
+WRITE16_HANDLER( fr2ch_protection_16_w);
+#endif
+
+
+//--------------------------------------------------------------
+// decrypt ROM
+//--------------------------------------------------------------
+
+int kof98_decrypt_68k(void);
+void kof99_decrypt_68k(void);
+void garou_decrypt_68k(void);
+void garouo_decrypt_68k(void);
+void mslug3_decrypt_68k(void);
+void kof2000_decrypt_68k(void);
+int kof2002_decrypt_68k(void);
+int matrim_decrypt_68k(void);
+int samsho5_decrypt_68k(void);
+int samsh5p_decrypt_68k(void);
+int mslug5_decrypt_68k(void);
+int svcchaos_px_decrypt(void);
+int kf2k3pcb_decrypt_68k(void);
+int kof2003_decrypt_68k(void);
+int kof2003biosdecode(void);
+
+#if !RELEASE
+int kog_px_decrypt(void);
+int kof10th_px_decrypt(void);
+int kf10thep_px_decrypt(void);
+int kf2k5uni_px_decrypt(void);
+int kf2k2mp_px_decrypt(void);
+int kf2k2mp2_px_decrypt(void);
+int kof2k4se_px_decrypt(void);
+int lans2004_px_decrypt(void);
+int svcboot_px_decrypt(void);
+int svcplus_px_decrypt(void);
+int svcplusa_px_decrypt(void);
+int svcsplus_px_decrypt(void);
+int kf2k3bl_px_decrypt(void);
+int kf2k3pl_px_decrypt(void);
+void kf2k3upl_px_decrypt(void);
+int samsho5b_px_decrypt(void);
+void cthd2003_sx_decrypt(void);
+void cthd2003_mx_decrypt(void);
+void kf2k5uni_sx_decrypt(void);
+void kf2k5uni_mx_decrypt(void);
+void kf10thep_sx_decrypt(void);
+
+void kof96ep_px_decrypt(void);
+int cthd2k3a_px_decrypt(void);
+int kf2k4pls_px_decrypt(void);
+void kf2k1pa_sx_decrypt(void);
+void matrimbl_mx_decrypt(void);
+
+void cthd2003_AES_protection(void);
+
+void patch_cthd2003(void);
+void patch_kof97pla(void);
+void patch_fr2ch(void);
+#endif /* RELEASE */
+
 
 #ifdef SAVE_STATE
 STATE_SAVE( driver );

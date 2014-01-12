@@ -100,6 +100,7 @@ static int menu_cmdlist(void)
 typedef struct {
 	const char *label;
 	int *value;
+	int enable;
 	int flag;
 	int old_value;
 	int value_max;
@@ -117,6 +118,7 @@ typedef struct {
 
 #define CFG_CONTINUE	0
 #define CFG_RESTART		1
+#define CFG_RESET		2
 
 #define INCLUDE_GAMECFG_STRUCT
 
@@ -137,6 +139,9 @@ static int menu_gamecfg(void)
 	gamecfg_t gamecfg[GAMECFG_MAX_ITEMS];
 	gamecfg2_t *gamecfg2;
 	int gamecfg_num;
+
+	for (i = 0; i < GAMECFG_MAX_ITEMS; i++)
+		gamecfg[i].enable = 1;
 
 #define INCLUDE_GAMECFG_MENU
 
@@ -207,32 +212,52 @@ static int menu_gamecfg(void)
 				if (gamecfg[top + i].label[0] == '\n')
 					continue;
 
-				if ((top + i) == sel)
+				if (gamecfg[top + i].enable)
 				{
-					uifont_print_shadow(16, 40 + i * 17, UI_COLOR(UI_PAL_SELECT), gamecfg[top + i].label);
-					if (arrowl)
+					if ((top + i) == sel)
 					{
-						uifont_print_shadow(180, 40 + i * 17, UI_COLOR(UI_PAL_SELECT), FONT_LEFTTRIANGLE);
+						uifont_print_shadow(16, 40 + i * 17, UI_COLOR(UI_PAL_SELECT), gamecfg[top + i].label);
+						if (arrowl)
+						{
+							uifont_print_shadow(180, 40 + i * 17, UI_COLOR(UI_PAL_SELECT), FONT_LEFTTRIANGLE);
+						}
 					}
+					else
+						uifont_print(16, 40 + i * 17, UI_COLOR(UI_PAL_NORMAL), gamecfg[top + i].label);
 				}
 				else
-					uifont_print(16, 40 + i * 17, UI_COLOR(UI_PAL_NORMAL), gamecfg[top + i].label);
+				{
+					if ((top + i) == sel)
+						uifont_print_shadow(16, 40 + i * 17, COLOR_GRAY, gamecfg[top + i].label);
+					else
+						uifont_print(16, 40 + i * 17, COLOR_DARKGRAY, gamecfg[top + i].label);
+				}
 
 				if (gamecfg[top + i].value)
 				{
 					int val = *gamecfg[top + i].value;
 
-					if ((top + i) == sel)
+					if (gamecfg[top + i].enable)
 					{
-						uifont_print_shadow(200, 40 + i * 17, UI_COLOR(UI_PAL_SELECT), gamecfg[top + i].values_label[val]);
-						if (arrowr)
+						if ((top + i) == sel)
 						{
-							int width = uifont_get_string_width(gamecfg[top + i].values_label[val]);
-							uifont_print_shadow(204 + width, 40 + i * 17, UI_COLOR(UI_PAL_SELECT), FONT_RIGHTTRIANGLE);
+							uifont_print_shadow(200, 40 + i * 17, UI_COLOR(UI_PAL_SELECT), gamecfg[top + i].values_label[val]);
+							if (arrowr)
+							{
+								int width = uifont_get_string_width(gamecfg[top + i].values_label[val]);
+								uifont_print_shadow(204 + width, 40 + i * 17, UI_COLOR(UI_PAL_SELECT), FONT_RIGHTTRIANGLE);
+							}
 						}
+						else
+							uifont_print(200, 40 + i * 17, UI_COLOR(UI_PAL_NORMAL), gamecfg[top + i].values_label[val]);
 					}
 					else
-						uifont_print(200, 40 + i * 17, UI_COLOR(UI_PAL_NORMAL), gamecfg[top + i].values_label[val]);
+					{
+						if ((top + i) == sel)
+							uifont_print_shadow(200, 40 + i * 17, COLOR_GRAY, gamecfg[top + i].values_label[val]);
+						else
+							uifont_print(200, 40 + i * 17, COLOR_DARKGRAY, gamecfg[top + i].values_label[val]);
+					}
 				}
 			}
 
@@ -263,7 +288,7 @@ static int menu_gamecfg(void)
 		}
 		else if (pad_pressed(PSP_CTRL_LEFT))
 		{
-			if (gamecfg[sel].value)
+			if (gamecfg[sel].value && gamecfg[sel].enable)
 			{
 				int cur = *gamecfg[sel].value;
 
@@ -276,7 +301,7 @@ static int menu_gamecfg(void)
 		}
 		else if (pad_pressed(PSP_CTRL_RIGHT))
 		{
-			if (gamecfg[sel].value)
+			if (gamecfg[sel].value && gamecfg[sel].enable)
 			{
 				int cur = *gamecfg[sel].value;
 
@@ -365,10 +390,20 @@ typedef struct {
 	int code;
 } keycfg2_t;
 
+#if (EMU_SYSTEM == MVS || EMU_SYSTEM == NCDZ)
+enum
+{
+	NEOGEO_PAD = 0,
+	NEOGEO_MVS,
+	USER_DEFINE
+};
+#endif
+
 #define KEYCFG_COMMENT 0
 #define KEYCFG_BUTTON  1
 #define KEYCFG_NUMBER  2
 #define KEYCFG_ANALOG  3
+#define KEYCFG_LAYOUT  4
 
 #define INCLUDE_KEYCFG_STRUCT
 
@@ -393,6 +428,8 @@ static int menu_keycfg(void)
 	const char *sensitivity[3];
 #if (EMU_SYSTEM == CPS2)
 	const char *progear_p2[2];
+#elif (EMU_SYSTEM == MVS || EMU_SYSTEM == NCDZ)
+	const char *layout[3];
 #endif
 
 #define INCLUDE_KEYCFG_MENU
@@ -417,6 +454,10 @@ static int menu_keycfg(void)
 #if (EMU_SYSTEM == CPS2)
 	progear_p2[0] = TEXT(PLAYER1_START);
 	progear_p2[1] = TEXT(PLAYER2_START);
+#elif (EMU_SYSTEM == MVS || EMU_SYSTEM == NCDZ)
+	layout[0] = TEXT(LAYOUT_TYPE1);
+	layout[1] = TEXT(LAYOUT_TYPE2);
+	layout[2] = TEXT(LAYOUT_USER);
 #endif
 
 	i = 0;
@@ -459,6 +500,21 @@ static int menu_keycfg(void)
 	}
 	keycfg_num = i;
 
+#if (EMU_SYSTEM == MVS || EMU_SYSTEM == NCDZ)
+	if (keycfg[6].value == 6 && keycfg[7].value == 5 && keycfg[8].value == 7 && keycfg[9].value == 8)
+	{
+		keycfg[0].value = NEOGEO_PAD;
+	}
+	else if (keycfg[6].value == 7 && keycfg[7].value == 8 && keycfg[8].value == 6 && keycfg[9].value == 5)
+	{
+		keycfg[0].value = NEOGEO_MVS;
+	}
+	else
+	{
+		keycfg[0].value = USER_DEFINE;
+	}
+#endif
+
 	pad_wait_clear();
 	load_background(WP_KEYCFG);
 	ui_popup_reset(POPUP_MENU);
@@ -481,6 +537,9 @@ static int menu_keycfg(void)
 				if (keycfg[sel].type == KEYCFG_BUTTON && keycfg[sel].value < 12) arrowr = 1;
 				if (keycfg[sel].type == KEYCFG_NUMBER && keycfg[sel].value < 10) arrowr = 1;
 				if (keycfg[sel].type == KEYCFG_ANALOG && keycfg[sel].value < 2) arrowr = 1;
+#if (EMU_SYSTEM == MVS || EMU_SYSTEM == NCDZ)
+				if (keycfg[sel].type == KEYCFG_LAYOUT && keycfg[sel].value < 1) arrowr = 1;
+#endif
 			}
 
 			for (i = 0; i < rows; i++)
@@ -516,6 +575,12 @@ static int menu_keycfg(void)
 				case KEYCFG_ANALOG:
 					name = sensitivity[value];
 					break;
+
+#if (EMU_SYSTEM == MVS || EMU_SYSTEM == NCDZ)
+				case KEYCFG_LAYOUT:
+					name = layout[value];
+					break;
+#endif
 
 				default:
 					temp[0] = '\0';
@@ -580,6 +645,27 @@ static int menu_keycfg(void)
 					update = 1;
 				}
 			}
+#if (EMU_SYSTEM == MVS || EMU_SYSTEM == NCDZ)
+			if (keycfg[sel].type == KEYCFG_LAYOUT && update)
+			{
+				switch (keycfg[sel].value)
+				{
+				case NEOGEO_PAD:
+					keycfg[6].value = 6;
+					keycfg[7].value = 5;
+					keycfg[8].value = 7;
+					keycfg[9].value = 8;
+					break;
+
+				case NEOGEO_MVS:
+					keycfg[6].value = 7;
+					keycfg[7].value = 8;
+					keycfg[8].value = 6;
+					keycfg[9].value = 5;
+					break;
+				}
+			}
+#endif
 		}
 		else if (pad_pressed(PSP_CTRL_RIGHT))
 		{
@@ -607,6 +693,21 @@ static int menu_keycfg(void)
 					update = 1;
 				}
 			}
+#if (EMU_SYSTEM == MVS || EMU_SYSTEM == NCDZ)
+			else if (keycfg[sel].type == KEYCFG_LAYOUT)
+			{
+				if (keycfg[sel].value == 0)
+				{
+					keycfg[sel].value++;
+					update = 1;
+
+					keycfg[6].value = 7;
+					keycfg[7].value = 8;
+					keycfg[8].value = 6;
+					keycfg[9].value = 5;
+				}
+			}
+#endif
 		}
 		else if (pad_pressed(PSP_CTRL_CIRCLE))
 		{
@@ -627,6 +728,24 @@ static int menu_keycfg(void)
 		if (sel < top) top = sel;
 
 		if (prev_sel != sel) update = 1;
+
+#if (EMU_SYSTEM == MVS || EMU_SYSTEM == NCDZ)
+		if (update)
+		{
+			if (keycfg[6].value == 6 && keycfg[7].value == 5 && keycfg[8].value == 7 && keycfg[9].value == 8)
+			{
+				keycfg[0].value = NEOGEO_PAD;
+			}
+			else if (keycfg[6].value == 7 && keycfg[7].value == 8 && keycfg[8].value == 6 && keycfg[9].value == 5)
+			{
+				keycfg[0].value = NEOGEO_MVS;
+			}
+			else
+			{
+				keycfg[0].value = USER_DEFINE;
+			}
+		}
+#endif
 
 		pad_update();
 
@@ -658,15 +777,10 @@ static int menu_keycfg(void)
 	ディップスイッチ設定メニュー
 ------------------------------------------------------*/
 
-#if (EMU_SYSTEM != NCDZ)
+#if (EMU_SYSTEM != CPS2 && EMU_SYSTEM != NCDZ)
 
 static int menu_dipswitch(void)
 {
-#if (EMU_SYSTEM == CPS2)
-
-	ui_popup(TEXT(THIS_GAME_HAS_NO_DIP_SWITCHES));
-
-#else
 	int sel = 0, rows = 13, top = 0, sx = 240;
 	int i, arrowl, arrowr, prev_sel, update = 1;
 	dipswitch_t *dipswitch;
@@ -854,8 +968,6 @@ static int menu_dipswitch(void)
 
 #undef INCLUDE_SAVE_DIPSWITCH
 
-#endif
-
 	return 0;
 }
 
@@ -873,7 +985,7 @@ static int menu_dipswitch(void)
 #define STATE_FUNC_DEL		2
 
 
-static u8 slot[10];
+static UINT8 slot[10];
 static int state_func;
 static int state_sel;
 
@@ -950,7 +1062,11 @@ static void state_refresh_screen(int reload_thumbnail)
 		{
 			small_icon_light(12, 38 + i * 22, UI_COLOR(UI_PAL_SELECT), ICON_MEMSTICK);
 			uifont_print_shadow(40, 40 + i * 22, UI_COLOR(UI_PAL_SELECT), name);
+#if JAPANESE_UI
 			uifont_print_shadow(104, 40 + i * 22, UI_COLOR(UI_PAL_SELECT), state);
+#else
+			uifont_print_shadow(92, 40 + i * 22, UI_COLOR(UI_PAL_SELECT), state);
+#endif
 
 			if (slot[state_sel])
 			{
@@ -983,7 +1099,11 @@ static void state_refresh_screen(int reload_thumbnail)
 		{
 			small_icon(12, 38 + i * 22, UI_COLOR(UI_PAL_NORMAL), ICON_MEMSTICK);
 			uifont_print(40, 40 + i * 22, UI_COLOR(UI_PAL_NORMAL), name);
+#if JAPANESE_UI
 			uifont_print(104, 40 + i * 22, UI_COLOR(UI_PAL_NORMAL), state);
+#else
+			uifont_print(92, 40 + i * 22, UI_COLOR(UI_PAL_NORMAL), state);
+#endif
 		}
 	}
 
@@ -1301,7 +1421,7 @@ static menu2_t mainmenu2[] =
 #ifdef COMMAND_LIST
 	{ MENU_COMMAND_LIST,        menu_cmdlist,   ICON_CMDLIST,   MENUHELP_COMMAND_LIST        },
 #endif
-#if (EMU_SYSTEM != NCDZ)
+#if (EMU_SYSTEM != CPS2 && EMU_SYSTEM != NCDZ)
 	{ MENU_DIP_SWITCH_SETTINGS, menu_dipswitch, ICON_DIPSWITCH, MENUHELP_DIP_SWITCH_SETTINGS },
 #endif
 	{ MENU_RESET_EMULATION,     menu_reset,     ICON_SYSTEM,    MENUHELP_RESET_EMULATION     },

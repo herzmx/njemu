@@ -72,7 +72,7 @@ enum
 
 
 extern int option_controller;
-extern u16 cps2_port_value[CPS2_PORT_MAX];
+extern UINT16 cps2_port_value[CPS2_PORT_MAX];
 
 extern int input_map[MAX_INPUTS];
 extern int input_max_players;
