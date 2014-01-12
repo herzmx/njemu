@@ -1,0 +1,29 @@
+$title=バーニングファイト
+$pre=07
+$stop=03
+$start
+02 NEO-GEO Logo
+2a Title
+29 Player Select
+21 1 Stage - Main Street
+2d Bar
+27 Middle Boss (Stage 1-TRUCK, 2-TOM ANDERSON & AZUSA HEIKE, 3-GARY POWELL)
+2c Boss (Stage 1-YUJIRO HEIKE, 2&4-MARSHALL)
+24 Stage Clear
+22 2 Stage - Shopping Center I
+23 Shop
+35 2 Stage - Shopping Center II
+2b 2 Stage - Shopping Center III
+2e 3 Stage - Downtown I
+32 3 Stage - Downtown II
+36 Boss (Stage 3-NITOU RYUJI)
+38 4 Stage - South Bay Area
+3f Warehouse
+3c 5 Stage - Sea Area
+3b Boss (Stage 5-CASTERORA)
+46 Final Stage Clear
+3d Staff Roll
+25 Name Entry
+30 Game Over
+26 Unused
+$end

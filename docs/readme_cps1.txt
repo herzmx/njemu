@@ -1,0 +1,204 @@
+----------------------------------------------------------------------
+
+                 CAPCOM CPS1 Emulator for PSP 1.10
+
+                            NJ (http://neocdz.hp.infoseek.co.jp/psp/)
+----------------------------------------------------------------------
+
+<概要>
+
+  PSP用のCAPCOM CPS1(Capcom Play System)エミュレータです。
+
+----------------------------------------------------------------------
+対応ROMセットについて
+
+  MAME 0.106に準拠させているため、zipファイル名はMAME 0.106が
+  要求するROMセット名と一致させる必要があります。
+
+  全てのROMイメージファイルはzipファイルに圧縮する必要があります。
+  フォルダに展開したファイルを扱えないことを除けば、基本的にMAMEと
+  全く同じです。また、MAMEが対応していないROMセットには対応しません。
+
+  ファイルブラウザ上で白く表示されているゲームは全て動作します。
+  動作しない場合はROMセットが要求するものと異なっているということです。
+  ClrMame ProやRomCenter等のツールを使って、MAME 0.106のROMセットに
+  一致させてください。
+
+  どうしても他のエミュレータや古いMAMEのROMセットを動作させたいと
+  いうのであれば、rominfo.datをnotepad等で書き換えればいいのですが、
+  お勧めはしません。rominfo.datの内容を見て意味がわからなければ
+  変更しないでください。
+
+----------------------------------------------------------------------
+ディレクトリ設定
+
+ディレクトリは全て初回起動時に自動的に作成されます。
+
+ /PSP/GAME/
+      |
+      +- CPS1PSP/  (root directory)
+         |  |
+         |  +- EBOOT.PBP    CPS1 Emulator binary
+         |  +- cps1psp.ini  software config file (create by emulator)
+         |
+         +- config/   (directory for key config file)
+         |
+         +- nvram/    (directory for SRAM)
+         |
+         +- snap/     (directory for screen shot)
+         |
+         +- state/    (directory for state data)
+         |
+         +- roms/ (put BIOS and rom files here. (zip compressed)
+         |    |
+         |    +- 1941.zip   (example: 1941)
+         |    +- sf2.zip    (example: Street Fighter II (parent))
+         |    +- sf2j.zip   (example: Street Fighter II (clone: Japanese version))
+         |    +- ...
+
+----------------------------------------------------------------------
+操作方法
+
+・ゲーム実行中の画面とメインメニューを除き、全てのメニューで"Rトリガ"
+  を押すことで操作ヘルプが表示されるようになっています。
+  わからなければとにかく"Rトリガ"を押してください。
+  見ればわかると思うので、詳細は割愛します。
+
+・ゲームの設定等を変更するメニューは、ゲーム実行中に"START + SELECT"を押す
+  ことで表示されます。
+
+・ゲーム中のボタン操作
+  ボタンの割り当ては変更可能です。以下にデフォルトの設定を書いておきます。
+
+  以下の場合には、自動的にボタン配置を画面に合わせて反転/回転しますので、
+  特に意識して変更する必要はありません。
+  ・DIPスイッチでCabinetの項目をCooktailに設定した場合の2 Player操作時
+  ・DIPスイッチでFlip Screenの項目をOnにした場合
+  ・縦画面のゲームでRotate ScreenをYesにした場合
+
+  共通
+    Up    - Up or Analog Up
+    Down  - Down or Analog Down
+    Left  - Left or Analog Left
+    Right - Right or Analog Right
+    Start - Start
+    Coin  - Select
+
+  2ボタンのゲーム
+    Button 1 - Square
+    Button 2 - Triangle
+
+  3ボタンのゲーム
+    Button 1 - Square
+    Button 2 - Triangle
+    Button 3 - Cross
+
+  クイズゲーム (方向ボタンは使用しません)
+    Button 1 - Square
+    Button 2 - Triangle
+    Button 3 - Cross
+    Button 4 - Circle
+    プレイヤー切り替え - L trigger
+
+  Street Fighter II系のゲーム (Street Fighter Zero CPS Changer ver.含む)
+    Button 1 - Square
+    Button 2 - Triangle
+    Button 3 - L trigger
+    Button 4 - Cross
+    Button 5 - Circle
+    Button 6 - R trigger
+
+  Forgotton World / Lost World
+    (ループレバーはPSPではどうにもならないので、L/Rトリガで代用)
+    Button 1 - Square
+    Dial(rotate left) - L trigger
+    Dial(rotate right) - R trigger
+
+  特殊操作
+    START + SELECT: メニューを開く
+    L + R + SELECT: サービススイッチ (特定のボタンに割り当ても可能)
+    L + R + START:  1P & 2P START (サービスメニューで使用)
+
+----------------------------------------------------------------------
+"Raster Effects"について
+
+・ゲーム設定メニューに、”Raster Effects"の項目があります。
+  この項目で、Street Fighter II等のゲームで使用されているLine Scroll
+  効果の有効/無効を指定します。
+  この項目は、エミュレーションの負荷が非常に高い(スプライトを1ライン
+  ずつ描画しなければならないため、描画回数が通常の数倍に増える)ため、
+  通常は"Off"になっています。背景がずれたりするのが気になる場合は、
+  かなり動作速度がおちますが"On"に変更してみてください。
+
+  なお、"Off"のときに背景がずれるのは仕様であり、バグではありません。
+  Raster Effectsを"On"にする以外に正常に表示する方法はありません。
+
+  Street Fighter IIは無効にしてしまうと画面が崩れてむごい状態に
+  なりますが、Street Fighter Zeroはさほど変わらないので、無効にした
+  方が良いです。
+
+----------------------------------------------------------------------
+"Auto Frameskip"について
+
+  無効にした場合、当然ゲームの全体的な速度は落ちますが、安定して
+  プレイしたい場合は無効にした方が良いです。
+
+  ※ 1.0から初期値がOffになっています。
+
+----------------------------------------------------------------------
+"Video Sync"について
+
+  1.0で動作を改善しました。
+  有効にするとサウンドが若干犠牲になりますが、画面のちらつきは改善
+  されます。King of Dragons等で1フレームごとにキャラクタが点滅する
+  ようなゲームは有効にした方が良いと思われます。
+  処理が重いゲームでは基本的に無効にしてください。
+
+  Video Sync Yes時の推奨の設定は以下です。
+
+  Raster Effects      Off
+  60fps Speed Limit   Off
+  Sample Rate         11025Hz (22050Hz以上では多分きついと思います)
+
+----------------------------------------------------------------------
+bootleg版のゲームの扱いについて
+
+  beta 3まで一応対応していましたが、1.0で全て削除しました。
+  基本的に私が作るエミュレータは正規のバージョンが暗号化などにより
+  動作しない場合を除いて、bootleg版には対応しません。
+  (理由は単純にbootleg版が嫌いだからですが。)
+  後日ソースコードは公開しますので、必要であれば各自でMAMEなりを参考に
+  追加してください。
+
+----------------------------------------------------------------------
+変更点
+
+1.10
+
+・CPS2PSPのソース変更に伴う更新のみ。
+
+----------------------------------------------------------------------
+1.01
+
+・Pang!3のステートセーブが正常に行えなかったバグを修正
+・ソースコードをCPS2PSP/MVSPSPと統合
+・rominfo.dat等のリソースファイルの拡張子を.cps1に変更
+
+----------------------------------------------------------------------
+1.0
+
+・C68KコアをCPS2PSPと同じものに変更
+・Z80コアをCZ80に変更
+・CZ80のバグをいくつか修正
+・基本の処理をCPS2PSPと同等のものに更新
+・bootleg版のゲームを全て削除
+・描画処理を全て書き直した結果、多少速度が向上したようです
+・レイヤーのパレット分割処理を修正
+・Save/Load state機能を追加
+・VSYNC有効時の処理を改善
+・ディップスイッチの値を再調査し、正しく動作すると思われる値に変更
+・ディップスイッチのDemo SoundとAllow Continueの初期値をYesに変更
+・autofire機能がRotate ScreenをYesにした場合に機能しなかったバグを修正
+・screen shotの画像形式をPNGに変更
+・Kernel Mode版を追加
+・他変更多数

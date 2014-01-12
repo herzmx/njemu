@@ -1,0 +1,24 @@
+$title=キャプテントマディ
+$pre=07
+$stop=03
+$start
+02 NEO-GEO Logo
+21 ATTRACT MODE 1
+2f ATTRACT MODE 2
+2a HOW TO PLAY
+22 STAGE 1 -Speed Limit 100 k.p.h.-
+25 STAGE 1 BOSS 
+22 STAGE 2 -Mind your hrad.-
+23 STAGE 3 -Danger Deep Water.-Caution.-
+26 STAGE 2, 3 BOSS 
+23 STAGE 4 -Out of order.-
+24 STAGE 5 -No U turn.-
+27 STAGE 5 BOSS 
+28 RESULT
+2e ENDING
+29 STAFF ROLL
+2d NAME ENTRY
+2c GAME OVER
+30 未使用曲 1
+2b 未使用曲 2
+$end

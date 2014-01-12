@@ -1,0 +1,31 @@
+$title=マジカルオロップ2
+$pre=16
+$stop=03
+$start
+7f NeoGeo Logo
+19 はじまりの予感 (オープニング)
+18 はじまるよ (タイトル)
+01 EXPLANATION～操作説明 (操作説明)
+02 ゆれる気持ち (セレクト)
+03 BEFORE FIGHT (ゲーム前演出)
+04 フールの夢 (フールBGM)
+12 スターの休日 (スターBGM)
+13 いたずらロックンロール (デビルBGM)
+14 英雄伝説 (チャリオットBGM)
+15 空想旅行 (プリエステスBGM)
+16 勇気を出して (ジャスティスBGM)
+17 LONELY BATTLE (マジシャンBGM)
+05 女神のささやき (ワールドBGM)
+06 WILD BEAST (ストレングスBGM)
+07 私は最高！ (エンプレスBGM)
+08 ブラックピエロの野望 (ブラッククラウンBGM)
+10 CHALLENGER (対戦モードBGM)
+09 THINKING (ひらめきモードBGM)
+11 ENDLESS WORKER (ひたすらモードBGM)
+0b JUST A MOMENT (乱入)
+0c 勝った！ (勝ち)
+0d 負けちゃった (負け)
+0e ゲームオーバー
+1a みんなのねがい (エンディング)
+0f MAGICAL DROP SHUFFLE (スタッフロール)
+$end

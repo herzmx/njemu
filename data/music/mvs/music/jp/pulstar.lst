@@ -1,0 +1,25 @@
+$title=パルスター
+$pre=07
+$stop=03
+$start
+02 NEO-GEO Logo
+88 MISSION (Title Demo)
+90 STRAIN (Start Demo)
+80 BACK ALIVE (Stage 1)
+8c CRY OUT ENEMY (Boss)
+8b STIRRING (Stage Clear)
+85 SEEN THROUGH (Stage 2)
+81 WRATH OF EARTH (Stage 3)
+8d THE JUPITER SPIRIT (Stage 3 Boss)
+83 CHEER UP (Stage 4)
+84 PLANET OF FOREST (Stage 5)
+86 FOUL SMELL (Stage 6)
+82 ANKOKU SEIUN (Stage 7)
+87 END OF WAR (Stage 8)
+91 GALACTIC RULER (Final Stage)
+8e GALACTIC RULER 2 (Last Boss)
+8f REVIVE (Ending)
+ff OCEAN WAR (Continue)
+89 GAME OVER (Game Over)
+8a HEAD WAVER (Name Entry)
+$end

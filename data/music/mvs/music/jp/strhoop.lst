@@ -1,0 +1,17 @@
+$title=ダンクドリーム
+$pre=07
+$stop=03
+$start
+7f Neo-Geo Logo
+06 Break Down (Team Select)
+01 Funky Beat (ビーチ)
+08 Fine (Stage Clear)
+02 Just 3 on 3 (公園)
+03 Yo! What's Up? (スラム)
+04 Friday Brother (クラブ)
+05 Body's Power (大会)
+07 Brush Up (Continue)
+0a Over (Game Over)
+09 Magic Time (Ending)
+0b Hoop King (Name Entry)
+$end

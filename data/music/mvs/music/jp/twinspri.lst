@@ -1,0 +1,30 @@
+$title=ティンクルスタースプライツ
+$pre=fc
+$stop=03
+$start
+02 NEO-GEO Logo
+0f Respiration (オープニング1)
+08 Twinkle Star (オープニング2)
+1e キャラクターセレクト
+1c マップ
+1f デモBGM 1
+04 APPLICOT GROUND (森ステージ1 - ヤン・ヤンヤン)
+05 HOLIDAYS (森ステージ2 - リアリー・ティル)
+19 勝利デモ
+22 乱入デモ
+1b VSアイキャッチ
+10 Disagreeable (水ステージ1 - なんじゃもんじゃ)
+11 Curiouser and curiouser (水ステージ2 - ド・ケスベイ)
+0b Love me (空ステージ1 - アーサー・シュミット)
+21 Love so "Radio active mix" (空ステージ2 - ティンカー＆リンカー)
+13 Like sisters like (氷ステージ1 - マッキー＆ペンテル)
+12 Both you and me (氷ステージ2 - メヴィウス親衛隊)
+1a デモBGM 2
+06 ROSSELIAN (神殿ステージ1 - ダークラン)
+07 NEO LIFE (神殿ステージ2 - メヴィウス)
+0c Love will never die (最終ステージ - メモリー女王)
+20 LONGING～RE-BIRTH (エンディング＆スタッフロール)
+1d 段位認定
+0a コンティニュー
+18 ゲームオーバー
+$end

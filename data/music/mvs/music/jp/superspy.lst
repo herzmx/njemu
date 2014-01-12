@@ -1,0 +1,26 @@
+$title=スーパースパイ
+$pre=07
+$stop=03
+$start
+02 NEO-GEO Logo
+2a THE SUPER SPY (タイトル)
+25 CODE "X" (1エリア)
+23 BLOT (通路中のボス1)
+3d ESCAPISM (中間デモ)
+2b BEND THE RULE (2エリア・パート1)
+39 MAKE A BET (通路中のボス2）
+2d VIXEN (中ボス)
+28 IMPUTATION (ボス)
+3c ON THE ROVE (２エリア・パート2）
+2f CHIEF TAIN (最終ボス)
+32 NEW WORLD (エンディング)
+29 (unused)
+30 (unused)
+3f (unused)
+3a CODE "X" (1エリア)
+3e BLOT (通路中のボス1)
+27 IMPUTATION (ボス)
+3b BEND THE RULE (2エリア・パート1)
+2e CHIEF TAIN (最終ボス)
+31 NEW WORLD (エンディング)
+$end
