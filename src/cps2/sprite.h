@@ -18,7 +18,6 @@ void blit_finish(void);
 
 void blit_update_object(int x, int y, u32 code, u32 attr);
 void blit_draw_object(int x, int y, int z, u32 code, u32 attr);
-void blit_set_object_mask(const struct spr_mask_t *mask);
 void blit_finish_object(int start_pri, int end_pri);
 
 void blit_update_scroll1(int x, int y, u32 code, u32 attr);

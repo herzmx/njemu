@@ -13,140 +13,51 @@
 	グローバル構造体
 ******************************************************************************/
 
-#define SPRMASK_NONE { 0, -1, -1 }
-
-#define SPRITE_MASK_NONE  { SPRMASK_NONE,SPRMASK_NONE,SPRMASK_NONE,SPRMASK_NONE }
-
-#define SPRITE_MASK_SSF2T														\
-{																				\
-	{ MASK_CHECK_MASK, 3, 7 },													\
-	SPRMASK_NONE,																\
-	SPRMASK_NONE,																\
-	SPRMASK_NONE																\
-}
-
-#define SPRITE_MASK_MSH															\
-{																				\
-	{ MASK_CHECK_MASK | MASK_MSH, 4, 7 },										\
-	SPRMASK_NONE,																\
-	SPRMASK_NONE,																\
-	SPRMASK_NONE																\
-}
-
-#define SPRITE_MASK_DDSOM														\
-{																				\
-	{ MASK_CHECK_MASK | MASK_AFTER_DRAW, 2, 4 },								\
-	SPRMASK_NONE,																\
-	SPRMASK_NONE,																\
-	SPRMASK_NONE																\
-}
-
-#define SPRITE_MASK_SFA2														\
-{																				\
-	{ MASK_CHECK_MASK | MASK_CHECK_OBJ, 0, 7 },									\
-	SPRMASK_NONE,																\
-	SPRMASK_NONE,																\
-	SPRMASK_NONE																\
-}
-
-#define SPRITE_MASK_SFA3														\
-{																				\
-	{ MASK_COUNT_OBJ, 3, 7 },													\
-	SPRMASK_NONE,																\
-	SPRMASK_NONE,																\
-	SPRMASK_NONE																\
-}
-
-#define SPRITE_MASK_CSCLUB														\
-{																				\
-	{ MASK_CHECK_MASK, 2, 7 },													\
-	SPRMASK_NONE,																\
-	SPRMASK_NONE,																\
-	SPRMASK_NONE																\
-}
-
-#define SPRITE_MASK_VSAV														\
-{																				\
-	{ MASK_CHECK_MASK | MASK_AFTER_DRAW, 6, 7 },								\
-	SPRMASK_NONE,																\
-	SPRMASK_NONE,																\
-	SPRMASK_NONE																\
-}
-
-#define SPRITE_MASK_GIGAWING													\
-{																				\
-	{ MASK_CHECK_MASK, 1, 3 },													\
-	{ MASK_CHECK_MASK | MASK_AFTER_DRAW, 0, 3 },								\
-	{ MASK_CHECK_OBJ | MASK_AFTER_DRAW, 4, 7 },									\
-	{ MASK_CHECK_MASK | MASK_CHECK_ATTR, 1, 4 }									\
-}
-
-#define SPRITE_MASK_MPANGJ														\
-{																				\
-	{ MASK_CHECK_MASK | MASK_CHECK_OBJ, 1, 7 },									\
-	SPRMASK_NONE,																\
-	SPRMASK_NONE,																\
-	SPRMASK_NONE																\
-}
-
-#define SPRITE_MASK_DIMAHOO														\
-{																				\
-	{ MASK_CHECK_MASK | MASK_CHECK_OBJ, 0, 7 },									\
-	{ MASK_CHECK_MASK, 0, 7 },													\
-	SPRMASK_NONE,																\
-	SPRMASK_NONE																\
-}
-
-#define SPRITE_MASK_PROGEAR														\
-{																				\
-	{ MASK_CHECK_MASK | MASK_CHECK_OBJ, 0, 6 },									\
-	{ MASK_CHECK_MASK | MASK_CHECK_OBJ | MASK_AFTER_DRAW, 5, 6 },				\
-	{ MASK_CHECK_MASK | MASK_CHECK_OBJ | MASK_AFTER_DRAW, 0, 4 },				\
-	{ MASK_CHECK_MASK | MASK_AFTER_DRAW, 4, 6 }									\
-}
-
-
 struct driver_t CPS2_driver[] =
 {
-//    name        cache      sprite info         kludge              flags mask                  player & coin chuter
-	{ "ssf2",     0xb50000,  512, 208, 256, 256, CPS2_KLUDGE_SSF2,    1,   SPRITE_MASK_NONE,     0x00, { COIN_NONE } },
-	{ "ddtod",    0xc00000,  512,  80, 288, 352, 0,                   0,   SPRITE_MASK_NONE,     0x0e, { COIN_4P4C, COIN_4P1C, COIN_3P3C, COIN_3P1C, COIN_2P1C } },
-	{ "ecofghtr", 0x9c0000,  512,  96, 272, 352, 0,                   0,   SPRITE_MASK_NONE,     0x00, { COIN_NONE } },
-	{ "ssf2t",    0xf30000,  512, 192, 240, 288, CPS2_KLUDGE_SSF2T,   1,   SPRITE_MASK_SSF2T,    0x00, { COIN_NONE } },
-	{ "xmcota",   0x1fb0000, 464, 192, 256, 320, CPS2_KLUDGE_XMCOTA,  1|2, SPRITE_MASK_NONE,     0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
-	{ "armwar",   0x1300000, 512, 112, 288, 320, 0,                   0,   SPRITE_MASK_NONE,     0x06, { COIN_2P1C, COIN_2P2C, COIN_2P2C, COIN_3P1C, COIN_3P2C, COIN_3P3C, COIN_3P3C } },
-	{ "avsp",     0xb00000,  512, 112, 320, 288, 0,                   0,   SPRITE_MASK_NONE,     0x05, { COIN_3P3C, COIN_3P1C, COIN_2P1C } },
-	{ "dstlk",    0x13d0000, 512, 144, 256, 320, 0,                   0,   SPRITE_MASK_NONE,     0x00, { COIN_NONE } },
-	{ "ringdest", 0x1100000, 512,  80, 256, 384, 0,                   0,   SPRITE_MASK_NONE,     0x06, { COIN_2P1C, COIN_2P2C, COIN_2P2C } },
-	{ "cybots",   0x1f40000, 480, 192, 240, 320, 0,                   0,   SPRITE_MASK_NONE,     0x26, { COIN_2P1C, COIN_2P2C, COIN_2P2C } },
-	{ "msh",      0x1ff0000, 480, 192, 272, 288, 0,                   1,   SPRITE_MASK_MSH,      0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
-	{ "nwarr",    0x1ed0000, 512, 176, 288, 256, 0,                   0,   SPRITE_MASK_NONE,     0x1d, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
-	{ "sfa",      0x7e0000,  512,  48, 352, 320, 0,                   0,   SPRITE_MASK_NONE,     0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
-	{ "rckmanj",  0x790000,  512, 208, 256, 256, 0,                   0,   SPRITE_MASK_NONE,     0x00, { COIN_NONE } },
-	{ "19xx",     0x970000,  512,  48, 288, 384, 0,                   0,   SPRITE_MASK_NONE,     0x26, { COIN_2P1C, COIN_2P2C, COIN_2P2C } },
-	{ "ddsom",    0x16f0000, 512, 128, 272, 320, 0,                   0,   SPRITE_MASK_DDSOM,    0x01, { COIN_2P1C, COIN_2P2C, COIN_2P2C, COIN_3P1C, COIN_3P2C, COIN_3P3C, COIN_3P3C, COIN_4P1C, COIN_4P2C, COIN_4P2C, COIN_4P4C, COIN_4P4C } },
-	{ "megaman2", 0x7f0000,  512,  64, 240, 416, 0,                   0,   SPRITE_MASK_NONE,     0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
-	{ "qndream",  0x700000,  512, 144, 352, 224, 0,                   0,   SPRITE_MASK_NONE,     0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
-	{ "sfa2",     0x12e0000, 512, 192, 272, 256, 0,                   0,   SPRITE_MASK_SFA2,     0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
-	{ "spf2t",    0x3b0000,  512,  80, 416, 224, 0,                   0,   SPRITE_MASK_NONE,     0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
-	{ "xmvsf",    0x1fd0000, 512, 208, 256, 256, 0,                   1|2, SPRITE_MASK_NONE,     0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
-	{ "batcir",   0xd70000,  512,  64, 368, 288, 0,                   0,   SPRITE_MASK_NONE,     0x26, { COIN_2P1C, COIN_2P2C, COIN_2P2C, COIN_4P1C, COIN_4P2C, COIN_4P2C, COIN_4P4C, COIN_4P4C } },
-	{ "csclub",   0x7f0000,  512,  80, 224, 416, 0,                   0,   SPRITE_MASK_CSCLUB,   0x21, { COIN_2P1C, COIN_2P2C, COIN_2P2C } },
-	{ "mshvsf",   0x1fd0000, 512, 192, 272, 256, 0,                   1|2, SPRITE_MASK_NONE,     0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
-	{ "sgemf",    0x13e0000, 512, 176, 256, 288, 0,                   2,   SPRITE_MASK_NONE,     0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
-	{ "vhunt2",   0x1f60000, 512, 144, 256, 320, 0,                   0,   SPRITE_MASK_NONE,     0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
-	{ "vsav",     0x1fe0000, 512, 144, 256, 320, 0,                   0,   SPRITE_MASK_VSAV,     0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
-	{ "vsav2",    0x1fb0000, 512, 144, 256, 320, 0,                   0,   SPRITE_MASK_NONE,     0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
-	{ "mvsc",     0x1f90000, 464, 208, 240, 320, 0,                   1|2, SPRITE_MASK_NONE,     0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
-	{ "sfa3",     0x1f60000, 512, 160, 272, 288, 0,                   0,   SPRITE_MASK_SFA3,     0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
-	{ "gigawing", 0xf90000,  464, 208, 272, 288, 0,                   0,   SPRITE_MASK_GIGAWING, 0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
-	{ "mmatrix",  0x1d70000, 512,  48, 288, 384, CPS2_KLUDGE_MMATRIX, 0,   SPRITE_MASK_NONE,     0x11, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
-	{ "mpangj",   0x790000,  512,  32, 304, 384, 0,                   0,   SPRITE_MASK_MPANGJ,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
-	{ "pzloop2j", 0xab0000,  512, 144, 288, 288, CPS2_KLUDGE_PUZLOOP2,0,   SPRITE_MASK_NONE,     0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
-	{ "choko",    0,         512, 208, 256, 256, 0,                   0,   SPRITE_MASK_NONE,     0x00, { COIN_NONE } },
-	{ "dimahoo",  0xfb0000,  512,  96, 304, 320, CPS2_KLUDGE_DIMAHOO, 0,   SPRITE_MASK_DIMAHOO,  0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
-	{ "1944",     0x1390000, 512,  80, 288, 352, 0,                   0,   SPRITE_MASK_NONE,     0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
-	{ "progear",  0xfe0000,  464, 224, 224, 320, 0,                   0,   SPRITE_MASK_PROGEAR,  0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+//    name        cache      sprite info         kludge              flags player & coin chuter
+	{ "ssf2",     0xb50000,  512, 208, 256, 256, CPS2_KLUDGE_SSF2,    1,   0x00, { COIN_NONE } },
+	{ "ddtod",    0xc00000,  512,  80, 288, 352, 0,                   0,   0x0e, { COIN_4P4C, COIN_4P1C, COIN_3P3C, COIN_3P1C, COIN_2P1C } },
+	{ "ecofghtr", 0x9c0000,  512,  96, 272, 352, 0,                   0,   0x00, { COIN_NONE } },
+	{ "ssf2t",    0xf30000,  512, 192, 240, 288, CPS2_KLUDGE_SSF2T,   1,   0x00, { COIN_NONE } },
+	{ "xmcota",   0x1fb0000, 464, 192, 256, 320, CPS2_KLUDGE_XMCOTA,  1|2, 0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "armwar",   0x1300000, 512, 112, 288, 320, 0,                   0,   0x06, { COIN_2P1C, COIN_2P2C, COIN_2P2C, COIN_3P1C, COIN_3P2C, COIN_3P3C, COIN_3P3C } },
+	{ "avsp",     0xb00000,  512, 112, 320, 288, 0,                   0,   0x05, { COIN_3P3C, COIN_3P1C, COIN_2P1C } },
+	{ "dstlk",    0x13d0000, 512, 144, 256, 320, 0,                   0,   0x00, { COIN_NONE } },
+	{ "ringdest", 0x1100000, 512,  80, 256, 384, 0,                   0,   0x06, { COIN_2P1C, COIN_2P2C, COIN_2P2C } },
+	{ "cybots",   0x1f40000, 480, 192, 240, 320, 0,                   0,   0x26, { COIN_2P1C, COIN_2P2C, COIN_2P2C } },
+	{ "msh",      0x1ff0000, 480, 192, 272, 288, 0,                   1,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "nwarr",    0x1ed0000, 512, 176, 288, 256, 0,                   0,   0x1d, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "sfa",      0x7e0000,  512,  48, 352, 320, 0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "rckmanj",  0x790000,  512, 208, 256, 256, 0,                   0,   0x00, { COIN_NONE } },
+	{ "19xx",     0x970000,  512,  48, 288, 384, 0,                   0,   0x26, { COIN_2P1C, COIN_2P2C, COIN_2P2C } },
+	{ "ddsom",    0x16f0000, 512, 128, 272, 320, 0,                   0,   0x01, { COIN_2P1C, COIN_2P2C, COIN_2P2C, COIN_3P1C, COIN_3P2C, COIN_3P3C, COIN_3P3C, COIN_4P1C, COIN_4P2C, COIN_4P2C, COIN_4P4C, COIN_4P4C } },
+	{ "megaman2", 0x7f0000,  512,  64, 240, 416, 0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "qndream",  0x700000,  512, 144, 352, 224, 0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "sfa2",     0x12e0000, 512, 192, 272, 256, 0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "spf2t",    0x3b0000,  512,  80, 416, 224, 0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "xmvsf",    0x1fd0000, 512, 208, 256, 256, 0,                   1|2, 0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "batcir",   0xd70000,  512,  64, 368, 288, 0,                   0,   0x26, { COIN_2P1C, COIN_2P2C, COIN_2P2C, COIN_4P1C, COIN_4P2C, COIN_4P2C, COIN_4P4C, COIN_4P4C } },
+	{ "csclub",   0x7f0000,  512,  80, 224, 416, 0,                   0,   0x21, { COIN_2P1C, COIN_2P2C, COIN_2P2C } },
+	{ "mshvsf",   0x1fd0000, 512, 192, 272, 256, 0,                   1|2, 0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "sgemf",    0x13e0000, 512, 176, 256, 288, 0,                   2,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "vhunt2",   0x1f60000, 512, 144, 256, 320, 0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "vsav",     0x1fe0000, 512, 144, 256, 320, 0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "vsav2",    0x1fb0000, 512, 144, 256, 320, 0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "mvsc",     0x1f90000, 464, 208, 240, 320, 0,                   1|2, 0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "sfa3",     0x1f60000, 512, 160, 272, 288, 0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "gigawing", 0xf90000,  464, 208, 272, 288, 0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "mmatrix",  0x1d70000, 512,  48, 288, 384, CPS2_KLUDGE_MMATRIX, 0,   0x11, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "mpangj",   0x790000,  512,  32, 304, 384, 0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "pzloop2j", 0xab0000,  512, 144, 288, 288, CPS2_KLUDGE_PUZLOOP2,0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "choko",    0,         512, 208, 256, 256, 0,                   0,   0x00, { COIN_NONE } },
+	{ "dimahoo",  0xfb0000,  512,  96, 304, 320, CPS2_KLUDGE_DIMAHOO, 0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "1944",     0x1390000, 512,  80, 288, 352, 0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "progear",  0xfe0000,  464, 224, 224, 320, 0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+#if !RELEASE
+	{ "hsf2d",    0x2000000, 512, 192, 240, 288, CPS2_KLUDGE_HSF2D,   1,   0x00, { COIN_NONE } },
+	{ "hsf2a",    0x2000000, 512, 192, 240, 288, CPS2_KLUDGE_SSF2T,   1,   0x00, { COIN_NONE } },
+#endif
 	{ NULL }
 };
 
@@ -413,15 +324,22 @@ WRITE16_HANDLER( cps2_eeprom_port_w )
 
 void cps2_driver_init(void)
 {
-	int i, length = memory_length_user1;
-	u16 *rom = (u16 *)memory_region_cpu1;
-	u16 *xor = (u16 *)memory_region_user1;
+	if (memory_length_user1)
+	{
+		int i, length = memory_length_user1;
+		u16 *rom = (u16 *)memory_region_cpu1;
+		u16 *xor = (u16 *)memory_region_user1;
 
-	for (i = 0; i < length/2; i++)
-		xor[i] ^= rom[i];
+		for (i = 0; i < length/2; i++)
+			xor[i] ^= rom[i];
 
-	m68000_init();
-	m68000_set_encrypted_range(0, length - 1, xor);
+		m68000_init();
+		m68000_set_encrypted_range(0, length - 1, xor);
+	}
+	else
+	{
+		m68000_init();
+	}
 
 	z80_init();
 	z80_bank = -1;

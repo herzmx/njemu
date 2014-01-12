@@ -19,17 +19,8 @@
 #define CPS2_KLUDGE_MMATRIX		0x08
 #define CPS2_KLUDGE_DIMAHOO		0x10
 #define CPS2_KLUDGE_PUZLOOP2	0x20
+#define CPS2_KLUDGE_HSF2D		0x40
 
-/* マスク処理用フラグ */
-#define MASK_CHECK_MASK			0x01
-#define MASK_CHECK_OBJ			0x02
-#define MASK_CHECK_ATTR			0x04
-#define MASK_COUNT_OBJ			0x08
-#define MASK_AFTER_DRAW			0x10
-#define MASK_MSH				0x20
-
-#define OBJECT_FLAG_ZOBJ		0x10
-#define OBJECT_FLAG_MASK		0x20
 
 enum
 {
@@ -67,13 +58,6 @@ enum
 	SCREENTYPE_MAX
 };
 
-struct spr_mask_t
-{
-	u32 mask_flag;
-	int mask_pri;
-	int obj_pri;
-};
-
 struct driver_t
 {
 	const char *name;
@@ -84,7 +68,6 @@ struct driver_t
 	const u16 scroll3_tex_height;
 	const u16 kludge;
 	const u16 flags;
-	const struct spr_mask_t mask[4];
 	const u8 inp_eeprom;
 	const u8 inp_eeprom_value[16];
 };

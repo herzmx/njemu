@@ -363,31 +363,34 @@ static int load_rom_sound1(void)
 
 static int load_rom_user1(void)
 {
-	int i;
-	char fname[32], *parent;
-
-	if ((memory_region_user1 = memalign(MEM_ALIGN, memory_length_user1)) == NULL)
+	if (memory_length_user1)
 	{
-		error_memory("REGION_USER1");
-		return 0;
-	}
-	memset(memory_region_user1, 0, memory_length_user1);
+		int i;
+		char fname[32], *parent;
 
-	parent = strlen(parent_name) ? parent_name : NULL;
-
-	for (i = 0; i < num_usr1rom; )
-	{
-		if (file_open(game_name, parent, usr1rom[i].crc, fname) == -1)
+		if ((memory_region_user1 = memalign(MEM_ALIGN, memory_length_user1)) == NULL)
 		{
-			error_rom("USER1");
+			error_memory("REGION_USER1");
 			return 0;
 		}
+		memset(memory_region_user1, 0, memory_length_user1);
 
-		msg_printf("Loading \"%s\"\n", fname);
+		parent = strlen(parent_name) ? parent_name : NULL;
 
-		i = rom_load(usr1rom, memory_region_user1, i, num_usr1rom);
+		for (i = 0; i < num_usr1rom; )
+		{
+			if (file_open(game_name, parent, usr1rom[i].crc, fname) == -1)
+			{
+				error_rom("USER1");
+				return 0;
+			}
 
-		file_close();
+			msg_printf("Loading \"%s\"\n", fname);
+
+			i = rom_load(usr1rom, memory_region_user1, i, num_usr1rom);
+
+			file_close();
+		}
 	}
 
 	return 1;
@@ -919,7 +922,10 @@ void m68000_write_memory_8(u32 offset, u8 data)
 	switch (offset & 0xff0000)
 	{
 	case 0x400000:
-		WRITE_BYTE(static_ram4, offset, data);
+#if !RELEASE
+		if (driver->kludge != CPS2_KLUDGE_HSF2D)
+#endif
+			WRITE_BYTE(static_ram4, offset, data);
 		return;
 
 	case 0x610000:
@@ -972,6 +978,17 @@ void m68000_write_memory_8(u32 offset, u8 data)
 		return;
 
 	case 0xff0000:
+#if !RELEASE
+		if (driver->kludge == CPS2_KLUDGE_HSF2D)
+		{
+			if (offset >= 0xfffff0)
+			{
+				offset -= 0xbffff0;
+				WRITE_BYTE(static_ram4, offset, data);
+				return;
+			}
+		}
+#endif
 		WRITE_BYTE(static_ram1, offset, data);
 		return;
 	}
@@ -989,7 +1006,10 @@ void m68000_write_memory_16(u32 offset, u16 data)
 	switch (offset & 0xff0000)
 	{
 	case 0x400000:
-		WRITE_WORD(static_ram4, offset, data);
+#if !RELEASE
+		if (driver->kludge != CPS2_KLUDGE_HSF2D)
+#endif
+			WRITE_WORD(static_ram4, offset, data);
 		return;
 
 	case 0x610000:
@@ -1040,6 +1060,17 @@ void m68000_write_memory_16(u32 offset, u16 data)
 		return;
 
 	case 0xff0000:
+#if !RELEASE
+		if (driver->kludge == CPS2_KLUDGE_HSF2D)
+		{
+			if (offset >= 0xfffff0)
+			{
+				offset -= 0xbffff0;
+				WRITE_WORD(static_ram4, offset, data);
+				return;
+			}
+		}
+#endif
 		WRITE_WORD(static_ram1, offset, data);
 		return;
 	}

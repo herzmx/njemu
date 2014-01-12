@@ -28,16 +28,6 @@ int af_interval = 1;
 	ÉçÅ[ÉJÉãïœêî
 ******************************************************************************/
 
-static const u8 autofire_mask[CPS2_BUTTON_MAX] =
-{
-	0x10,	// 1
-	0x20,	// 2
-	0x40,	// 3
-	0x01,	// 4
-	0x02,	// 5
-	0x04	// 6
-};
-
 static u8 ALIGN_DATA input_flag[MAX_INPUTS];
 static int ALIGN_DATA af_map1[CPS2_BUTTON_MAX];
 static int ALIGN_DATA af_map2[CPS2_BUTTON_MAX];

@@ -54,10 +54,6 @@ static int min_y_8;
 static int min_y_16;
 static int min_y_32;
 
-static int zobj_priority;
-static int zobj_has_mask;
-static int depth_buffer_is_dirty;
-
 static const int ALIGN_DATA swizzle_table[32] =
 {
 	   0, 8, 8, 8, 8, 8, 8, 8,
@@ -1018,10 +1014,6 @@ void blit_partial_start(int start, int end)
 	scroll2_num = 0;
 	scroll3_num = 0;
 
-	zobj_priority = -1;
-	zobj_has_mask = 0;
-	depth_buffer_is_dirty = 0;
-
 	if (start == FIRST_VISIBLE_LINE)
 		blit_start();
 }
@@ -1033,6 +1025,8 @@ void blit_partial_start(int start, int end)
 
 void blit_finish(void)
 {
+	if (cps2_has_mask) video_clear_frame(draw_frame);
+
 	if (cps_rotate_screen)
 	{
 		if (cps_flip_screen)
@@ -1151,72 +1145,7 @@ void blit_draw_object(int x, int y, int z, u32 code, u32 attr)
 		vertices[1].z = z;
 
 		object_num += 2;
-
-		zobj_has_mask |= z & OBJECT_FLAG_MASK;
 	}
-}
-
-
-/*------------------------------------------------------------------------
-	OBJECTマスクをDepth Bufferに描画
-------------------------------------------------------------------------*/
-
-void blit_set_object_mask(const struct spr_mask_t *mask)
-{
-	int i, total_object = 0;
-	struct Vertex *vertices, *vertices_tmp;
-	int mask_pri   = mask->mask_pri | OBJECT_FLAG_MASK;
-	int after_draw = mask->mask_flag & MASK_AFTER_DRAW;
-
-	if (!zobj_has_mask)
-	{
-		for (i = 0; i < object_num; i++)
-			vertices_object[i].z &= 7;
-		return;
-	}
-
-	zobj_priority = mask->obj_pri;
-
-	sceGuStart(GU_DIRECT, gulist);
-
-	vertices_tmp = vertices = (struct Vertex *)sceGuGetMemory(object_num * sizeof(struct Vertex));
-
-	for (i = 0; i < object_num; i += 2)
-	{
-		if (vertices_object[i].z != mask_pri) continue;
-
-		vertices_tmp[0] = vertices_object[i + 0];
-		vertices_tmp[1] = vertices_object[i + 1];
-
-		if (after_draw)
-		{
-			vertices_object[i + 0].z &= 7;
-			vertices_object[i + 1].z &= 7;
-		}
-
-		total_object += 2;
-		vertices_tmp += 2;
-	}
-
-	if (total_object)
-	{
-		sceGuDrawBufferList(GU_PSM_5551, work_frame, BUF_WIDTH);
-		sceGuScissor(64, clip_min_y, 448, clip_max_y);
-		sceGuTexImage(0, 512, 512, BUF_WIDTH, tex_object);
-
-		sceGuEnable(GU_DEPTH_TEST);
-		sceGuDepthMask(GU_FALSE);
-		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, total_object, 0, vertices);
-		sceGuDisable(GU_DEPTH_TEST);
-		sceGuDepthMask(GU_TRUE);
-
-		sceGuClear(GU_COLOR_BUFFER_BIT);
-
-		depth_buffer_is_dirty = 1;
-	}
-
-	sceGuFinish();
-	sceGuSync(0, 0);
 }
 
 
@@ -1237,7 +1166,9 @@ static void blit_render_object(int start_pri, int end_pri)
 
 	for (i = 0; i < object_num; i += 2)
 	{
-		if (vertices_object[i].z < start_pri || vertices_object[i].z > end_pri) continue;
+		int priority = vertices_object[i].z;
+
+		if (priority < start_pri || priority > end_pri) continue;
 
 		vertices_tmp[0] = vertices_object[i + 0];
 		vertices_tmp[1] = vertices_object[i + 1];
@@ -1264,14 +1195,12 @@ static void blit_render_object(int start_pri, int end_pri)
 	OBJECT描画 (Zバッファ使用)
 ------------------------------------------------------------------------*/
 
-static void blit_render_object_zb(int priority)
+static void blit_render_object_zb(int start_pri, int end_pri)
 {
 	int i, total_object = 0;
 	struct Vertex *vertices, *vertices_tmp;
 
 	if (!object_num) return;
-
-	priority |= OBJECT_FLAG_ZOBJ;
 
 	sceGuStart(GU_DIRECT, gulist);
 
@@ -1279,10 +1208,16 @@ static void blit_render_object_zb(int priority)
 
 	for (i = 0; i < object_num; i += 2)
 	{
-		if (vertices_object[i].z != priority) continue;
+		int pri = vertices_object[i].z & 7;
+		int zvalue = vertices_object[i].z >> 4;
+
+		if (pri < start_pri || pri > end_pri) continue;
 
 		vertices_tmp[0] = vertices_object[i + 0];
 		vertices_tmp[1] = vertices_object[i + 1];
+
+		vertices_tmp[0].z = zvalue;
+		vertices_tmp[1].z = zvalue;
 
 		total_object += 2;
 		vertices_tmp += 2;
@@ -1295,14 +1230,10 @@ static void blit_render_object_zb(int priority)
 		sceGuTexImage(0, 512, 512, BUF_WIDTH, tex_object);
 
 		sceGuEnable(GU_DEPTH_TEST);
+		sceGuDepthMask(GU_FALSE);
 		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, total_object, 0, vertices);
 		sceGuDisable(GU_DEPTH_TEST);
-	}
-
-	if (depth_buffer_is_dirty)
-	{
-		sceGuScissor(0, 0, BUF_WIDTH, SCR_HEIGHT);
-		sceGuClear(GU_DEPTH_BUFFER_BIT);
+		sceGuDepthMask(GU_TRUE);
 	}
 
 	sceGuFinish();
@@ -1316,16 +1247,10 @@ static void blit_render_object_zb(int priority)
 
 void blit_finish_object(int start_pri, int end_pri)
 {
-	if (zobj_priority < start_pri || zobj_priority > end_pri)
-	{
-		blit_render_object(start_pri, end_pri);
-	}
+	if (cps2_has_mask)
+		blit_render_object_zb(start_pri, end_pri);
 	else
-	{
-		blit_render_object(start_pri, zobj_priority - 1);
-		blit_render_object_zb(zobj_priority);
-		blit_render_object(zobj_priority, end_pri);
-	}
+		blit_render_object(start_pri, end_pri);
 }
 
 

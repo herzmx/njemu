@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 
-  CPS2PSP game list (ver.1.61)
+  CPS2PSP game list (ver.1.62)
 
 -------------------------------------------------------------------------------
 
@@ -61,7 +61,7 @@ mshh        Marvel Super Heroes (Hispanic 951117)
 nwarr       Night Warriors: Darkstalkers' Revenge (US 950406)
 vhuntj      Vampire Hunter: Darkstalkers' Revenge (Japan 950316)
 vhuntjr2    Vampire Hunter: Darkstalkers' Revenge (Japan 950302)
-sfa     Street Fighter Alpha: Warriors' Dreams (Euro 950727)
+sfa         Street Fighter Alpha: Warriors' Dreams (Euro 950727)
 sfar1       Street Fighter Alpha: Warriors' Dreams (Euro 950718)
 sfar3       Street Fighter Alpha: Warriors' Dreams (Euro 950605)
 sfau        Street Fighter Alpha: Warriors' Dreams (US 950627)
@@ -133,6 +133,7 @@ gmahou      Great Mahou Daisakusen (Japan 000121)
 1944        1944: The Loop Master (US 000620)
 progear     Progear (US 010117)
 progearj    Progear no Arashi (Japan 010117)
+(hsf2d      Hyper Street Fighter II: The Anniversary Edition (Phoenix Edition))
 
 -------------------------------------------------------------------------------
  Following games are not working. (Network functions not emulated.)
@@ -212,6 +213,6 @@ progeara    Progear (Asia 010117)
 
 hsf2a       Hyper Street Fighter II: The Anniversary Edition (Asia 040202)
 hsf2j       Hyper Street Fighter II: The Anniversary Edition (Japan 031222)
-jgokushi    Jyangokushi: Haoh no Saihai (Japan 990527)
+jtangoku    Jyangokushi: Haoh no Saihai (Japan 990527)
 -------     Galum Pa! (prototype)
 -------     Pnickies  (prototype)

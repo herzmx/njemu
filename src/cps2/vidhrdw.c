@@ -83,7 +83,7 @@ static int cps2_scanline_end;
 static int cps2_scroll3_base;
 static int cps2_kludge;
 
-static int cps2_mask_max;
+int cps2_has_mask;
 
 static u16 ALIGN_DATA video_clut16[65536];
 u16 ALIGN_DATA video_palette[cps2_palette_size >> 1];
@@ -125,14 +125,6 @@ u16 ALIGN_DATA video_palette[cps2_palette_size >> 1];
 #define CPS2_OBJ_XOFFS			0x08	/* X offset (usually 0x0040) */
 #define CPS2_OBJ_YOFFS			0x0a	/* Y offset (always 0x0010) */
 
-/* pen usage flag */
-#define SPR_MASK				0x0f
-#define SPR_MASK1				0x01
-#define SPR_MASK2				0x02
-#define SPR_MASK3				0x04
-#define SPR_MASK4				0x08
-#define SPR_MASKED_OBJ			0x40
-#define SPR_NOT_EMPTY			0x80
 
 /*------------------------------------------------------
 	CPSポート読み込み
@@ -253,16 +245,13 @@ static u16 *cps1_base(int offset, int address_mask)
 
 int cps2_video_init(void)
 {
-	int i;
-
-	cps2_mask_max = 0;
-
-	for (i = 0; i < 4; i++)
-	{
-		if (driver->mask[i].mask_pri >= 0) cps2_mask_max++;
-	}
 	cps2_kludge = driver->kludge;
+	cps2_scroll3_base = (driver->kludge & (CPS2_KLUDGE_SSF2 | CPS2_KLUDGE_SSF2T | CPS2_KLUDGE_HSF2D)) ? 0x0000 : 0x4000;
+#if !RELEASE
+	cps2_scroll3_base = (driver->kludge & (CPS2_KLUDGE_SSF2 | CPS2_KLUDGE_SSF2T | CPS2_KLUDGE_HSF2D)) ? 0x0000 : 0x4000;
+#else
 	cps2_scroll3_base = (driver->kludge & (CPS2_KLUDGE_SSF2 | CPS2_KLUDGE_SSF2T)) ? 0x0000 : 0x4000;
+#endif
 
 	if (driver->flags & 2)
 		cps2_build_palette = cps2_build_palette_delay;
@@ -483,57 +472,6 @@ static void cps2_render_object(void)
 		SCAN_OBJECT()
 #undef BLIT_FUNC
 	}
-}
-
-
-/*------------------------------------------------------
-	マスク描画
-------------------------------------------------------*/
-
-static void cps2_render_object_zb(const struct spr_mask_t *mask)
-{
-	int x, y, sx, sy, code, attr, pri;
-	int nx, ny, nsx, nsy, ncode;
-	int xoffs = 64 - cps2_object_xoffs;
-	int yoffs = 16 - cps2_object_yoffs;
-	struct cps2_object_t *object = cps2_object;
-	u8 *pen_usage = cps_pen_usage[TILE16];
-
-	while (object < cps2_last_object)
-	{
-		sx   = object->sx;
-		sy   = object->sy;
-		code = object->code;
-		attr = object->attr;
-		pri  = object->pri;
-		object++;
-
-		if (pri == mask->obj_pri)
-		{
-			if (mask->mask_flag & MASK_CHECK_ATTR)
-			{
-				if ((attr & 0x1f) == 0x0e)
-				{
-					pri |= OBJECT_FLAG_ZOBJ;
-				}
-			}
-			else if (!(mask->mask_flag & MASK_CHECK_OBJ) || (cps_pen_usage[TILE16][code] & SPR_MASKED_OBJ))
-			{
-				pri |= OBJECT_FLAG_ZOBJ;
-			}
-		}
-		else if (pri == mask->mask_pri)
-		{
-			if (cps_pen_usage[TILE16][code] & SPR_MASK)
-				pri |= OBJECT_FLAG_MASK;
-		}
-
-#define BLIT_FUNC(x, y, c)	blit_draw_object(x & 0x3ff, y & 0x3ff, pri, c, attr)
-		SCAN_OBJECT()
-#undef BLIT_FUNC
-	}
-
-	blit_set_object_mask(mask);
 }
 
 
@@ -826,6 +764,7 @@ static void cps2_check_scroll2_distort(int distort)
 			switch (cps2_kludge)											\
 			{																\
 			case CPS2_KLUDGE_SSF2T:											\
+			case CPS2_KLUDGE_HSF2D:											\
 				if (code < 0x5600) code += 0x4000;							\
 				break;														\
 																			\
@@ -890,89 +829,6 @@ static void cps2_render_layer(int layer)
 
 
 /*------------------------------------------------------
-	マスク処理チェック
-------------------------------------------------------*/
-
-static int cps2_check_mask(int mask_number)
-{
-	int mask_flag = driver->mask[mask_number].mask_flag;
-	int mask_pri = driver->mask[mask_number].mask_pri;
-	int obj_pri = driver->mask[mask_number].obj_pri;
-	struct cps2_object_t *object;
-
-	if (mask_flag & MASK_CHECK_MASK)
-	{
-		int found = 0;
-		int mask = 1 << mask_number;
-
-		object = cps2_object;
-
-		while (object < cps2_last_object)
-		{
-			if (object->pri == mask_pri)
-			{
-				if (cps_pen_usage[TILE16][object->code] & mask)
-				{
-					found = 1;
-					break;
-				}
-			}
-			object++;
-		}
-		if (!found) return 0;
-	}
-
-	if (mask_flag & MASK_CHECK_OBJ)
-	{
-		object = cps2_object;
-
-		while (object < cps2_last_object)
-		{
-			if (object->pri == obj_pri)
-			{
-				if (cps_pen_usage[TILE16][object->code] & SPR_MASKED_OBJ)
-					return 1;
-			}
-			object++;
-		}
-		return 0;
-	}
-	else if (mask_flag & MASK_COUNT_OBJ)
-	{
-		int count = 0;
-
-		object = cps2_object;
-
-		while (object < cps2_last_object)
-		{
-			if (object->pri == obj_pri)
-			{
-				if (cps_pen_usage[TILE16][object->code] & SPR_MASKED_OBJ)
-					count++;
-			}
-			object++;
-		}
-		return ((count == 24) ? 1 : 0);
-	}
-	else if (mask_flag & MASK_MSH)
-	{
-		object = cps2_object;
-
-		while (object < cps2_last_object)
-		{
-			if (object->pri == obj_pri)
-				object->pri = 6;
-			else if (object->pri == mask_pri)
-				object->pri = 7;
-			object++;
-		}
-		return 0;
-	}
-	return 1;
-}
-
-
-/*------------------------------------------------------
 	画面更新
 ------------------------------------------------------*/
 
@@ -983,7 +839,6 @@ void cps2_screenrefresh(int start, int end)
 	u16 pri_ctrl   = cps2_port(CPS2_OBJ_PRI);
 	int i, priority, prev_pri;
 	u8  layer[4], pri[4] = {0,};
-	const struct spr_mask_t *mask = NULL;
 
 	cps2_scanline_start = start;
 	cps2_scanline_end   = end;
@@ -1032,21 +887,9 @@ void cps2_screenrefresh(int start, int end)
 		}
 	}
 
-	for (i = 0; i < cps2_mask_max; i++)
-	{
-		if (cps2_check_mask(i))
-		{
-			mask = &driver->mask[i];
-			break;
-		}
-	}
-
 	cps2_check_scroll2_distort(video_ctrl & 1);
 
-	if (mask)
-		cps2_render_object_zb(mask);
-	else
-		cps2_render_object();
+	cps2_render_object();
 
 	prev_pri = -1;
 	for (priority = 0; priority < 8; priority++)
@@ -1080,6 +923,11 @@ void cps2_objram_latch(void)
 	u16 *base = (u16 *)cps2_objram[cps2_objram_bank];
 	u16 *end  = base + (cps2_obj_size >> 1);
 	struct cps2_object_t *object = cps2_object;
+	int prev_pri = -1;
+	int zvalue = 0;
+	int offset = 0;
+
+	cps2_has_mask = 0;
 
 	while (base < end)
 	{
@@ -1093,7 +941,17 @@ void cps2_objram_latch(void)
 			object->code = base[2] + ((base[1] & 0x6000) << 3);
 			object->attr = base[3];
 			object->pri  = (base[0] >> 13) & 7;
+
+			if (object->pri < prev_pri)
+			{
+				zvalue = offset << 4;
+				cps2_has_mask = 1;
+			}
+			prev_pri = object->pri;
+			object->pri |= zvalue;
+
 			object++;
+			offset++;
 		}
 		base += 4;
 	}

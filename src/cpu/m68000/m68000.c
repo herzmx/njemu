@@ -77,7 +77,10 @@ void m68000_init(void)
 	C68k_Set_WriteB(&C68K, m68000_write_memory_8);
 	C68k_Set_WriteW(&C68K, m68000_write_memory_16);
 #elif (EMU_SYSTEM == CPS2)
-	C68k_Set_Fetch(&C68K, 0x000000, 0x3fffff, (u32)memory_region_user1);
+	if (memory_length_user1)
+		C68k_Set_Fetch(&C68K, 0x000000, 0x3fffff, (u32)memory_region_user1);
+	else
+		C68k_Set_Fetch(&C68K, 0x000000, 0x3fffff, (u32)memory_region_cpu1);
 	C68k_Set_Fetch(&C68K, 0x660000, 0x663fff, (u32)cps2_ram);
 	C68k_Set_Fetch(&C68K, 0x900000, 0x92ffff, (u32)cps1_gfxram);
 	C68k_Set_Fetch(&C68K, 0xff0000, 0xffffff, (u32)cps1_ram);
@@ -85,8 +88,11 @@ void m68000_init(void)
 	C68k_Set_ReadW(&C68K, m68000_read_memory_16);
 	C68k_Set_WriteB(&C68K, m68000_write_memory_8);
 	C68k_Set_WriteW(&C68K, m68000_write_memory_16);
-	C68k_Set_ReadB_PC_Relative(&C68K, m68000_read_pcrelative_8);
-	C68k_Set_ReadW_PC_Relative(&C68K, m68000_read_pcrelative_16);
+	if (memory_length_user1)
+	{
+		C68k_Set_ReadB_PC_Relative(&C68K, m68000_read_pcrelative_8);
+		C68k_Set_ReadW_PC_Relative(&C68K, m68000_read_pcrelative_16);
+	}
 #elif (EMU_SYSTEM == MVS)
 	C68k_Set_Fetch(&C68K, 0x000000, 0x0fffff, (u32)memory_region_cpu1);
 	C68k_Set_Fetch(&C68K, 0x100000, 0x10ffff, (u32)neogeo_ram);
