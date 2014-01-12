@@ -1508,7 +1508,7 @@ void blit_start(int high_layer)
 	sceGuClear(GU_COLOR_BUFFER_BIT);
 	sceGuTexFilter(GU_NEAREST, GU_NEAREST);
 	sceGuFinish();
-	sceGuSync(0, 0);
+	sceGuSync(0, GU_SYNC_FINISH);
 }
 
 
@@ -1658,7 +1658,7 @@ void blit_finish_object(void)
 
 			if (total_sprites)
 			{
-				sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, total_sprites, 0, vertices);
+				sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, total_sprites, NULL, vertices);
 				total_sprites = 0;
 				vertices = vertices_tmp;
 			}
@@ -1675,10 +1675,10 @@ void blit_finish_object(void)
 	}
 
 	if (total_sprites)
-		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, total_sprites, 0, vertices);
+		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, total_sprites, NULL, vertices);
 
 	sceGuFinish();
-	sceGuSync(0, 0);
+	sceGuSync(0, GU_SYNC_FINISH);
 }
 
 
@@ -1787,7 +1787,7 @@ void blit_finish_scroll1(void)
 		sceGuClutLoad(256/8, &clut[32 << 4]);
 
 		memcpy(vertices, vertices_scroll[0], clut0_num * sizeof(struct Vertex));
-		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, clut0_num, 0, vertices);
+		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, clut0_num, NULL, vertices);
 		vertices += clut0_num;
 
 		clut0_num = 0;
@@ -1797,13 +1797,13 @@ void blit_finish_scroll1(void)
 		sceGuClutLoad(256/8, &clut[48 << 4]);
 
 		memcpy(vertices, vertices_scroll[1], clut1_num * sizeof(struct Vertex));
-		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, clut1_num, 0, vertices);
+		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, clut1_num, NULL, vertices);
 
 		clut1_num = 0;
 	}
 
 	sceGuFinish();
-	sceGuSync(0, 0);
+	sceGuSync(0, GU_SYNC_FINISH);
 }
 
 
@@ -1987,7 +1987,7 @@ void blit_finish_scroll2(void)
 		sceGuClutLoad(256/8, &clut[64 << 4]);
 
 		memcpy(vertices, vertices_scroll[0], clut0_num * sizeof(struct Vertex));
-		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, clut0_num, 0, vertices);
+		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, clut0_num, NULL, vertices);
 		vertices += clut0_num;
 
 		clut0_num = 0;
@@ -1997,13 +1997,13 @@ void blit_finish_scroll2(void)
 		sceGuClutLoad(256/8, &clut[80 << 4]);
 
 		memcpy(vertices, vertices_scroll[1], clut1_num * sizeof(struct Vertex));
-		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, clut1_num, 0, vertices);
+		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, clut1_num, NULL, vertices);
 
 		clut1_num = 0;
 	}
 
 	sceGuFinish();
-	sceGuSync(0, 0);
+	sceGuSync(0, GU_SYNC_FINISH);
 }
 
 
@@ -2121,7 +2121,7 @@ void blit_finish_scroll3(void)
 		sceGuClutLoad(256/8, &clut[96 << 4]);
 
 		memcpy(vertices, vertices_scroll[0], clut0_num * sizeof(struct Vertex));
-		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, clut0_num, 0, vertices);
+		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, clut0_num, NULL, vertices);
 		vertices += clut0_num;
 
 		clut0_num = 0;
@@ -2131,13 +2131,13 @@ void blit_finish_scroll3(void)
 		sceGuClutLoad(256/8, &clut[112 << 4]);
 
 		memcpy(vertices, vertices_scroll[1], clut1_num * sizeof(struct Vertex));
-		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, clut1_num, 0, vertices);
+		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, clut1_num, NULL, vertices);
 
 		clut1_num = 0;
 	}
 
 	sceGuFinish();
-	sceGuSync(0, 0);
+	sceGuSync(0, GU_SYNC_FINISH);
 }
 
 
@@ -2379,10 +2379,10 @@ void blit_finish_scroll2h(void)
 
 	vertices = (struct Vertex *)sceGuGetMemory(scrollh_num * sizeof(struct Vertex));
 	memcpy(vertices, vertices_scrollh, scrollh_num * sizeof(struct Vertex));
-	sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, scrollh_num, 0, vertices);
+	sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, scrollh_num, NULL, vertices);
 
 	sceGuFinish();
-	sceGuSync(0, 0);
+	sceGuSync(0, GU_SYNC_FINISH);
 
 	scrollh_num = 0;
 }
@@ -2526,8 +2526,8 @@ void blit_finish_scrollh(void)
 
 	vertices = (struct Vertex *)sceGuGetMemory(scrollh_num * sizeof(struct Vertex));
 	memcpy(vertices, vertices_scrollh, scrollh_num * sizeof(struct Vertex));
-	sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, scrollh_num, 0, vertices);
+	sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, scrollh_num, NULL, vertices);
 
 	sceGuFinish();
-	sceGuSync(0, 0);
+	sceGuSync(0, GU_SYNC_FINISH);
 }

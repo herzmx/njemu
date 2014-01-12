@@ -354,6 +354,7 @@ int adhoc_send_eeprom(void)
 	if (adhocSendRecvAck(eeprom_data, EEPROM_SIZE) <= 0)
 	{
 		msg_printf(TEXT(LOST_SYNC));
+		Loop = LOOP_BROWSER;
 		return 0;
 	}
 	return 1;
@@ -364,6 +365,7 @@ int adhoc_recv_eeprom(void)
 	if (adhocRecvSendAck(eeprom_data, EEPROM_SIZE) <= 0)
 	{
 		msg_printf(TEXT(LOST_SYNC));
+		Loop = LOOP_BROWSER;
 		return 0;
 	}
 	return 1;

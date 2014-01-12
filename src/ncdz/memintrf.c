@@ -276,19 +276,19 @@ UINT8 m68000_read_memory_8(UINT32 offset)
 	case 0x1: return READ_BYTE(memory_region_cpu1, offset);
 	case 0xc: return READ_MIRROR_BYTE(memory_region_user1, offset, 0x7ffff);
 
-	case 0x4: return neogeo_paletteram16_r(offset >> 1, mem_mask) >> shift;
+	case 0x4: return neogeo_paletteram_r(offset >> 1, mem_mask) >> shift;
 	case 0x8: return neogeo_memcard16_r(offset >> 1, mem_mask) >> shift;
-	case 0xe: return neogeo_externalmem_16_r(offset >> 1, mem_mask) >> shift;
-	case 0xf: return neogeo_hardcontrol_16_r(offset >> 1, mem_mask) >> shift;
+	case 0xe: return neogeo_externalmem_r(offset >> 1, mem_mask) >> shift;
+	case 0xf: return neogeo_hardcontrol_r(offset >> 1, mem_mask) >> shift;
 
 	case 0x3:
 		switch (offset >> 16)
 		{
-		case 0x30: return neogeo_controller1_16_r(offset >> 1, mem_mask) >> shift;
+		case 0x30: return neogeo_controller1_r(offset >> 1, mem_mask) >> shift;
 		case 0x32: return neogeo_z80_r(offset >> 1, mem_mask) >> shift;
-		case 0x34: return neogeo_controller2_16_r(offset >> 1, mem_mask) >> shift;
-		case 0x38: return neogeo_controller3_16_r(offset >> 1, mem_mask) >> shift;
-		case 0x3c: return neogeo_video_16_r(offset >> 1, mem_mask) >> shift;
+		case 0x34: return neogeo_controller2_r(offset >> 1, mem_mask) >> shift;
+		case 0x38: return neogeo_controller3_r(offset >> 1, mem_mask) >> shift;
+		case 0x3c: return neogeo_video_register_r(offset >> 1, mem_mask) >> shift;
 		}
 		break;
 	}
@@ -311,19 +311,19 @@ UINT16 m68000_read_memory_16(UINT32 offset)
 	case 0x1: return READ_WORD(memory_region_cpu1, offset);
 	case 0xc: return READ_MIRROR_WORD(memory_region_user1, offset, 0x7ffff);
 
-	case 0x4: return neogeo_paletteram16_r(offset >> 1, 0);
+	case 0x4: return neogeo_paletteram_r(offset >> 1, 0);
 	case 0x8: return neogeo_memcard16_r(offset >> 1, 0);
-	case 0xe: return neogeo_externalmem_16_r(offset >> 1, 0);
-	case 0xf: return neogeo_hardcontrol_16_r(offset >> 1, 0);
+	case 0xe: return neogeo_externalmem_r(offset >> 1, 0);
+	case 0xf: return neogeo_hardcontrol_r(offset >> 1, 0);
 
 	case 0x3:
 		switch (offset >> 16)
 		{
-		case 0x30: return neogeo_controller1_16_r(offset >> 1, 0);
+		case 0x30: return neogeo_controller1_r(offset >> 1, 0);
 		case 0x32: return neogeo_z80_r(offset >> 1, 0);
-		case 0x34: return neogeo_controller2_16_r(offset >> 1, 0);
-		case 0x38: return neogeo_controller3_16_r(offset >> 1, 0);
-		case 0x3c: return neogeo_video_16_r(offset >> 1, 0);
+		case 0x34: return neogeo_controller2_r(offset >> 1, 0);
+		case 0x38: return neogeo_controller3_r(offset >> 1, 0);
+		case 0x3c: return neogeo_video_register_r(offset >> 1, 0);
 		}
 		break;
 	}
@@ -358,18 +358,18 @@ void m68000_write_memory_8(UINT32 offset, UINT8 data)
 	case 0x0: WRITE_BYTE(memory_region_cpu1, offset, data); return;
 	case 0x1: WRITE_BYTE(memory_region_cpu1, offset, data); return;
 
-	case 0x4: neogeo_paletteram16_w(offset >> 1, data << shift, mem_mask); return;
+	case 0x4: neogeo_paletteram_w(offset >> 1, data << shift, mem_mask); return;
 	case 0x8: neogeo_memcard16_w(offset >> 1, data << shift, mem_mask); return;
-	case 0xe: neogeo_externalmem_16_w(offset >> 1, data << shift, mem_mask); return;
-	case 0xf: neogeo_hardcontrol_16_w(offset >> 1, data << shift, mem_mask); return;
+	case 0xe: neogeo_externalmem_w(offset >> 1, data << shift, mem_mask); return;
+	case 0xf: neogeo_hardcontrol_w(offset >> 1, data << shift, mem_mask); return;
 
 	case 0x3:
 		switch (offset >> 16)
 		{
 		case 0x30: watchdog_counter = 3 * FPS; return;
 		case 0x32: neogeo_z80_w(offset >> 1, data << shift, mem_mask); return;
-		case 0x3a: neogeo_syscontrol2_16_w(offset >> 1, data << shift, mem_mask); return;
-		case 0x3c: neogeo_video_16_w(offset >> 1, data << shift, mem_mask); return;
+		case 0x3a: system_control_w(offset >> 1, data << shift, mem_mask); return;
+		case 0x3c: neogeo_video_register_w(offset >> 1, data << shift, mem_mask); return;
 		}
 		break;
 	}
@@ -389,18 +389,18 @@ void m68000_write_memory_16(UINT32 offset, UINT16 data)
 	case 0x0: WRITE_WORD(memory_region_cpu1, offset, data); return;
 	case 0x1: WRITE_WORD(memory_region_cpu1, offset, data); return;
 
-	case 0x4: neogeo_paletteram16_w(offset >> 1, data, 0); return;
+	case 0x4: neogeo_paletteram_w(offset >> 1, data, 0); return;
 	case 0x8: neogeo_memcard16_w(offset >> 1, data, 0); return;
-	case 0xe: neogeo_externalmem_16_w(offset >> 1, data, 0); return;
-	case 0xf: neogeo_hardcontrol_16_w(offset >> 1, data, 0); return;
+	case 0xe: neogeo_externalmem_w(offset >> 1, data, 0); return;
+	case 0xf: neogeo_hardcontrol_w(offset >> 1, data, 0); return;
 
 	case 0x3:
 		switch (offset >> 16)
 		{
 		case 0x30: watchdog_counter = 3 * FPS; return;
 		case 0x32: neogeo_z80_w(offset >> 1, data, 0); return;
-		case 0x3a: neogeo_syscontrol2_16_w(offset >> 1, data, 0); return;
-		case 0x3c: neogeo_video_16_w(offset >> 1, data, 0); return;
+		case 0x3a: system_control_w(offset >> 1, data, 0); return;
+		case 0x3c: neogeo_video_register_w(offset >> 1, data, 0); return;
 		}
 		break;
 	}

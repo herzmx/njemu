@@ -63,7 +63,8 @@ static int num_cache;
 static UINT16 ALIGN_DATA blocks[MAX_CACHE_BLOCKS];
 static int cache_fd;
 
-#if (EMU_SYSTEM == MVS) && !defined(PSP_SLIM)
+#if (EMU_SYSTEM == MVS)
+#ifndef PSP_SLIM
 int pcm_cache_enable;
 
 static cache_t ALIGN_DATA pcm_data[MAX_PCM_SIZE];
@@ -72,6 +73,7 @@ static cache_t *pcm_tail;
 
 static UINT16 ALIGN_DATA pcm_blocks[MAX_PCM_BLOCKS];
 static SceUID pcm_fd;
+#endif
 #else
 static int cache_type;
 static char spr_cache_name[MAX_PATH];
@@ -82,7 +84,8 @@ static char spr_cache_name[MAX_PATH];
 	ローカル関数
 ******************************************************************************/
 
-#if (EMU_SYSTEM == MVS) && !defined(PSP_SLIM)
+#if (EMU_SYSTEM == MVS)
+#ifndef PSP_SLIM
 
 /*------------------------------------------------------
 	PCMキャッシュを読み込む
@@ -134,6 +137,7 @@ UINT8 *pcm_cache_read(UINT16 new_block)
 	return &memory_region_sound1[p->idx << BLOCK_SHIFT];
 }
 
+#endif
 #else
 
 /*------------------------------------------------------
@@ -524,12 +528,14 @@ void cache_init(void)
 	for (i = 0; i < MAX_CACHE_BLOCKS; i++)
 		blocks[i] = BLOCK_NOT_CACHED;
 
-#if (EMU_SYSTEM == MVS) && !defined(PSP_SLIM)
+#if (EMU_SYSTEM == MVS)
+#ifndef PSP_SLIM
 	pcm_cache_enable = 0;
 	pcm_fd = -1;
 
 	for (i = 0; i < MAX_PCM_BLOCKS; i++)
 		pcm_blocks[i] = BLOCK_NOT_CACHED;
+#endif
 #endif
 }
 
@@ -776,7 +782,8 @@ int cache_start(void)
 	head = &cache_data[0];
 	tail = &cache_data[num_cache - 1];
 
-#if (EMU_SYSTEM == MVS) && !defined(PSP_SLIM)
+#if (EMU_SYSTEM == MVS)
+#ifndef PSP_SLIM
 	for (i = 0; i < MAX_PCM_SIZE; i++)
 		pcm_data[i].idx = i;
 
@@ -791,6 +798,7 @@ int cache_start(void)
 
 	pcm_head = &pcm_data[0];
 	pcm_tail = &pcm_data[MAX_PCM_SIZE - 1];
+#endif
 #endif
 
 	if (!fill_cache())

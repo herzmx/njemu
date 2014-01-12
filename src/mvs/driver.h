@@ -9,6 +9,17 @@
 #ifndef MVS_DRIVER_H
 #define MVS_DRIVER_H
 
+#define NEOGEO_MASTER_CLOCK					(24000000)
+#define NEOGEO_PIXEL_CLOCK					(NEOGEO_MASTER_CLOCK / 4)
+#define NEOGEO_HTOTAL						(0x180)
+#define NEOGEO_HBEND						(0x01e)	/* this should really be 29.5 */
+#define NEOGEO_HBSTART						(0x15e) /* this should really be 349.5 */
+#define NEOGEO_VTOTAL						(0x108)
+#define NEOGEO_VBEND						(0x010)
+#define NEOGEO_VBSTART						(0x0f0)
+#define NEOGEO_VSSTART						(0x000)
+#define NEOGEO_VBLANK_RELOAD_HPOS			(0x11f)
+
 #define FLAG_BRAZ	0x1000
 #define FLAG_PCB	0x2000
 
@@ -284,6 +295,9 @@ enum
 	INIT_kof97pla,		// 66
 	INIT_fr2ch,			// 67
 	INIT_mslug5b,		// 68
+
+	// MAME 0.113 - 0.119
+	INIT_ct2k3sa,		// 69
 #endif
 
 	MAX_INIT
@@ -294,16 +308,17 @@ enum
 enum
 {
 	RASTER = 0,
-	BUSY,
 	NORMAL
 };
 
 extern int neogeo_driver_type;
 extern int neogeo_raster_enable;
 extern UINT16 neogeo_ngh;
-extern UINT32 neogeo_frame_counter;
-extern UINT32 neogeo_frame_counter_speed;
-extern int neogeo_selected_vectors;
+extern UINT8 main_cpu_vector_table_source;
+
+extern UINT8 auto_animation_speed;
+extern UINT8 auto_animation_disabled;
+extern UINT8 auto_animation_counter;
 
 struct cacheinfo_t
 {
@@ -322,42 +337,44 @@ void neogeo_driver_exit(void);
 void neogeo_driver_reset(void);
 void neogeo_reset_driver_type(void);
 
-void neogeo_interrupt(void);
-void neogeo_raster_interrupt(int line, int busy);
+TIMER_CALLBACK( display_position_vblank_callback );
+TIMER_CALLBACK( display_position_interrupt_callback );
 
 TIMER_CALLBACK( watchdog_callback );
 TIMER_CALLBACK( neogeo_sound_write );
 
-READ16_HANDLER( neogeo_controller2_16_r );
-READ16_HANDLER( neogeo_controller3_16_r );
-READ16_HANDLER( neogeo_controller1and4_16_r );
+READ16_HANDLER( neogeo_controller2_r );
+READ16_HANDLER( neogeo_controller3_r );
+READ16_HANDLER( neogeo_controller1and4_r );
 
-WRITE16_HANDLER( watchdog_reset_16_w );
+WRITE16_HANDLER( watchdog_reset_w );
 
-WRITE16_HANDLER( neogeo_bankswitch_16_w );
+WRITE16_HANDLER( neogeo_bankswitch_w );
 
-READ16_HANDLER( neogeo_timer16_r );
+READ16_HANDLER( neogeo_timer_r );
 WRITE16_HANDLER( neogeo_z80_w );
 
-WRITE16_HANDLER( neogeo_syscontrol1_16_w );
-WRITE16_HANDLER( neogeo_syscontrol2_16_w );
+WRITE16_HANDLER( io_control_w );
+WRITE16_HANDLER( system_control_w );
 
-READ16_HANDLER( neogeo_video_16_r );
-WRITE16_HANDLER( neogeo_video_16_w );
+READ16_HANDLER( neogeo_paletteram_r );
+WRITE16_HANDLER( neogeo_paletteram_w );
 
-WRITE16_HANDLER( neogeo_paletteram16_w );
+READ16_HANDLER( neogeo_video_register_r );
+WRITE16_HANDLER( neogeo_video_register_w );
 
 READ16_HANDLER( neogeo_memcard16_r );
 WRITE16_HANDLER( neogeo_memcard16_w );
 
 WRITE16_HANDLER( neogeo_sram16_w );
 
+READ16_HANDLER( neogeo_unmapped_r );
+
 UINT8 neogeo_z80_port_r(UINT16 port);
 void neogeo_z80_port_w(UINT16 port, UINT8 value);
 
 void neogeo_sound_irq(int irq);
 
-#define neogeo_paletteram16_r(offset, mem_mask)	neogeo_paletteram16[offset & 0xfff]
 
 
 //--------------------------------------------------------------
@@ -366,34 +383,34 @@ void neogeo_sound_irq(int irq);
 
 void mslugx_install_protection(void);
 
-READ16_HANDLER( neogeo_secondbank_16_r );
-WRITE16_HANDLER( neogeo_secondbank_16_w );
+READ16_HANDLER( neogeo_secondbank_r );
+WRITE16_HANDLER( neogeo_secondbank_w );
 
-READ16_HANDLER( fatfury2_protection_16_r );
-WRITE16_HANDLER( fatfury2_protection_16_w );
+READ16_HANDLER( fatfury2_protection_r );
+WRITE16_HANDLER( fatfury2_protection_w );
 
-WRITE16_HANDLER( kof98_protection_16_w );
+WRITE16_HANDLER( kof98_protection_w );
 
-READ16_HANDLER( kof99_protection_16_r );
-WRITE16_HANDLER( kof99_protection_16_w );
+READ16_HANDLER( kof99_protection_r );
+WRITE16_HANDLER( kof99_protection_w );
 
-READ16_HANDLER( garou_protection_16_r );
-WRITE16_HANDLER( garou_protection_16_w );
-WRITE16_HANDLER( garouo_protection_16_w );
+READ16_HANDLER( garou_protection_r );
+WRITE16_HANDLER( garou_protection_w );
+WRITE16_HANDLER( garouo_protection_w );
 
-READ16_HANDLER( mslug3_protection_16_r );
-WRITE16_HANDLER( mslug3_protection_16_w );
+READ16_HANDLER( mslug3_protection_r );
+WRITE16_HANDLER( mslug3_protection_w );
 
-READ16_HANDLER( kof2000_protection_16_r );
-WRITE16_HANDLER( kof2000_protection_16_w );
+READ16_HANDLER( kof2000_protection_r );
+WRITE16_HANDLER( kof2000_protection_w );
 
-READ16_HANDLER( pvc_protection_16_r );
-WRITE16_HANDLER( pvc_protection_16_w );
+READ16_HANDLER( pvc_protection_r );
+WRITE16_HANDLER( pvc_protection_w );
 
-READ16_HANDLER( brza_sram_16_r );
-WRITE16_HANDLER( brza_sram_16_w );
+READ16_HANDLER( brza_sram_r );
+WRITE16_HANDLER( brza_sram_w );
 
-READ16_HANDLER( vliner_16_r );
+READ16_HANDLER( vliner_r );
 
 void mslug4_AES_protection(void);
 void rotd_AES_protection(void);
@@ -405,13 +422,13 @@ void nitd_AES_protection(void);
 void kof2000_AES_protection(void);
 
 #if !RELEASE
-WRITE16_HANDLER( kof10th_protection_16_w );
-WRITE16_HANDLER( cthd2003_protection_16_w );
-READ16_HANDLER( ms5plus_protection_16_r );
-WRITE16_HANDLER( ms5plus_protection_16_w );
-WRITE16_HANDLER( kf2k3bl_protection_16_w);
-WRITE16_HANDLER( kf2k3pl_protection_16_w);
-WRITE16_HANDLER( fr2ch_protection_16_w);
+WRITE16_HANDLER( kof10th_protection_w );
+WRITE16_HANDLER( cthd2003_protection_w );
+READ16_HANDLER( ms5plus_protection_r );
+WRITE16_HANDLER( ms5plus_protection_w );
+WRITE16_HANDLER( kf2k3bl_protection_w);
+WRITE16_HANDLER( kf2k3pl_protection_w);
+WRITE16_HANDLER( fr2ch_protection_w);
 #endif
 
 

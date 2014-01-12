@@ -1,6 +1,6 @@
 ------------------------------------------------------------------------------
 
-               NEOGEO CDZ Emulator for PSP 2.2.1 for PSP slim
+               NEOGEO CDZ Emulator for PSP 2.2.2 for PSP slim
 
                                          NJ (http://nj-emu.hp.infoseek.co.jp)
 ------------------------------------------------------------------------------
@@ -49,6 +49,7 @@ MP3ファイルの命名規則
       +- NCDZPSP/  (root directory)
          |  |
          |  +- EBOOT.PBP    NCDZPSP本体
+         |  +- homehook.prx Homeボタン押下状態取得PRX
          |  +- ncdzpsp.ini  NCDZPSP設定情報記録ファイル (自動的に作成されます)
          |  +- command.dat  MAME Plus!用command.dat (コマンドリスト用/任意)
          |

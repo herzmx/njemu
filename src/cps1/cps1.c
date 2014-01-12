@@ -49,6 +49,8 @@ static void cps1_reset(void)
 	input_reset();
 	sound_reset();
 
+	blit_clear_all_sprite();
+
 	Loop = LOOP_EXEC;
 }
 
@@ -131,8 +133,6 @@ static void cps1_run(void)
 
 void cps1_main(void)
 {
-	video_set_mode(32);
-
 	Loop = LOOP_RESET;
 
 	while (Loop >= LOOP_RESTART)

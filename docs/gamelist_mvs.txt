@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 
-  MVSPSP game list (ver.2.2.0)
+  MVSPSP game list (ver.2.2.2)
 
 -------------------------------------------------------------------------------
 
@@ -218,6 +218,7 @@ kf2k1pa     The King of Fighters 2001 Plus (set 2 / bootleg)
 cthd2003    Crouching Tiger Hidden Dragon 2003 (KOF2001 bootleg / set 1)
 cthd2k3a    Crouching Tiger Hidden Dragon 2003 (KOF2001 bootleg / set 2)
 ct2k3sp     Crouching Tiger Hidden Dragon 2003 Super Plus (KOF2001 bootleg)
+ct2k3sa     Crouching Tiger Hidden Dragon 2003 Super Plus alternate (KOF2001 bootleg)
 kof2002b    The King of Fighters 2002 (bootleg)
 kf2k2pls    The King of Fighters 2002 Plus (set 1, bootleg)
 kf2k2pla    The King of Fighters 2002 Plus (set 2, bootleg)

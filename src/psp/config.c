@@ -87,11 +87,7 @@ static cfg_type default_options[] =
 	{ CFG_INT,	"NeogeoBIOS",		&neogeo_bios,	-1,	BIOS_MAX-1 },
 #elif (EMU_SYSTEM == NCDZ)
 	{ CFG_NONE,	"[Emulation Settings]", },
-#if JAPANESE_UI
-	{ CFG_INT,	"NeogeoRegion",		&neogeo_region,	0,	2	},
-#else
 	{ CFG_INT,	"NeogeoRegion",		&neogeo_region,	1,	2	},
-#endif
 #endif
 
 #if PSP_VIDEO_32BPP
@@ -446,6 +442,10 @@ void load_settings(void)
 		if (default_options[i].value)
 			*default_options[i].value = default_options[i].def;
 	}
+#if (EMU_SYSTEM == NCDZ)
+	if (ui_text_get_language() == LANG_JAPANESE)
+		*default_options[4].value = 0;
+#endif
 
 	sprintf(path, "%s%s", launchDir, inifile_name);
 

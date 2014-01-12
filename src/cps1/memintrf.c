@@ -193,15 +193,11 @@ static int load_rom_gfx1(void)
 	int i, res;
 	char fname[32], *parent;
 
-#ifdef PSP_SLIM
-	memory_region_gfx1 = (UINT8 *)PSP2K_MEM_TOP;
-#else
 	if ((memory_region_gfx1 = memalign(MEM_ALIGN, memory_length_gfx1)) == NULL)
 	{
 		error_memory("REGION_GFX1");
 		return 0;
 	}
-#endif
 	memset(memory_region_gfx1, 0, memory_length_gfx1);
 
 	parent = strlen(parent_name) ? parent_name : NULL;
@@ -638,11 +634,12 @@ int memory_init(void)
 		z80_read_memory_8 = cps1_qsound_readmem;
 		z80_write_memory_8 = cps1_qsound_writemem;
 		memory_length_user2 = 0x8000;
-		if ((memory_region_user2 = (UINT8 *)calloc(1, 0x8000)) == NULL)
+		if ((memory_region_user2 = (UINT8 *)memalign(MEM_ALIGN, 0x8000)) == NULL)
 		{
 			fatalerror(TEXT(COULD_NOT_ALLOCATE_MEMORY_0x8000BYTE));
 			return 0;
 		}
+		memset(memory_region_user2, 0, 0x8000);
 	}
 	else
 	{
@@ -693,9 +690,7 @@ void memory_shutdown(void)
 {
 	if (memory_region_cpu1)   free(memory_region_cpu1);
 	if (memory_region_cpu2)   free(memory_region_cpu2);
-#ifndef PSP_SLIM
 	if (memory_region_gfx1)   free(memory_region_gfx1);
-#endif
 	if (memory_region_sound1) free(memory_region_sound1);
 	if (memory_region_user1)  free(memory_region_user1);
 	if (memory_length_user2)  free(memory_region_user2);

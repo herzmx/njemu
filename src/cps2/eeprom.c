@@ -297,11 +297,14 @@ STATE_LOAD( eeprom )
 
 #ifdef ADHOC
 
+#define TIMEOUT	60*1000*1000	// 60 seconds
+
 int adhoc_send_eeprom(void)
 {
-	if (adhocSendRecvAck(eeprom_data, EEPROM_SIZE) <= 0)
+	if (adhocSendRecvAck(eeprom_data, EEPROM_SIZE, TIMEOUT) <= 0)
 	{
 		msg_printf(TEXT(LOST_SYNC));
+		Loop = LOOP_BROWSER;
 		return 0;
 	}
 	return 1;
@@ -309,9 +312,10 @@ int adhoc_send_eeprom(void)
 
 int adhoc_recv_eeprom(void)
 {
-	if (adhocRecvSendAck(eeprom_data, EEPROM_SIZE) <= 0)
+	if (adhocRecvSendAck(eeprom_data, EEPROM_SIZE, TIMEOUT) <= 0)
 	{
 		msg_printf(TEXT(LOST_SYNC));
+		Loop = LOOP_BROWSER;
 		return 0;
 	}
 	return 1;

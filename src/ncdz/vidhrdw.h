@@ -9,13 +9,13 @@
 #ifndef VIDHRDW_H
 #define VIDHRDW_H
 
-extern UINT16 neogeo_vidram16[0x20000 / 2];
-extern UINT16 neogeo_vidram16_offset;
-extern UINT16 neogeo_vidram16_modulo;
+extern UINT16 neogeo_videoram[0x20000 / 2];
+extern UINT16 videoram_read_buffer;
+extern UINT16 videoram_offset;
+extern UINT16 videoram_modulo;
 
-extern UINT16 *neogeo_paletteram16;
-extern UINT16 neogeo_palettebank16[2][0x2000 / 2];
-extern UINT32 neogeo_palette_index;
+extern UINT16 palettes[2][0x2000 / 2];
+extern UINT32 palette_bank;
 
 extern UINT16 *video_palette;
 extern UINT16 video_palettebank[2][0x2000 / 2];
@@ -31,9 +31,9 @@ extern int fix_disable;
 void neogeo_video_init(void);
 void neogeo_video_exit(void);
 void neogeo_video_reset(void);
-void neogeo_screenrefresh(void);
+
 void neogeo_partial_screenrefresh(int current_line);
-void neogeo_raster_screenrefresh(void);
+void neogeo_screenrefresh(void);
 
 int neogeo_loading_screenrefresh(int flag, int draw);
 

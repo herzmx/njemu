@@ -9,6 +9,9 @@
 #ifndef UI_TEXT_H
 #define UI_TEXT_H
 
+#define LANG_ENGLISH	0
+#define LANG_JAPANESE	1
+
 enum
 {
 	EOM = 0,
@@ -50,7 +53,11 @@ enum
 #ifdef SAVE_STATE
 	START_SAVESTATE,
 	START_LOADSTATE,
+#endif
+#if defined(SAVE_STATE) || defined(COMMAND_LIST)
 	COMPLETE,
+#endif
+#ifdef SAVE_STATE
 	DELETE_STATE_FILE,
 #endif
 #if (EMU_SYSTEM == NCDZ)
@@ -529,5 +536,8 @@ enum
 #define TEXT(s)		ui_text[s]
 
 extern const char *ui_text[UI_TEXT_MAX];
+
+void ui_text_init(void);
+int ui_text_get_language(void);
 
 #endif /* UI_TEXT_H */

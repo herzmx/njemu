@@ -31,7 +31,6 @@ enum
 	REGION_GFX1,
 	REGION_GFX2,
 	REGION_GFX3,
-	REGION_GFX4,
 	REGION_SOUND1,
 	REGION_SOUND2,
 	REGION_USER1,
@@ -138,8 +137,8 @@ int use_parent_vrom;
 	プロトタイプ
 ******************************************************************************/
 
-static UINT16 (*neogeo_protection_16_r)(UINT32 offset, UINT16 mem_mask);
-static void (*neogeo_protection_16_w)(UINT32 offset, UINT16 data, UINT16 mem_mask);
+static UINT16 (*neogeo_protection_r)(UINT32 offset, UINT16 mem_mask);
+static void (*neogeo_protection_w)(UINT32 offset, UINT16 data, UINT16 mem_mask);
 
 
 /****************************************************************************
@@ -496,6 +495,7 @@ static int load_rom_cpu2(void)
 		case INIT_cthd2003: cthd2003_mx_decrypt(); break;
 		case INIT_cthd2k3a: cthd2003_mx_decrypt(); break;
 		case INIT_ct2k3sp:  cthd2003_mx_decrypt(); break;
+		case INIT_ct2k3sa:  cthd2003_mx_decrypt(); break;
 		case INIT_kf2k5uni: kf2k5uni_mx_decrypt(); break;
 		case INIT_matrimbl: matrimbl_mx_decrypt(); break;
 		}
@@ -1529,19 +1529,19 @@ int memory_init(void)
 		break;
 	}
 
-	neogeo_protection_16_r = neogeo_secondbank_16_r;
-	neogeo_protection_16_w = neogeo_secondbank_16_w;
+	neogeo_protection_r = neogeo_secondbank_r;
+	neogeo_protection_w = neogeo_secondbank_w;
 
 	switch (machine_init_type)
 	{
 	case INIT_fatfury2:
-		neogeo_protection_16_r = fatfury2_protection_16_r;
-		neogeo_protection_16_w = fatfury2_protection_16_w;
+		neogeo_protection_r = fatfury2_protection_r;
+		neogeo_protection_w = fatfury2_protection_w;
 		break;
 
 	case INIT_kof98:
-		neogeo_protection_16_r = neogeo_secondbank_16_r;
-		neogeo_protection_16_w = kof98_protection_16_w;
+		neogeo_protection_r = neogeo_secondbank_r;
+		neogeo_protection_w = kof98_protection_w;
 		break;
 
 	case INIT_mslugx:
@@ -1549,35 +1549,35 @@ int memory_init(void)
 		break;
 
 	case INIT_kof99:
-		neogeo_protection_16_r = kof99_protection_16_r;
-		neogeo_protection_16_w = kof99_protection_16_w;
+		neogeo_protection_r = kof99_protection_r;
+		neogeo_protection_w = kof99_protection_w;
 		break;
 
 	case INIT_garou:
-		neogeo_protection_16_r = garou_protection_16_r;
-		neogeo_protection_16_w = garou_protection_16_w;
+		neogeo_protection_r = garou_protection_r;
+		neogeo_protection_w = garou_protection_w;
 		break;
 
 	case INIT_garouo:
-		neogeo_protection_16_r = garou_protection_16_r;
-		neogeo_protection_16_w = garouo_protection_16_w;
+		neogeo_protection_r = garou_protection_r;
+		neogeo_protection_w = garouo_protection_w;
 		break;
 
 	case INIT_mslug3:
-		neogeo_protection_16_r = mslug3_protection_16_r;
-		neogeo_protection_16_w = mslug3_protection_16_w;
+		neogeo_protection_r = mslug3_protection_r;
+		neogeo_protection_w = mslug3_protection_w;
 		break;
 
 	case INIT_kof2000:
-		neogeo_protection_16_r = kof2000_protection_16_r;
-		neogeo_protection_16_w = kof2000_protection_16_w;
+		neogeo_protection_r = kof2000_protection_r;
+		neogeo_protection_w = kof2000_protection_w;
 		kof2000_AES_protection();
 		break;
 
 	case INIT_mslug5:
 	case INIT_ms5pcb:
-		neogeo_protection_16_r = pvc_protection_16_r;
-		neogeo_protection_16_w = pvc_protection_16_w;
+		neogeo_protection_r = pvc_protection_r;
+		neogeo_protection_w = pvc_protection_w;
 		mslug5_AES_protection();
 		break;
 
@@ -1585,19 +1585,19 @@ int memory_init(void)
 	case INIT_svchaosa:
 	case INIT_kof2003:
 	case INIT_kf2k3pcb:
-		neogeo_protection_16_r = pvc_protection_16_r;
-		neogeo_protection_16_w = pvc_protection_16_w;
+		neogeo_protection_r = pvc_protection_r;
+		neogeo_protection_w = pvc_protection_w;
 		break;
 
 	case INIT_vliner:
-		neogeo_protection_16_r = vliner_16_r;
-		neogeo_protection_16_w = brza_sram_16_w;
+		neogeo_protection_r = vliner_r;
+		neogeo_protection_w = brza_sram_w;
 		neogeo_ngh = NGH_vliner;
 		break;
 
 	case INIT_jockeygp:
-		neogeo_protection_16_r = brza_sram_16_r;
-		neogeo_protection_16_w = brza_sram_16_w;
+		neogeo_protection_r = brza_sram_r;
+		neogeo_protection_w = brza_sram_w;
 		neogeo_ngh = NGH_jockeygp;
 		break;
 
@@ -1633,7 +1633,12 @@ int memory_init(void)
 	case INIT_cthd2003:
 	case INIT_ct2k3sp:
 		patch_cthd2003();
-		neogeo_protection_16_w = cthd2003_protection_16_w;
+		neogeo_protection_w = cthd2003_protection_w;
+		cthd2003_AES_protection();
+		break;
+
+	case INIT_ct2k3sa:
+		patch_cthd2003();
 		cthd2003_AES_protection();
 		break;
 
@@ -1642,37 +1647,37 @@ int memory_init(void)
 		break;
 
 	case INIT_mslug5b:
-		neogeo_protection_16_r = pvc_protection_16_r;
-		neogeo_protection_16_w = pvc_protection_16_w;
+		neogeo_protection_r = pvc_protection_r;
+		neogeo_protection_w = pvc_protection_w;
 		mslug5_AES_protection();
 		break;
 
 	case INIT_ms5plus:
-		neogeo_protection_16_r = ms5plus_protection_16_r;
-		neogeo_protection_16_w = ms5plus_protection_16_w;
+		neogeo_protection_r = ms5plus_protection_r;
+		neogeo_protection_w = ms5plus_protection_w;
 		mslug5_AES_protection();
 		break;
 
 	case INIT_kf2k3bl:
 	case INIT_kf2k3upl:
-		neogeo_protection_16_r = pvc_protection_16_r;
-		neogeo_protection_16_w = kf2k3bl_protection_16_w;
+		neogeo_protection_r = pvc_protection_r;
+		neogeo_protection_w = kf2k3bl_protection_w;
 		break;
 
 	case INIT_kf2k3pl:
-		neogeo_protection_16_r = pvc_protection_16_r;
-		neogeo_protection_16_w = kf2k3pl_protection_16_w;
+		neogeo_protection_r = pvc_protection_r;
+		neogeo_protection_w = kf2k3pl_protection_w;
 		break;
 
 	case INIT_svcboot:
 	case INIT_svcsplus:
-		neogeo_protection_16_r = pvc_protection_16_r;
-		neogeo_protection_16_w = pvc_protection_16_w;
+		neogeo_protection_r = pvc_protection_r;
+		neogeo_protection_w = pvc_protection_w;
 		break;
 
 	case INIT_kof10th:
-		neogeo_protection_16_r = pvc_protection_16_r;
-		neogeo_protection_16_w = kof10th_protection_16_w;
+		neogeo_protection_r = pvc_protection_r;
+		neogeo_protection_w = kof10th_protection_w;
 		break;
 
 	case INIT_matrimbl:
@@ -1685,7 +1690,7 @@ int memory_init(void)
 
 	case INIT_fr2ch:
 		patch_fr2ch();
-		neogeo_protection_16_w = fr2ch_protection_16_w;
+		neogeo_protection_w = fr2ch_protection_w;
 		break;
 #endif
 	}
@@ -1769,22 +1774,22 @@ UINT8 m68000_read_memory_8(UINT32 offset)
 	case 0xc: return READ_MIRROR_BYTE(memory_region_user1, offset, bios_amask);
 	case 0xd: return READ_MIRROR_BYTE(neogeo_sram, offset, 0x00ffff);
 
-	case 0x2: return (*neogeo_protection_16_r)(offset >> 1, mem_mask) >> shift;
-	case 0x4: return neogeo_paletteram16_r(offset >> 1, mem_mask) >> shift;
+	case 0x2: return (*neogeo_protection_r)(offset >> 1, mem_mask) >> shift;
+	case 0x4: return neogeo_paletteram_r(offset >> 1, mem_mask) >> shift;
 	case 0x8: return neogeo_memcard16_r(offset >> 1, mem_mask) >> shift;
 
 	case 0x3:
 		switch (offset >> 16)
 		{
-		case 0x30: return neogeo_controller1and4_16_r(offset >> 1, mem_mask) >> shift;
-		case 0x32: return neogeo_timer16_r(offset >> 1, mem_mask) >> shift;
-		case 0x34: return neogeo_controller2_16_r(offset >> 1, mem_mask) >> shift;
-		case 0x38: return neogeo_controller3_16_r(offset >> 1, mem_mask) >> shift;
-		case 0x3c: return neogeo_video_16_r(offset >> 1, mem_mask) >> shift;
+		case 0x30: return neogeo_controller1and4_r(offset >> 1, mem_mask) >> shift;
+		case 0x32: return neogeo_timer_r(offset >> 1, mem_mask) >> shift;
+		case 0x34: return neogeo_controller2_r(offset >> 1, mem_mask) >> shift;
+		case 0x38: return neogeo_controller3_r(offset >> 1, mem_mask) >> shift;
+		case 0x3c: return neogeo_video_register_r(offset >> 1, mem_mask) >> shift;
 		}
 		break;
 	}
-	return 0xff;
+	return neogeo_unmapped_r(offset >> 1, mem_mask) >> shift;
 }
 
 
@@ -1803,22 +1808,22 @@ UINT16 m68000_read_memory_16(UINT32 offset)
 	case 0xc: return READ_MIRROR_WORD(memory_region_user1, offset, bios_amask);
 	case 0xd: return READ_MIRROR_WORD(neogeo_sram, offset, 0x00ffff);
 
-	case 0x2: return (*neogeo_protection_16_r)(offset >> 1, 0);
-	case 0x4: return neogeo_paletteram16_r(offset >> 1, 0);
+	case 0x2: return (*neogeo_protection_r)(offset >> 1, 0);
+	case 0x4: return neogeo_paletteram_r(offset >> 1, 0);
 	case 0x8: return neogeo_memcard16_r(offset >> 1, 0);
 
 	case 0x3:
 		switch (offset >> 16)
 		{
-		case 0x30: return neogeo_controller1and4_16_r(offset >> 1, 0);
-		case 0x32: return neogeo_timer16_r(offset >> 1, 0);
-		case 0x34: return neogeo_controller2_16_r(offset >> 1, 0);
-		case 0x38: return neogeo_controller3_16_r(offset >> 1, 0);
-		case 0x3c: return neogeo_video_16_r(offset >> 1, 0);
+		case 0x30: return neogeo_controller1and4_r(offset >> 1, 0);
+		case 0x32: return neogeo_timer_r(offset >> 1, 0);
+		case 0x34: return neogeo_controller2_r(offset >> 1, 0);
+		case 0x38: return neogeo_controller3_r(offset >> 1, 0);
+		case 0x3c: return neogeo_video_register_r(offset >> 1, 0);
 		}
 		break;
 	}
-	return 0xffff;
+	return neogeo_unmapped_r(offset >> 1, 0);
 }
 
 
@@ -1837,19 +1842,19 @@ void m68000_write_memory_8(UINT32 offset, UINT8 data)
 	{
 	case 0x1: WRITE_MIRROR_BYTE(neogeo_ram, offset, data, 0x00ffff); return;
 
-	case 0x2: (*neogeo_protection_16_w)(offset >> 1, data << shift, mem_mask); return;
-	case 0x4: neogeo_paletteram16_w(offset >> 1, data << shift, mem_mask); return;
+	case 0x2: (*neogeo_protection_w)(offset >> 1, data << shift, mem_mask); return;
+	case 0x4: neogeo_paletteram_w(offset >> 1, data << shift, mem_mask); return;
 	case 0x8: neogeo_memcard16_w(offset >> 1, data << shift, mem_mask); return;
 	case 0xd: neogeo_sram16_w(offset >> 1, data << shift, mem_mask); return;
 
 	case 0x3:
 		switch (offset >> 16)
 		{
-		case 0x30: watchdog_reset_16_w(offset >> 1, data << shift, mem_mask); return;
+		case 0x30: watchdog_reset_w(offset >> 1, data << shift, mem_mask); return;
 		case 0x32: neogeo_z80_w(offset >> 1, data << shift, mem_mask); return;
-		case 0x38: neogeo_syscontrol1_16_w(offset >> 1, data << shift, mem_mask); return;
-		case 0x3a: neogeo_syscontrol2_16_w(offset >> 1, data << shift, mem_mask); return;
-		case 0x3c: neogeo_video_16_w(offset >> 1, data << shift, mem_mask); return;
+		case 0x38: io_control_w(offset >> 1, data << shift, mem_mask); return;
+		case 0x3a: system_control_w(offset >> 1, data << shift, mem_mask); return;
+		case 0x3c: neogeo_video_register_w(offset >> 1, data << shift, mem_mask); return;
 		}
 		break;
 	}
@@ -1868,19 +1873,19 @@ void m68000_write_memory_16(UINT32 offset, UINT16 data)
 	{
 	case 0x1: WRITE_MIRROR_WORD(neogeo_ram, offset, data, 0x00ffff); return;
 
-	case 0x2: (*neogeo_protection_16_w)(offset >> 1, data, 0); return;
-	case 0x4: neogeo_paletteram16_w(offset >> 1, data, 0); return;
+	case 0x2: (*neogeo_protection_w)(offset >> 1, data, 0); return;
+	case 0x4: neogeo_paletteram_w(offset >> 1, data, 0); return;
 	case 0x8: neogeo_memcard16_w(offset >> 1, data, 0); return;
 	case 0xd: neogeo_sram16_w(offset >> 1, data, 0); return;
 
 	case 0x3:
 		switch (offset >> 16)
 		{
-		case 0x30: watchdog_reset_16_w(offset >> 1, data , 0); return;
+		case 0x30: watchdog_reset_w(offset >> 1, data , 0); return;
 		case 0x32: neogeo_z80_w(offset >> 1, data, 0); return;
-		case 0x38: neogeo_syscontrol1_16_w(offset >> 1, data, 0); return;
-		case 0x3a: neogeo_syscontrol2_16_w(offset >> 1, data, 0); return;
-		case 0x3c: neogeo_video_16_w(offset >> 1, data, 0); return;
+		case 0x38: io_control_w(offset >> 1, data, 0); return;
+		case 0x3a: system_control_w(offset >> 1, data, 0); return;
+		case 0x3c: neogeo_video_register_w(offset >> 1, data, 0); return;
 		}
 		break;
 	}

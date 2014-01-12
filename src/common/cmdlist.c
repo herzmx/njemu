@@ -313,14 +313,6 @@ retry:
 	if (charset == CHARSET_DEFAULT)
 		charset = check_text_encode(cmdbuf, size);
 
-#if !JAPANESE_UI
-	if (charset == CHARSET_SHIFTJIS)
-	{
-		if (!load_jpnfont(1))
-			goto error;
-	}
-#endif
-
 	// çsï™äÑópÉÅÉÇÉäÇämï€
 	if ((cmdline = calloc(num_lines, sizeof(char *))) == NULL)
 		goto error;
@@ -479,14 +471,6 @@ void free_commandlist(void)
 		free(cmdbuf);
 		cmdbuf = NULL;
 	}
-
-#if !JAPANESE_UI
-	if (charset == CHARSET_SHIFTJIS)
-	{
-		free_jpnfont();
-	}
-#endif
-
 }
 
 

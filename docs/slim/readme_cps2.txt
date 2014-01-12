@@ -1,6 +1,6 @@
 ----------------------------------------------------------------------
 
-          CAPCOM CPS2 Emulator for PSP 2.2.1 for PSP slim
+          CAPCOM CPS2 Emulator for PSP 2.2.2 for PSP slim
 
                                 NJ (http://nj-emu.hp.infoseek.co.jp)
 ----------------------------------------------------------------------
@@ -47,8 +47,12 @@
       +- CPS2PSP/  (root directory)
          |  |
          |  +- EBOOT.PBP    CPS2PSP本体
-         |  +- cps2psp.ini  CPS2PSP設定情報記録ファイル (自動的に作成されます)
-         |  +- command.dat  MAME Plus!用command.dat (コマンドリスト用/任意)
+         |  +- homehook.prx Homeボタン押下状態取得PRX
+         |  +- cps2psp.ini  CPS2PSP設定情報記録ファイル (自動的に作成)
+         |  +- rominfo.dat  CPS2 ROMセットデータベース  (必須)
+         |  +- zipname.dat  CPS2 英語ゲーム名リスト     (必須)
+         |  +- zipnamej.dat CPS2 日本語ゲーム名リスト   (任意)
+         |  +- command.dat  MAME Plus!用command.dat     (任意)
          |
          +- config/   ゲーム個別設定ファイル用ディレクトリ
          |
@@ -58,23 +62,24 @@
          |
          +- state/    ステートデータ用ディレクトリ
          |
-         +- roms/     ROMイメージファイル用ディレクトリ (ZIP形式で圧縮すること)
+         +- roms/     ROMイメージファイル用ディレクトリ (ZIP形式のみ)
          |    |
          |    +- 19xx.zip   (例: 19xx)
          |    +- ssf2.zip   (例: Super Street Fighter II (parent))
-         |    +- ssf2j.zip  (例: Super Street Fighter II (clone: Japanese version))
+         |    +- ssf2j.zip  (例: Super Street Fighter II (clone: Japanese ver.))
          |    +- ...
 
 ----------------------------------------------------------------------
-resource_jp.zipについて
+ユーザーインタフェースの表示言語について
 
-  英語版のresource_jp.zipに含まれるファイルは、ゲームリストとコマンド
-  リストで日本語を使用する場合に必要なファイルです。
+・ver.2.2.2でバイナリを統合し、PSP本体の表示言語が日本語の場合は
+  日本語で、それ以外の場合は英語で表示します。
 
-  日本語を使用しないのであれば不要ですので削除してください。
+・zipnamej.datは日本語を使用しない場合は不要ですので、削除して
+  かまいません。
 
-  日本語で表示を行う場合は、resource_jp.zipに含まれるファイルを
-  /PSP/GAME/CPS2PSP/にそのままコピーしてください。
+・旧バージョンでresource_jp.zipに含まれていた日本語フォントを使用
+  していた場合は、不要になりましたので削除してください。
 
 ----------------------------------------------------------------------
 ROMセットについての補足
@@ -92,8 +97,8 @@ ROMセットについての補足
   わからなければとにかく"Rトリガ"を押してください。
   見ればわかると思うので、詳細は割愛します。
 
-・ゲームの設定等を変更するメニューは、ゲーム実行中に"START + SELECT"を
-  押すことで表示されます。
+・ゲームの設定等を変更するメニューは、ゲーム実行中に"HOME"を押すことで
+  表示されます。
 
 ・ゲーム中のボタン操作
   ボタンの割り当ては変更可能です。以下にデフォルトの設定を書いておきます。
@@ -136,6 +141,6 @@ ROMセットについての補足
     プレイヤー切り替え - L trigger
 
   特殊操作
-    START + SELECT: メニューを開く
+    HOME: メニューを開く
     L + R + SELECT: サービススイッチ (特定のボタンに割り当ても可能)
     L + R + START:  1P & 2P START (サービスメニューで使用)

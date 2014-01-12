@@ -81,6 +81,8 @@ static int convert_crom;
 static int convert_srom;
 static int convert_vrom;
 
+static int psp2k;
+
 static char game_names[MAX_GAMES][16];
 
 struct cacheinfo_t
@@ -131,6 +133,7 @@ struct cacheinfo_t MVS_cacheinfo[] =
 	{ "cthd2003", "kof2001",  1, 1, 0 },
 	{ "cthd2k3a", "kof2001",  1, 1, 1 },
 	{ "ct2k3sp",  "kof2001",  1, 1, 0 },
+	{ "ct2k3sa",  "kof2001",  1, 1, 0 },
 	{ "ms4plus",  "mslug4",   0, 0, 0 },
 	{ "kof2002b", "kof2002",  1, 0, 0 },
 	{ "kf2k2pls", "kof2002",  0, 0, 0 },
@@ -668,6 +671,8 @@ static int convert_rom(char *game_name)
 	if (strlen(parent_name))
 		printf("Clone set (parent: %s)\n", parent_name);
 
+	if (psp2k) disable_sound = 0;
+
 	if (encrypt_snd1 || disable_sound)
 	{
 		if (load_rom_sound1())
@@ -845,6 +850,7 @@ static int convert_rom(char *game_name)
 
 			case INIT_cthd2003:
 			case INIT_cthd2k3a:
+			case INIT_ct2k3sa:
 				cthd2003_cx_decrypt();
 				break;
 
@@ -1000,6 +1006,7 @@ int main(int argc, char *argv[])
 	printf(" ROM converter for MVSPSP " VERSION_STR "\n");
 	printf("----------------------------------------------\n\n");
 
+	psp2k = 0;
 	if (argc > 1)
 	{
 		for (i = 1; i < argc; i++)
@@ -1007,6 +1014,10 @@ int main(int argc, char *argv[])
 			if (!strcasecmp(argv[i], "-all"))
 			{
 				all = 1;
+			}
+			else if (!strcasecmp(argv[i], "-slim"))
+			{
+				psp2k = 1;
 			}
 #ifdef WIN32
 			else if (!strcasecmp(argv[i], "-batch"))

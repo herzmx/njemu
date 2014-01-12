@@ -25,9 +25,8 @@
 #include <pspkernel.h>
 #include <psppower.h>
 #include <psprtc.h>
-#ifdef PSP_SLIM
+#include <pspsdk.h>
 #include <kubridge.h>
-#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -82,9 +81,7 @@ extern volatile int Loop;
 extern volatile int Sleep;
 extern char launchDir[MAX_PATH];
 extern int psp_cpuclock;
-#ifdef KERNEL_MODE
-extern volatile UINT32 home_button;
-#endif
+extern int devkit_version;
 
 void set_cpu_clock(int value);
 

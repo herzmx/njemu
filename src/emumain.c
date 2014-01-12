@@ -12,11 +12,6 @@
 
 #define FRAMESKIP_LEVELS	12
 
-#if (EMU_SYSTEM == MVS)
-#define TICKS_PER_FRAME_MVS	16896		// 1000000 / 15625 * RASTER_LINES
-#define TICKS_PER_FRAME_PSP	16683
-#endif
-
 
 /******************************************************************************
 	ÉOÉçÅ[ÉoÉãïœêî
@@ -55,12 +50,7 @@ int fatal_error;
 #ifdef ADHOC
 int adhoc_enable;
 int adhoc_server;
-char adhoc_matching[32];
-#endif
-
-#if (EMU_SYSTEM == MVS)
-int TICKS_PER_FRAME;
-float FPS;
+char adhoc_matching[16];
 #endif
 
 
@@ -248,18 +238,6 @@ void autoframeskip_reset(void)
 	frames_since_last_fps = 0;
 
 	game_speed_percent = 100;
-#if (EMU_SYSTEM == MVS)
-	if (option_vsync)
-	{
-		TICKS_PER_FRAME = TICKS_PER_FRAME_PSP;
-		FPS = 60.0;
-	}
-	else
-	{
-		TICKS_PER_FRAME = TICKS_PER_FRAME_MVS;
-		FPS = MVS_FPS;
-	}
-#endif
 	frames_per_second = FPS;
 
 	frames_displayed = 0;
@@ -296,9 +274,8 @@ void update_screen(void)
 
 	if (warming_up)
 	{
-		sceDisplayWaitVblankStart();
+		if (option_vsync) sceDisplayWaitVblankStart();
 		last_skipcount0_time = ticker() - FRAMESKIP_LEVELS * TICKS_PER_FRAME;
-		while (sceDisplayIsVblank()) sceKernelDelayThread(100);
 		warming_up = 0;
 	}
 

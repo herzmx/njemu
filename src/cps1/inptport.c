@@ -628,6 +628,8 @@ static UINT32 adjust_input(UINT32 buttons)
 	入力ポートを更新
 ------------------------------------------------------*/
 
+#define TIMEOUT	(10*1000*1000)	// 10 seconds
+
 static int adhoc_update_inputport(SceSize args, void *argp)
 {
 	int i;
@@ -678,84 +680,40 @@ static int adhoc_update_inputport(SceSize args, void *argp)
 
 			send_data.buttons = adhoc_paused;
 			send_data.loop_flag = Loop;
+		}
+		else
+		{
+			send_data.buttons = poll_gamepad();
+		}
 
-			if (adhoc_server)
+		if (adhoc_server)
+		{
+			adhocSend(&send_data, sizeof(ADHOC_DATA), TIMEOUT);
+
+			if (adhocRecv(&recv_data, sizeof(ADHOC_DATA), TIMEOUT) == 0)
 			{
-				adhocSendBlocking(&send_data, sizeof(ADHOC_DATA));
-				if (frames_displayed <= 1)
-				{
-					if (adhocRecvBlocking(&recv_data, sizeof(ADHOC_DATA)) == 0)
-					{
-						ui_popup(TEXT(LOST_SYNC));
-						Loop = LOOP_BROWSER;
-					}
-				}
-				else
-				{
-					if (adhocRecvBlockingTimeout(&recv_data, sizeof(ADHOC_DATA), (1000000/60)*10) == 0)
-					{
-						adhocSendBlocking(&send_data, sizeof(ADHOC_DATA));
-						if (adhocRecvBlocking(&recv_data, sizeof(ADHOC_DATA)) == 0)
-						{
-							ui_popup(TEXT(LOST_SYNC));
-							Loop = LOOP_BROWSER;
-						}
-					}
-				}
+				ui_popup(TEXT(LOST_SYNC));
+				Loop = LOOP_BROWSER;
 			}
-			else
+		}
+		else
+		{
+			if (adhocRecv(&recv_data, sizeof(ADHOC_DATA), TIMEOUT) == 0)
 			{
-				if (adhocRecvBlocking(&recv_data, sizeof(ADHOC_DATA)) == 0)
-				{
-					ui_popup(TEXT(LOST_SYNC));
-					Loop = LOOP_BROWSER;
-				}
-				adhocSendBlocking(&send_data, sizeof(ADHOC_DATA));
+				ui_popup(TEXT(LOST_SYNC));
+				Loop = LOOP_BROWSER;
 			}
 
+			adhocSend(&send_data, sizeof(ADHOC_DATA), TIMEOUT);
+		}
+
+		if (!adhoc_paused)
+		{
 			if (Loop == LOOP_EXEC)
 				Loop = recv_data.loop_flag;
 
 			if (recv_data.buttons > adhoc_paused)
 				adhoc_paused = recv_data.buttons;
-		}
-		else
-		{
-			send_data.buttons = poll_gamepad();
-
-			if (adhoc_server)
-			{
-				adhocSendBlocking(&send_data, sizeof(ADHOC_DATA));
-				if (frames_displayed <= 1)
-				{
-					if (adhocRecvBlocking(&recv_data, sizeof(ADHOC_DATA)) == 0)
-					{
-						ui_popup(TEXT(LOST_SYNC));
-						Loop = LOOP_BROWSER;
-					}
-				}
-				else
-				{
-					if (adhocRecvBlockingTimeout(&recv_data, sizeof(ADHOC_DATA), (1000000/60)*10) == 0)
-					{
-						adhocSendBlocking(&send_data, sizeof(ADHOC_DATA));
-						if (adhocRecvBlocking(&recv_data, sizeof(ADHOC_DATA)) == 0)
-						{
-							ui_popup(TEXT(LOST_SYNC));
-							Loop = LOOP_BROWSER;
-						}
-					}
-				}
-			}
-			else
-			{
-				if (adhocRecvBlocking(&recv_data, sizeof(ADHOC_DATA)) == 0)
-				{
-					ui_popup(TEXT(LOST_SYNC));
-					Loop = LOOP_BROWSER;
-				}
-				adhocSendBlocking(&send_data, sizeof(ADHOC_DATA));
-			}
 		}
 	}
 
@@ -1083,11 +1041,7 @@ void update_inputport(void)
 
 		buttons = poll_gamepad();
 
-#ifdef KERNEL_MODE
 		if (buttons & PSP_CTRL_HOME)
-#else
-		if ((buttons & PSP_CTRL_START) && (buttons & PSP_CTRL_SELECT))
-#endif
 		{
 			showmenu();
 			setup_autofire();

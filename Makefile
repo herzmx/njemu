@@ -18,13 +18,12 @@ KERNEL_MODE = 1
 SAVE_STATE = 1
 #ADHOC = 1
 COMMAND_LIST = 1
-#JAPANESE_UI = 1
 #UI_32BPP = 1
-#RELEASE = 1
+RELEASE = 1
 
 VERSION_MAJOR = 2
 VERSION_MINOR = 2
-VERSION_BUILD = 1
+VERSION_BUILD = 2
 
 #------------------------------------------------------------------------------
 # Defines
@@ -59,10 +58,6 @@ endif
 
 ifdef BUILD_NCDZPSP
 TARGET = NCDZPSP
-endif
-
-ifdef ADHOC
-KERNEL_MODE = 1
 endif
 
 PBPNAME_STR = $(TARGET)
@@ -111,6 +106,7 @@ OBJDIRS = \
 	$(OBJ)/zip \
 	$(OBJ)/zlib \
 	$(OBJ)/libmad \
+	$(OBJ)/pollpad \
 	$(OBJ)/$(OS) \
 	$(OBJ)/$(OS)/font \
 	$(OBJ)/$(OS)/icon
@@ -147,12 +143,10 @@ FONTOBJS = \
 	$(OBJ)/$(OS)/font/jpn_h14.o \
 	$(OBJ)/$(OS)/font/jpn_h14p.o \
 	$(OBJ)/$(OS)/font/jpn_z14.o \
-	$(OBJ)/$(OS)/font/sjis_tbl.o \
-	$(OBJ)/$(OS)/font/jpnfont.o
+	$(OBJ)/$(OS)/font/sjis_tbl.o
 
 OSOBJS = \
 	$(OBJ)/$(OS)/$(OS).o \
-	$(OBJ)/$(OS)/blend.o \
 	$(OBJ)/$(OS)/config.o \
 	$(OBJ)/$(OS)/filer.o \
 	$(OBJ)/$(OS)/input.o \
@@ -163,10 +157,14 @@ OSOBJS = \
 	$(OBJ)/$(OS)/ui_text.o \
 	$(OBJ)/$(OS)/video.o \
 	$(OBJ)/$(OS)/sound.o \
-	$(OBJ)/$(OS)/png.o
+	$(OBJ)/$(OS)/png.o \
 
 ifdef ADHOC
 OSOBJS += $(OBJ)/$(OS)/adhoc.o
+endif
+
+ifdef PSP_SLIM
+OSOBJS += $(OBJ)/$(OS)/homehook.o
 endif
 
 ifdef UI_32BPP
@@ -199,6 +197,7 @@ include src/makefiles/$(TARGET).mak
 CFLAGS = \
 	-fomit-frame-pointer \
 	-fstrict-aliasing \
+	-Wall \
 	-Wundef \
 	-Wpointer-arith  \
 	-Wbad-function-cast \
@@ -244,12 +243,6 @@ ifdef ADHOC
 CDEFS += -DADHOC=1
 endif
 
-ifdef JAPANESE_UI
-CDEFS += -DJAPANESE_UI=1
-else
-CDEFS += -DJAPANESE_UI=0
-endif
-
 ifdef COMMAND_LIST
 CFLAGS += -DCOMMAND_LIST=1
 endif
@@ -270,11 +263,7 @@ endif
 # Linker Flags
 #------------------------------------------------------------------------------
 
-ifdef PSP_SLIM
 LIBDIR = src/SDK/lib
-else
-LIBDIR =
-endif
 LDFLAGS =
 
 
@@ -284,11 +273,7 @@ LDFLAGS =
 
 USE_PSPSDK_LIBC = 1
 
-LIBS = -lm -lc -lpspaudio -lpspgu -lpsppower -lpsprtc
-
-ifdef PSP_SLIM
-LIBS += -lpspkubridge
-endif
+LIBS = -lm -lc -lpspaudio -lpspgu -lpsppower -lpsprtc -lpspkubridge
 
 ifdef ADHOC
 LIBS += -lpspwlan -lpspnet_adhoc -lpspnet_adhocctl -lpspnet_adhocmatching
@@ -305,6 +290,11 @@ endif
 OBJS = $(MAINOBJS) $(COREOBJS) $(OSOBJS) $(FONTOBJS) $(ICONOBJS) $(ZLIB)
 
 include src/makefiles/build.mak
+
+ifdef BUILD_CPS1PSP
+CC = bin/psp-gcc-4.0.2
+endif
+
 
 #------------------------------------------------------------------------------
 # Rules to manage files

@@ -37,7 +37,7 @@ static const char *current_version_str = "CPS1SV09";
 #elif (EMU_SYSTEM == CPS2)
 static const char *current_version_str = "CPS2SV08";
 #elif (EMU_SYSTEM == MVS)
-static const char *current_version_str = "MVSSV010";
+static const char *current_version_str = "MVSSV011";
 #elif (EMU_SYSTEM == NCDZ)
 static const char *current_version_str = "NCDZSV08";
 #endif
@@ -54,12 +54,7 @@ static const char *current_version_str = "NCDZSV08";
 static void save_thumbnail(void)
 {
 	int x, y, w, h;
-#if PSP_VIDEO_32BPP
-	UINT32 *src = (UINT32 *)video_frame_addr(tex_frame, 152, 0);
-	UINT16 data;
-#else
-	UINT16 *src = (UINT16 *)video_frame_addr(tex_frame, 152, 0);
-#endif
+	UINT16 *src = ((UINT16 *)UI_TEXTURE) + 152;
 
 #if (EMU_SYSTEM == CPS1 || EMU_SYSTEM == CPS2)
 	if (machine_screen_type)
@@ -78,12 +73,7 @@ static void save_thumbnail(void)
 	{
 		for (x = 0; x < w; x++)
 		{
-#if PSP_VIDEO_32BPP
-			data = CNVCOL32TO15(src[x]);
-			state_save_word(&data, 1);
-#else
 			state_save_word(&src[x], 1);
-#endif
 		}
 		src += BUF_WIDTH;
 	}
@@ -97,12 +87,7 @@ static void save_thumbnail(void)
 static void load_thumbnail(FILE *fp)
 {
 	int x, y, w, h;
-#if PSP_VIDEO_32BPP
-	UINT32 *dst = (UINT32 *)video_frame_addr(tex_frame, 0, 0);
-	UINT16 data;
-#else
-	UINT16 *dst = (UINT16 *)video_frame_addr(tex_frame, 0, 0);
-#endif
+	UINT16 *dst = (UINT16 *)UI_TEXTURE;
 
 #if (EMU_SYSTEM == CPS1 || EMU_SYSTEM == CPS2)
 	if (machine_screen_type)
@@ -121,20 +106,10 @@ static void load_thumbnail(FILE *fp)
 	{
 		for (x = 0; x < w; x++)
 		{
-#if PSP_VIDEO_32BPP
-#if (EMU_SYSTEM == NCDZ)
-			fread(&data, 1, 2, fp);
-			dst[x] = CNVCOL15TO32(data);
-#else
-			state_load_word(&data, 1);
-			dst[x] = CNVCOL15TO32(data);
-#endif
-#else
 #if (EMU_SYSTEM == NCDZ)
 			fread(&dst[x], 1, 2, fp);
 #else
 			state_load_word(&dst[x], 1);
-#endif
 #endif
 		}
 		dst += BUF_WIDTH;
@@ -149,11 +124,7 @@ static void load_thumbnail(FILE *fp)
 static void clear_thumbnail(void)
 {
 	int x, y, w, h;
-#if PSP_VIDEO_32BPP
-	UINT32 *dst = (UINT32 *)video_frame_addr(tex_frame, 0, 0);
-#else
-	UINT16 *dst = (UINT16 *)video_frame_addr(tex_frame, 0, 0);
-#endif
+	UINT16 *dst = (UINT16 *)UI_TEXTURE;
 
 #if (EMU_SYSTEM == CPS1 || EMU_SYSTEM == CPS2)
 	if (machine_screen_type)
@@ -543,93 +514,29 @@ error:
 
 void state_make_thumbnail(void)
 {
-#if PSP_VIDEO_32BPP
-	int x, y, w, h;
-	UINT16 *p, buf[152 * 112];
-	UINT16 *src = (UINT16 *)video_frame_addr(tex_frame, 152, 0);
-	UINT32 *dst;
+	UINT16 *tex = UI_TEXTURE;
 
+	{
 #if (EMU_SYSTEM == CPS1 || EMU_SYSTEM == CPS2)
-	RECT clip1 = { 64, 16, 64 + 384, 16 + 224 };
-	RECT clip3 = { 0, 0, BUF_WIDTH, 208 };
+		RECT clip1 = { 64, 16, 64 + 384, 16 + 224 };
 
-	if (machine_screen_type)
-	{
-		RECT clip2 = { 152, 0, 152 + 112, 152 };
-
-		w = 112;
-		h = 152;
-
-		video_copy_rect_rotate(work_frame, tex_frame, &clip1, &clip2);
-	}
-	else
-	{
+		if (machine_screen_type)
+		{
+			RECT clip2 = { 152, 0, 152 + 112, 152 };
+			video_copy_rect_rotate(work_frame, tex, &clip1, &clip2);
+		}
+		else
+		{
+			RECT clip2 = { 152, 0, 152 + 152, 112 };
+			video_copy_rect(work_frame, tex, &clip1, &clip2);
+		}
+#elif (EMU_SYSTEM == MVS || EMU_SYSTEM == NCDZ)
+		RECT clip1 = { 8, 16, 8 + 304, 16 + 224 };
 		RECT clip2 = { 152, 0, 152 + 152, 112 };
 
-		w = 152;
-		h = 112;
-
-		video_copy_rect(work_frame, tex_frame, &clip1, &clip2);
-	}
-#elif (EMU_SYSTEM == MVS || EMU_SYSTEM == NCDZ)
-	RECT clip1 = { 8, 16, 8 + 304, 16 + 224 };
-	RECT clip2 = { 152, 0, 152 + 152, 112 };
-	RECT clip3 = { 0, 0, BUF_WIDTH, 208 };
-
-	w = 152;
-	h = 112;
-
-	video_copy_rect(work_frame, tex_frame, &clip1, &clip2);
+		video_copy_rect(work_frame, tex, &clip1, &clip2);
 #endif
-
-	p = buf;
-	for (y = 0; y < h; y++)
-	{
-		for (x = 0; x < w; x++)
-		{
-			*p++ = src[x];
-		}
-		src += BUF_WIDTH;
 	}
-
-	video_set_mode(32);
-	video_clear_rect(tex_frame, &clip3);
-
-	src = buf;
-	dst = (UINT32 *)video_frame_addr(tex_frame, 152, 0);
-
-	for (y = 0; y < h; y++)
-	{
-		for (x = 0; x < w; x++)
-		{
-			dst[x] = CNVCOL15TO32(*src);
-			src++;
-		}
-		dst += BUF_WIDTH;
-	}
-#else
-
-#if (EMU_SYSTEM == CPS1 || EMU_SYSTEM == CPS2)
-	RECT clip1 = { 64, 16, 64 + 384, 16 + 224 };
-
-	if (machine_screen_type)
-	{
-		RECT clip2 = { 152, 0, 152 + 112, 152 };
-		video_copy_rect_rotate(work_frame, tex_frame, &clip1, &clip2);
-	}
-	else
-	{
-		RECT clip2 = { 152, 0, 152 + 152, 112 };
-		video_copy_rect(work_frame, tex_frame, &clip1, &clip2);
-	}
-#elif (EMU_SYSTEM == MVS || EMU_SYSTEM == NCDZ)
-	RECT clip1 = { 8, 16, 8 + 304, 16 + 224 };
-	RECT clip2 = { 152, 0, 152 + 152, 112 };
-
-	video_copy_rect(work_frame, tex_frame, &clip1, &clip2);
-#endif
-
-#endif
 }
 
 

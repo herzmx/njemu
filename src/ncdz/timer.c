@@ -50,15 +50,13 @@ typedef struct cpuinfo_t
 } CPUINFO;
 
 
-static TIMER timer[MAX_TIMER];
-static CPUINFO cpu[MAX_CPU];
+static TIMER ALIGN_DATA timer[MAX_TIMER];
+static CPUINFO ALIGN_DATA cpu[MAX_CPU];
 
 
 /******************************************************************************
 	ローカル変数
 ******************************************************************************/
-
-static const int time_slice[3] = { 16666, 16667, 16667 };
 
 static int global_offset;
 static int base_time;
@@ -66,17 +64,6 @@ static int frame_base;
 static int timer_ticks;
 static int timer_left;
 static int active_cpu;
-static UINT32 current_frame;
-static int scanline;
-
-
-/******************************************************************************
-	プロトタイプ
-******************************************************************************/
-
-void (*timer_update_cpu)(void);
-static void timer_update_cpu_normal(void);
-static void timer_update_cpu_raster(void);
 
 
 /******************************************************************************
@@ -156,7 +143,6 @@ void timer_reset(void)
 	global_offset = 0;
 	base_time = 0;
 	frame_base = 0;
-	current_frame = 0;
 
 	active_cpu = CPU_NOTACTIVE;
 	memset(&timer, 0, sizeof(timer));
@@ -172,19 +158,6 @@ void timer_reset(void)
 	cpu[CPU_Z80].cycles    = 0;
 	cpu[CPU_Z80].suspended = 0;
 	cpu[CPU_Z80].cycles_per_usec = 6;
-}
-
-
-/*------------------------------------------------------
-	CPU更新ハンドラを設定
-------------------------------------------------------*/
-
-void timer_set_update_handler(void)
-{
-	if (neogeo_driver_type != NORMAL)
-		timer_update_cpu = timer_update_cpu_raster;
-	else
-		timer_update_cpu = timer_update_cpu_normal;
 }
 
 
@@ -284,20 +257,8 @@ float timer_get_time(void)
 
 int timer_getscanline(void)
 {
-	if (neogeo_driver_type != NORMAL)
-		return scanline;
-	else
-		return 1 + frame_base / USECS_PER_SCANLINE;
-}
-
-
-/*------------------------------------------------------
-	現在のフレームを取得
-------------------------------------------------------*/
-
-UINT32 timer_getcurrentframe(void)
-{
-	return current_frame;
+//	return frame_base / USECS_PER_SCANLINE;
+	return frame_base >> 6;
 }
 
 
@@ -305,12 +266,14 @@ UINT32 timer_getcurrentframe(void)
 	CPUを更新
 ------------------------------------------------------*/
 
-static void timer_update_cpu_normal(void)
+void timer_update_cpu(void)
 {
 	int i, time;
 
 	frame_base = 0;
-	timer_left = (USECS_PER_SCANLINE) * RASTER_LINES;
+	timer_left = TICKS_PER_FRAME;
+
+	timer_set(VBLANK_TIMER, USECS_PER_SCANLINE * NEOGEO_VBSTART, 0, display_position_vblank_callback);
 
 	while (timer_left > 0)
 	{
@@ -343,9 +306,7 @@ static void timer_update_cpu_normal(void)
 		timer_left -= timer_ticks;
 	}
 
-	neogeo_interrupt();
-
-	base_time += time_slice[current_frame % 3];
+	base_time += TICKS_PER_FRAME;
 	if (base_time >= 1000000)
 	{
 		global_offset++;
@@ -357,77 +318,6 @@ static void timer_update_cpu_normal(void)
 				timer[i].expire -= 1000000;
 		}
 	}
-
-	current_frame++;
-
-	if (!skip_this_frame()) neogeo_screenrefresh();
-}
-
-
-/*------------------------------------------------------
-	CPUを更新 (ラスタドライバ用)
-------------------------------------------------------*/
-
-static void timer_update_cpu_raster(void)
-{
-	int i, time;
-
-	frame_base = 0;
-
-	for (scanline = 1; scanline <= RASTER_LINES; scanline++)
-	{
-		timer_left = USECS_PER_SCANLINE;
-
-		while (timer_left > 0)
-		{
-			timer_ticks = timer_left;
-			time = base_time + frame_base;
-
-			for (i = 0; i < MAX_TIMER; i++)
-			{
-				if (timer[i].enable)
-				{
-					if (timer[i].expire - time <= 0)
-					{
-						timer[i].enable = 0;
-						timer[i].callback(timer[i].param);
-					}
-				}
-				if (timer[i].enable)
-				{
-					if (timer[i].expire - time < timer_ticks)
-						timer_ticks = timer[i].expire - time;
-				}
-			}
-
-			if (Loop != LOOP_EXEC) return;
-
-			for (i = 0; i < MAX_CPU; i++)
-				cpu_execute(i);
-
-			frame_base += timer_ticks;
-			timer_left -= timer_ticks;
-		}
-
-		neogeo_raster_interrupt(scanline, neogeo_driver_type);
-	}
-
-	base_time += time_slice[current_frame % 3];
-	if (base_time >= 1000000)
-	{
-		global_offset++;
-		base_time -= 1000000;
-
-		for (i = 0; i < MAX_TIMER; i++)
-		{
-			if (timer[i].enable)
-				timer[i].expire -= 1000000;
-		}
-	}
-
-	current_frame++;
-
-	if (!skip_this_frame()) neogeo_raster_screenrefresh();
 }
 
 
@@ -440,7 +330,7 @@ void timer_update_subcpu(void)
 	int i, time;
 
 	frame_base = 0;
-	timer_left = time_slice[current_frame % 3];
+	timer_left = TICKS_PER_FRAME;
 
 	while (timer_left > 0)
 	{
@@ -470,7 +360,7 @@ void timer_update_subcpu(void)
 		timer_left -= timer_ticks;
 	}
 
-	base_time += time_slice[current_frame % 3];
+	base_time += TICKS_PER_FRAME;
 	if (base_time >= 1000000)
 	{
 		global_offset++;
@@ -482,8 +372,6 @@ void timer_update_subcpu(void)
 				timer[i].expire -= 1000000;
 		}
 	}
-
-	current_frame++;
 }
 
 
@@ -499,7 +387,6 @@ STATE_SAVE( timer )
 
 	state_save_long(&global_offset, 1);
 	state_save_long(&base_time, 1);
-	state_save_long(&current_frame, 1);
 
 	state_save_long(&cpu[0].suspended, 1);
 	state_save_long(&cpu[1].suspended, 1);
@@ -518,7 +405,6 @@ STATE_LOAD( timer )
 
 	state_load_long(&global_offset, 1);
 	state_load_long(&base_time, 1);
-	state_load_long(&current_frame, 1);
 
 	state_load_long(&cpu[0].suspended, 1);
 	state_load_long(&cpu[1].suspended, 1);
@@ -537,6 +423,8 @@ STATE_LOAD( timer )
 
 	timer[YM2610_TIMERA].callback    = timer_callback_2610;
 	timer[YM2610_TIMERB].callback    = timer_callback_2610;
+	timer[SCANLINE_TIMER].callback   = display_position_interrupt_callback;
+	timer[VBLANK_TIMER].callback     = display_position_vblank_callback;
 	timer[SOUNDLATCH_TIMER].callback = neogeo_sound_write;
 	timer[CPUSPIN_TIMER].callback    = cpu_spin_trigger;
 }

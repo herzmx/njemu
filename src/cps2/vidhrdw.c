@@ -209,9 +209,9 @@ static void unshuffle(UINT64 *buf, int len)
 }
 
 
-static void cps2_gfx_decode(void)
+void cps2_gfx_decode(void)
 {
-	UINT32 i, j, k, size;
+	UINT32 i, j, k;
 	UINT32 *tile, data;
 	UINT8 *gfx = memory_region_gfx1;
 
@@ -394,16 +394,6 @@ int cps2_video_init(void)
 	cps_pen_usage[TILE08] = gfx_pen_usage[TILE08] - 0x20000;
 	cps_pen_usage[TILE16] = gfx_pen_usage[TILE16];
 	cps_pen_usage[TILE32] = gfx_pen_usage[TILE32] - 0x4000;
-
-#if !USE_CACHE
-	ui_popup_reset(POPUP_MENU);
-	ui_popup(TEXT(DECODING_GFX));
-	ui_show_popup(1);
-	video_flip_screen(0);
-	ui_popup_reset(POPUP_GAME);
-
-	cps2_gfx_decode();
-#endif
 
 	cps2_init_tables();
 

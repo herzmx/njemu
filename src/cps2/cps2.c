@@ -50,6 +50,8 @@ static void cps2_reset(void)
 	timer_reset();
 	input_reset();
 	sound_reset();
+
+	blit_clear_all_sprite();
 }
 
 
@@ -138,8 +140,6 @@ static void cps2_run(void)
 
 void cps2_main(void)
 {
-	video_set_mode(32);
-
 	Loop = LOOP_RESET;
 
 	while (Loop >= LOOP_RESTART)

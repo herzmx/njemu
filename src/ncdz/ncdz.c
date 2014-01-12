@@ -197,7 +197,7 @@ static void neogeo_run(void)
 				autoframeskip_reset();
 			}
 
-			(*timer_update_cpu)();
+			timer_update_cpu();
 
 			neogeo_cdda_check();
 
@@ -256,8 +256,6 @@ void neogeo_bios_exit(void)
 
 void neogeo_main(void)
 {
-	video_set_mode(32);
-
 	while (Loop >= LOOP_RESTART)
 	{
 		ui_popup_reset(POPUP_GAME);

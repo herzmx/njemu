@@ -70,16 +70,18 @@ static int neogeo_init(void)
 static void neogeo_reset(void)
 {
 	video_set_mode(16);
-	video_clear_screen();
 
-	autoframeskip_reset();
+	video_clear_screen();
 
 	timer_reset();
 	input_reset();
-	sound_reset();
 
 	neogeo_driver_reset();
 	neogeo_video_reset();
+
+	sound_reset();
+	blit_clear_all_sprite();
+	autoframeskip_reset();
 
 	Loop = LOOP_EXEC;
 }
@@ -163,7 +165,7 @@ static void neogeo_run(void)
 				autoframeskip_reset();
 			}
 
-			(*timer_update_cpu)();
+			timer_update_cpu();
 			update_screen();
 			update_inputport();
 		}
@@ -184,8 +186,6 @@ static void neogeo_run(void)
 
 void neogeo_main(void)
 {
-	video_set_mode(32);
-
 	Loop = LOOP_RESET;
 
 	while (Loop >= LOOP_RESTART)

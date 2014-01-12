@@ -49,8 +49,7 @@
 
 #define EMU_SYSTEM		MVS
 #define SYSTEM_NAME		"NEO¥GEO"
-#define MVS_FPS			(15625.0 / 264.0)
-#define PSP_FPS			(1000000.0 / 16683.0)
+#define FPS				(15625.0 / 264.0)
 #define USE_CACHE		1
 #define CACHE_VERSION	"V22"
 #define GULIST_SIZE		300*1024		// 300KB
@@ -62,7 +61,7 @@
 
 #define EMU_SYSTEM		NCDZ
 #define SYSTEM_NAME		"NEO¥GEO CDZ"
-#define FPS				60.0
+#define FPS				(15625.0 / 264.0)
 #define USE_CACHE		0
 #define GULIST_SIZE		300*1024		// 300KB
 

@@ -13,13 +13,13 @@
 	グローバル変数
 ******************************************************************************/
 
-UINT16 ALIGN_DATA neogeo_vidram16[0x20000 / 2];
-UINT16 neogeo_vidram16_offset;
-UINT16 neogeo_vidram16_modulo;
+UINT16 ALIGN_DATA neogeo_videoram[0x20000 / 2];
+UINT16 videoram_read_buffer;
+UINT16 videoram_offset;
+UINT16 videoram_modulo;
 
-UINT16 *neogeo_paletteram16;
-UINT16 ALIGN_DATA neogeo_palettebank16[2][0x2000 / 2];
-UINT32 neogeo_palette_index;
+UINT16 ALIGN_DATA palettes[2][0x2000 / 2];
+UINT32 palette_bank;
 
 UINT16 *video_palette;
 UINT16 ALIGN_PSPDATA video_palettebank[2][0x2000 / 2];
@@ -38,15 +38,13 @@ int neogeo_fix_bank_type;
 ******************************************************************************/
 
 static UINT32 no_of_tiles;
-static UINT32 high_tile;
-static UINT32 vhigh_tile;
-static UINT32 vvhigh_tile;
+static UINT32 high_tile_mask;
 static int next_update_first_line;
 
 static UINT8 *spr_pen_usage;
-static UINT16 *sprite_scale = &neogeo_vidram16[0x10000 >> 1];
-static UINT16 *sprite_yctrl = &neogeo_vidram16[0x10400 >> 1];
-static UINT16 *sprite_xctrl = &neogeo_vidram16[0x10800 >> 1];
+static UINT16 *sprite_zoom_control = &neogeo_videoram[0x8000];
+static UINT16 *sprite_y_control = &neogeo_videoram[0x8200];
+static UINT16 *sprite_x_control = &neogeo_videoram[0x8400];
 
 #include "zoom.c"
 
@@ -74,10 +72,10 @@ static void draw_fix(void)
 			y = 0;
 			while (y < 32)
 			{
-				if (neogeo_vidram16[(0xea00 >> 1) + k] == 0x0200
-				&& (neogeo_vidram16[(0xeb00 >> 1) + k] & 0xff00) == 0xff00)
+				if (neogeo_videoram[0x7500 + k] == 0x0200
+				&& (neogeo_videoram[0x7580 + k] & 0xff00) == 0xff00)
 				{
-					garoubank = neogeo_vidram16[(0xeb00 >> 1) + k] & 3;
+					garoubank = neogeo_videoram[0x7580 + k] & 3;
 					garouoffsets[y++] = garoubank;
 				}
 				garouoffsets[y++] = garoubank;
@@ -86,7 +84,7 @@ static void draw_fix(void)
 
 			for (x = 1/8; x < 312/8; x++)
 			{
-				UINT16 *vram = &neogeo_vidram16[(0xe000 >> 1) + (16 / 8) + (x << 5)];
+				UINT16 *vram = &neogeo_videoram[0x7000 + (16 / 8) + (x << 5)];
 
 				for (y = 16/8; y < 240/8; y++)
 				{
@@ -103,14 +101,14 @@ static void draw_fix(void)
 		{
 			for (x = 1/8; x < 312/8; x++)
 			{
-				UINT16 *vram = &neogeo_vidram16[(0xe000 >> 1) + (16 / 8) + (x << 5)];
+				UINT16 *vram = &neogeo_videoram[0x7000 + (16 / 8) + (x << 5)];
 
 				for (y = 16/8; y < 240/8; y++)
 				{
 					code = *vram++;
 					attr = code >> 12;
 					code &= 0x0fff;
-					code += (((neogeo_vidram16[(0xea00 >> 1) + ((y - 1) & 31) + 32 * (x / 6)] >> (5 - (x % 6)) * 2) & 3) ^ 3) << 12;
+					code += (((neogeo_videoram[0x7500 + ((y - 1) & 31) + 32 * (x / 6)] >> (5 - (x % 6)) * 2) & 3) ^ 3) << 12;
 
 					if (fix_usage[code])
 						blit_draw_fix(x << 3, y << 3, code, attr);
@@ -122,7 +120,7 @@ static void draw_fix(void)
 	{
 		for (x = 1/8; x < 312/8; x++)
 		{
-			UINT16 *vram = &neogeo_vidram16[(0xe000 >> 1) + (16 / 8) + (x << 5)];
+			UINT16 *vram = &neogeo_videoram[0x7000 + (16 / 8) + (x << 5)];
 
 			for (y = 16/8; y < 240/8; y++)
 			{
@@ -144,109 +142,122 @@ static void draw_fix(void)
 	SPRスプライト描画
 ------------------------------------------------------*/
 
-#define DRAW_SPRITE()												\
-	if (sy2 + zy > min_y && sy2 <= max_y)							\
-	{																\
-		code = sprite_base[0];										\
-		attr = sprite_base[1];										\
-																	\
-		if (attr & 0x10) code |= high_tile;							\
-		if (attr & 0x20) code |= vhigh_tile;						\
-		if (attr & 0x40) code |= vvhigh_tile;						\
-																	\
-		if (attr & 0x08)											\
-			code = (code & ~7) | (neogeo_frame_counter & 7);		\
-		else if (attr & 0x04)										\
-			code = (code & ~3) | (neogeo_frame_counter & 3);		\
-																	\
-		code %= no_of_tiles;										\
-																	\
-		if (spr_pen_usage[code])									\
-			blit_draw_spr(sx, sy2, zx + 1, zy, code, attr);			\
+#define MAX_SPRITES_PER_SCREEN	(381)
+
+#define DRAW_SPRITE()															\
+	if (sy + yskip > min_y && sy <= max_y)										\
+	{																			\
+		attr = sprite_base[1];													\
+		code = sprite_base[0];													\
+		code |= ((attr & 0x70) << 12) & high_tile_mask;							\
+																				\
+		if (!auto_animation_disabled)											\
+		{																		\
+			if (attr & 0x0008)													\
+				code = (code & ~0x0007) | (auto_animation_counter & 0x0007);	\
+			else if (attr & 0x0004)												\
+				code = (code & ~0x0003) | (auto_animation_counter & 0x0003);	\
+		}																		\
+																				\
+		code %= no_of_tiles;													\
+																				\
+		if (spr_pen_usage[code])												\
+			blit_draw_spr(x, sy, zoom_x + 1, yskip, code, attr);				\
 	}
 
 static void draw_spr(int min_y, int max_y)
 {
-	int sx = 0, sy = 0, my = 0, zx = 0, zy = 0, rzy = 0;
-	UINT32 offset, code, attr;
-	int fullmode = 0, y, sy2;
-	UINT16 scale, yctrl;
+	int y = 0;
+	int x = 0;
+	int rows = 0;
+	int zoom_x = 0;
+	int zoom_y = 0;
+
+	UINT16 sprite_number;
+	UINT16 attr;
+	UINT32 code;
 	UINT16 *sprite_base;
 
-	for (offset = 0; offset < 0x300 >> 1; offset++)
-	{
-		scale = sprite_scale[offset];
-		yctrl = sprite_yctrl[offset];
+	int sy;
+	int yskip = 0;
+	int fullmode = 0;
 
-		if (yctrl & 0x40)
+	for (sprite_number = 0; sprite_number < MAX_SPRITES_PER_SCREEN; sprite_number++)
+	{
+		UINT16 zoom_control = sprite_zoom_control[sprite_number];
+		UINT16 y_control = sprite_y_control[sprite_number];
+
+		if (y_control & 0x40)
 		{
-			sx += zx + 1;
+			x += zoom_x + 1;
 		}
 		else
 		{
-			rzy = scale & 0xff;
+			y = 0x200 - (y_control >> 7);
+			x = sprite_x_control[sprite_number] >> 7;
+			zoom_y = zoom_control & 0xff;
+			rows = y_control & 0x3f;
 
-			sy = 0x200 - (yctrl >> 7);
-
-			my = yctrl & 0x3f;
-
-			if (my > 0x20)
+			if (rows > 0x20)
 			{
 				fullmode = 1;
-				my = 0x20;
+				rows = 0x20;
 
-				if (sy > 0x100) sy -= 0x200;
-				while (sy < -16) sy += (rzy + 1) << 1;
+				if (y > 0x100) y -= 0x200;
+				while (y < -16) y += (zoom_y + 1) << 1;
 			}
 			else
 				fullmode = 0;
-
-			sx = sprite_xctrl[offset] >> 7;
 		}
 
-		if (sx >= 0x1f0) sx -= 0x200;
+		if (x >= 0x1f0) x -= 0x200;
 
-		zx = (scale >> 8) & 0x0f;
+		zoom_x = (zoom_control >> 8) & 0x0f;
 
-		if (sx + zx < 8 || sx > 311) continue;
-		if (!my || !rzy) continue;
+		if (rows == 0) continue;
+		if (zoom_y == 0) continue;
+		if (x > 311) continue;
+		if (x + zoom_x < 8) continue;
 
-		sprite_base = &neogeo_vidram16[offset << 6];
+		sprite_base = &neogeo_videoram[sprite_number << 6];
 
 		if (fullmode)
 		{
-			sy2 = sy;
+			int row = 0;
 
-			for (y = 0; y < my; y++)
+			sy = y;
+
+			while (row < rows)
 			{
-				if ((zy = yskip[rzy][y]))
+				if ((yskip = sprite_y_skip[zoom_y][row]))
 				{
-					if (sy2 >= 248) sy2 -= (rzy + 1) << 1;
+					if (sy >= 248) sy -= (zoom_y + 1) << 1;
 					DRAW_SPRITE()
-					sy2 += zy;
+					sy += yskip;
 				}
+
+				row++;
 
 				sprite_base += 2;
 			}
 		}
 		else
 		{
-			int drawn_lines = 0;
+			int row = 0;
+			int sprite_line = 0;
 
-			y = 0;
-
-			while (drawn_lines < my << 4)
+			while (sprite_line < rows << 4)
 			{
-				if ((zy = yskip[rzy][y]))
+				if ((yskip = sprite_y_skip[zoom_y][row]))
 				{
-					sy2 = (sy + drawn_lines) & 0x1ff;
+					sy = (y + sprite_line) & 0x1ff;
 					DRAW_SPRITE()
-					drawn_lines += zy;
+					sprite_line += yskip;
 				}
 
-				y++;
-				if (y == 0x10 || y == 0x20)
-					drawn_lines += (0xff - rzy) << 1;
+				row++;
+				if (row == 0x10 || row == 0x20)
+					sprite_line += (0xff - zoom_y) << 1;
 
 				sprite_base += 2;
 			}
@@ -255,7 +266,6 @@ static void draw_spr(int min_y, int max_y)
 
 	blit_finish_spr();
 }
-
 
 
 /******************************************************************************
@@ -290,12 +300,12 @@ void neogeo_video_init(void)
 	}
 
 	no_of_tiles = memory_length_gfx3 / 128;
-	high_tile   = (no_of_tiles > 0x10000) ? 0x10000 : 0;
-	vhigh_tile  = (no_of_tiles > 0x20000) ? 0x20000 : 0;
-	vvhigh_tile = (no_of_tiles > 0x40000) ? 0x40000 : 0;
+	high_tile_mask  = (no_of_tiles > 0x10000) ? 0x10000 : 0;
+	high_tile_mask |= (no_of_tiles > 0x20000) ? 0x20000 : 0;
+	high_tile_mask |= (no_of_tiles > 0x40000) ? 0x40000 : 0;
 
-	memset(neogeo_vidram16, 0, sizeof(neogeo_vidram16));
-	memset(neogeo_palettebank16, 0, sizeof(neogeo_palettebank16));
+	memset(neogeo_videoram, 0, sizeof(neogeo_videoram));
+	memset(palettes, 0, sizeof(palettes));
 	memset(video_palettebank, 0, sizeof(video_palettebank));
 
 	for (i = 0; i < 0x1000; i += 16)
@@ -323,11 +333,11 @@ void neogeo_video_exit(void)
 
 void neogeo_video_reset(void)
 {
-	neogeo_paletteram16 = neogeo_palettebank16[0];
 	video_palette = video_palettebank[0];
-	neogeo_palette_index = 0;
-	neogeo_vidram16_modulo = 1;
-	neogeo_vidram16_offset = 0;
+	palette_bank = 0;
+	videoram_read_buffer = 0;
+	videoram_modulo = 1;
+	videoram_offset = 0;
 
 	next_update_first_line = FIRST_VISIBLE_LINE;
 
@@ -358,21 +368,6 @@ void neogeo_video_reset(void)
 	スクリーン更新
 ------------------------------------------------------*/
 
-void neogeo_screenrefresh(void)
-{
-	blit_start(FIRST_VISIBLE_LINE, LAST_VISIBLE_LINE);
-	draw_spr(FIRST_VISIBLE_LINE, LAST_VISIBLE_LINE);
-	draw_fix();
-	blit_finish();
-
-	next_update_first_line = FIRST_VISIBLE_LINE;
-}
-
-
-/*------------------------------------------------------
-	スクリーン更新 (Raster driver)
-------------------------------------------------------*/
-
 void neogeo_partial_screenrefresh(int current_line)
 {
 	if (current_line >= FIRST_VISIBLE_LINE && current_line <= LAST_VISIBLE_LINE)
@@ -388,7 +383,7 @@ void neogeo_partial_screenrefresh(int current_line)
 }
 
 
-void neogeo_raster_screenrefresh(void)
+void neogeo_screenrefresh(void)
 {
 	blit_start(next_update_first_line, LAST_VISIBLE_LINE);
 	draw_spr(next_update_first_line, LAST_VISIBLE_LINE);
@@ -407,12 +402,13 @@ void neogeo_raster_screenrefresh(void)
 
 STATE_SAVE( video )
 {
-	state_save_word(neogeo_vidram16, 0x10000);
-	state_save_word(neogeo_palettebank16[0], 0x1000);
-	state_save_word(neogeo_palettebank16[1], 0x1000);
-	state_save_word(&neogeo_vidram16_offset, 1);
-	state_save_word(&neogeo_vidram16_modulo, 1);
-	state_save_long(&neogeo_palette_index, 1);
+	state_save_word(neogeo_videoram, 0x10000);
+	state_save_word(palettes[0], 0x1000);
+	state_save_word(palettes[1], 0x1000);
+	state_save_word(&videoram_read_buffer, 1);
+	state_save_word(&videoram_offset, 1);
+	state_save_word(&videoram_modulo, 1);
+	state_save_long(&palette_bank, 1);
 
 	state_save_long(&fix_bank, 1);
 }
@@ -421,12 +417,13 @@ STATE_LOAD( video )
 {
 	int i;
 
-	state_load_word(neogeo_vidram16, 0x10000);
-	state_load_word(neogeo_palettebank16[0], 0x1000);
-	state_load_word(neogeo_palettebank16[1], 0x1000);
-	state_load_word(&neogeo_vidram16_offset, 1);
-	state_load_word(&neogeo_vidram16_modulo, 1);
-	state_load_long(&neogeo_palette_index, 1);
+	state_load_word(neogeo_videoram, 0x10000);
+	state_load_word(palettes[0], 0x1000);
+	state_load_word(palettes[1], 0x1000);
+	state_load_word(&videoram_read_buffer, 1);
+	state_load_word(&videoram_offset, 1);
+	state_load_word(&videoram_modulo, 1);
+	state_load_long(&palette_bank, 1);
 
 	state_load_long(&fix_bank, 1);
 
@@ -434,13 +431,12 @@ STATE_LOAD( video )
 	{
 		if (i & 0x0f)
 		{
-			video_palettebank[0][i] = video_clut16[neogeo_palettebank16[0][i] & 0x7fff];
-			video_palettebank[1][i] = video_clut16[neogeo_palettebank16[1][i] & 0x7fff];
+			video_palettebank[0][i] = video_clut16[palettes[0][i] & 0x7fff];
+			video_palettebank[1][i] = video_clut16[palettes[1][i] & 0x7fff];
 		}
 	}
 
-	neogeo_paletteram16 = neogeo_palettebank16[neogeo_palette_index];
-	video_palette = video_palettebank[neogeo_palette_index];
+	video_palette = video_palettebank[palette_bank];
 
 	fix_usage  = gfx_pen_usage[fix_bank];
 	fix_memory = (fix_bank) ? memory_region_gfx2 : memory_region_gfx1;

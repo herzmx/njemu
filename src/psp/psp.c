@@ -7,13 +7,14 @@
 ******************************************************************************/
 
 #include "psp.h"
+#include "homehook.h"
 
 
 #ifdef KERNEL_MODE
-PSP_MODULE_INFO(PBPNAME_STR, 0x1000, VERSION_MAJOR, VERSION_MINOR);
+PSP_MODULE_INFO(PBPNAME_STR, PSP_MODULE_KERNEL, VERSION_MAJOR, VERSION_MINOR);
 PSP_MAIN_THREAD_ATTR(0);
 #else
-PSP_MODULE_INFO(PBPNAME_STR, 0, VERSION_MAJOR, VERSION_MINOR);
+PSP_MODULE_INFO(PBPNAME_STR, PSP_MODULE_USER, VERSION_MAJOR, VERSION_MINOR);
 PSP_MAIN_THREAD_ATTR(THREAD_ATTR_USER);
 #endif
 
@@ -26,6 +27,7 @@ volatile int Loop;
 volatile int Sleep;
 char launchDir[MAX_PATH];
 int psp_cpuclock;
+int devkit_version;
 
 
 /******************************************************************************
@@ -55,13 +57,14 @@ void set_cpu_clock(int value)
 	Exit Callback
 --------------------------------------------------------*/
 
-#ifndef KERNEL_MODE
+#if !defined(KERNEL_MODE) && !defined(PSP_SLIM)
 static SceKernelCallbackFunction ExitCallback(int arg1, int arg2, void *arg)
 {
 	Loop = LOOP_EXIT;
 	return 0;
 }
 #endif
+
 
 /*--------------------------------------------------------
 	Power Callback
@@ -73,10 +76,39 @@ static SceKernelCallbackFunction PowerCallback(int unknown, int pwrflags, void *
 
 	if (pwrflags & PSP_POWER_CB_POWER_SWITCH)
 	{
+#ifdef PSP_SLIM
+#if (EMU_SYSTEM == CPS2) || (EMU_SYSTEM == MVS)
+		char path[MAX_PATH];
+		SceUID fd;
+
+		sprintf(path, "%sresume.bin", launchDir);
+
+		if ((fd = sceIoOpen(path, PSP_O_WRONLY|PSP_O_CREAT, 0777)) >= 0)
+		{
+			sceIoWrite(fd, (void *)(PSP2K_MEM_TOP + 0x1c00000), 0x400000);
+			sceIoClose(fd);
+		}
+#endif
+#endif
 		Sleep = 1;
 	}
 	else if (pwrflags & PSP_POWER_CB_RESUME_COMPLETE)
 	{
+#ifdef PSP_SLIM
+#if (EMU_SYSTEM == CPS2) || (EMU_SYSTEM == MVS)
+		char path[MAX_PATH];
+		SceUID fd;
+
+		sprintf(path, "%sresume.bin", launchDir);
+
+		if ((fd = sceIoOpen(path, PSP_O_RDONLY, 0777)) >= 0)
+		{
+			sceIoRead(fd, (void *)(PSP2K_MEM_TOP + 0x1c00000), 0x400000);
+			sceIoClose(fd);
+			sceIoRemove(path);
+		}
+#endif
+#endif
 		Sleep = 0;
 	}
 
@@ -95,7 +127,7 @@ static int CallbackThread(SceSize args, void *argp)
 {
 	int cbid;
 
-#ifndef KERNEL_MODE
+#if !defined(KERNEL_MODE) && !defined(PSP_SLIM)
 	cbid = sceKernelCreateCallback("Exit Callback", (void *)ExitCallback, NULL);
 	sceKernelRegisterExitCallback(cbid);
 #endif
@@ -137,7 +169,14 @@ static int SetupCallbacks(void)
 #ifdef KERNEL_MODE
 
 static volatile int home_active;
-volatile UINT32 home_button;
+static UINT32 home_button;
+
+
+u32 readHomeButton(void)
+{
+	return home_button;
+}
+
 
 static int home_button_thread(SceSize args, void *argp)
 {
@@ -157,17 +196,24 @@ static int home_button_thread(SceSize args, void *argp)
 	return 0;
 }
 
+
 static int user_main(SceSize args, void *argp)
 {
+	devkit_version = sceKernelDevkitVersion();
+
 	SetupCallbacks();
 
 	set_cpu_clock(PSPCLOCK_222);
 
+	ui_text_init();
 	pad_init();
+
 	video_set_mode(32);
 	video_init();
+
 	file_browser();
-	video_exit(1);
+
+	video_exit();
 
 	sceKernelExitThread(0);
 
@@ -220,11 +266,28 @@ int main(int argc, char *argv[])
 
 #else
 
+#ifndef PSP_SLIM
+u32 readHomeButton(void)
+{
+	SceCtrlData paddata;
+
+	sceCtrlPeekBufferPositive(&paddata, 1);
+
+	if ((paddata.Buttons & (PSP_CTRL_START | PSP_CTRL_SELECT)) == (PSP_CTRL_START | PSP_CTRL_SELECT))
+	{
+		return PSP_CTRL_HOME;
+	}
+	return 0;
+}
+#endif
+
+
 int main(int argc, char *argv[])
 {
 	char *p;
-
-	SetupCallbacks();
+#ifdef PSP_SLIM
+	SceUID modID;
+#endif
 
 	memset(launchDir, 0, sizeof(launchDir));
 	strncpy(launchDir, argv[0], MAX_PATH - 1);
@@ -233,13 +296,41 @@ int main(int argc, char *argv[])
 		*(p + 1) = '\0';
 	}
 
+	devkit_version = sceKernelDevkitVersion();
+
+	SetupCallbacks();
+
 	set_cpu_clock(PSPCLOCK_222);
 
+	// AHMAN
+#ifdef ADHOC
+	pspSdkLoadAdhocModules();
+#endif
+
+	ui_text_init();
 	pad_init();
+
 	video_set_mode(32);
 	video_init();
+
+#ifdef PSP_SLIM
+	if ((modID = pspSdkLoadStartModule("homehook.prx", PSP_MEMORY_PARTITION_KERNEL)) >= 0)
+	{
+		initHomeButton(devkit_version);
+
+		file_browser();
+		video_exit();
+	}
+	else
+	{
+		small_font_printf(0, 0, "Error 0x%08X start homehook.prx.", modID);
+		video_flip_screen(1);
+		sceKernelDelayThread(5*1000*1000);
+	}
+#else
 	file_browser();
-	video_exit(1);
+	video_exit();
+#endif
 
 	sceKernelExitGame();
 

@@ -48,9 +48,8 @@ extern char cache_parent_name[16];
 extern char cache_dir[MAX_PATH];
 #endif
 
-#if (EMU_SYSTEM == MVS)
-extern int TICKS_PER_FRAME;
-extern float FPS;
+#if (EMU_SYSTEM == MVS) || (EMU_SYSTEM == NCDZ)
+#define TICKS_PER_FRAME		16896
 #else
 #define TICKS_PER_FRAME		16683
 #endif

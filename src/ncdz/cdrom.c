@@ -505,7 +505,7 @@ static void loading_screen_start(void)
 
 			// Save FIX plane
 			for (i = 0; i < 0x500; i++)
-				m68000_write_memory_16(0x110804 + i * 2, neogeo_vidram16[0x7000 + i]);
+				m68000_write_memory_16(0x110804 + i * 2, neogeo_videoram[0x7000 + i]);
 
 			// Setup load screen
 			m68000_execute2(m68000_read_memory_32(0x11c808), 0);
@@ -608,7 +608,7 @@ static void loading_screen_stop(void)
 
 			// Restore FIX plane
 			for (i = 0; i < 0x500; i++)
-				neogeo_vidram16[0x7000 + i] = m68000_read_memory_16(0x110804 + i * 2);
+				neogeo_videoram[0x7000 + i] = m68000_read_memory_16(0x110804 + i * 2);
 
 			fix_disable_w(0);
 			spr_disable_w(0);

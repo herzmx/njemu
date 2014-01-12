@@ -7,6 +7,7 @@
 ******************************************************************************/
 
 #include "psp.h"
+#include "homehook.h"
 
 
 /******************************************************************************
@@ -55,11 +56,8 @@ UINT32 poll_gamepad(void)
 	if (paddata.Ly <= 0x30) paddata.Buttons |= PSP_CTRL_UP;
 	if (paddata.Lx <= 0x30) paddata.Buttons |= PSP_CTRL_LEFT;
 	if (paddata.Lx >= 0xd0) paddata.Buttons |= PSP_CTRL_RIGHT;
-#ifdef KERNEL_MODE
-	return paddata.Buttons | home_button;
-#else
-	return paddata.Buttons;
-#endif
+
+	return paddata.Buttons | readHomeButton();
 }
 
 
@@ -78,11 +76,8 @@ UINT32 poll_gamepad_fatfursp(void)
 	if (!(paddata.Buttons & PSP_CTRL_DOWN)  && paddata.Ly <= 0x30) paddata.Buttons |= PSP_CTRL_UP;
 	if (!(paddata.Buttons & PSP_CTRL_RIGHT) && paddata.Lx <= 0x30) paddata.Buttons |= PSP_CTRL_LEFT;
 	if (!(paddata.Buttons & PSP_CTRL_LEFT)  && paddata.Lx >= 0xd0) paddata.Buttons |= PSP_CTRL_RIGHT;
-#ifdef KERNEL_MODE
-	return paddata.Buttons | home_button;
-#else
-	return paddata.Buttons;
-#endif
+
+	return paddata.Buttons | readHomeButton();
 }
 #endif
 
@@ -108,11 +103,7 @@ UINT32 poll_gamepad_analog(void)
 	data |= paddata.Lx << 16;
 	data |= paddata.Ly << 24;
 
-#ifdef KERNEL_MODE
-	return data | home_button;
-#else
-	return data;
-#endif
+	return data | readHomeButton();
 }
 #endif
 

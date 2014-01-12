@@ -4579,6 +4579,34 @@ FILENAME( ct2k3sp, kof2001, 0, 0, 53, 0 )
 	ROMX( 0, 5003-c8.bin,  0x3000001, 0x800000, 0x917a1439, 1, 1 )
 END
 
+FILENAME( ct2k3sa, kof2001, 0, 0, 69, 0 )
+	REGION( 0x500000, CPU1, 0 )
+	ROM( 0, 5003-p1sa.bin, 0x000000, 0x100000, 0x013a509d )
+	ROM( 0, 5003-p2.bin,  0x100000, 0x400000, 0xadc1c22b )
+
+	REGION( 0x40000, GFX2, 0 )
+	ROM( 0, 5003-s1sa.bin, 0x00000, 0x40000, 0x4e1f7eae )
+
+	REGION( 0x30000, CPU2, ENCRYPTED )
+	ROM( 0, 5003-m1.bin,  0x10000, 0x20000, 0x1a8c274b )
+
+	REGION( 0x1000000, SOUND1, SOUND_DISABLE )
+	ROM( 0, 262-v1.bin,   0x000000, 0x400000, 0x83d49ecf )
+	ROM( 0, 262-v2.bin,   0x400000, 0x400000, 0x003f1843 )
+	ROM( 0, 262-v3.bin,   0x800000, 0x400000, 0x2ae38dbe )
+	ROM( 0, 262-v4.bin,   0xc00000, 0x400000, 0x26ec4dd9 )
+
+	REGION( 0x4000000, GFX3, ENCRYPTED )
+	ROMX( 0, 5003-c1.bin,  0x0000000, 0x800000, 0x68f54b67, 1, 1 )
+	ROMX( 0, 5003-c2.bin,  0x0000001, 0x800000, 0x2f8849d5, 1, 1 )
+	ROMX( 0, 5003-c3.bin,  0x1000000, 0x800000, 0xac4aff71, 1, 1 )
+	ROMX( 0, 5003-c4.bin,  0x1000001, 0x800000, 0xafef5d66, 1, 1 )
+	ROMX( 0, 5003-c5.bin,  0x2000000, 0x800000, 0xc7c1ae50, 1, 1 )
+	ROMX( 0, 5003-c6.bin,  0x2000001, 0x800000, 0x613197f9, 1, 1 )
+	ROMX( 0, 5003-c7.bin,  0x3000000, 0x800000, 0x64ddfe0f, 1, 1 )
+	ROMX( 0, 5003-c8.bin,  0x3000001, 0x800000, 0x917a1439, 1, 1 )
+END
+
 FILENAME( mslug4, neogeo, 0, 0, 27, 0 )
 	REGION( 0x500000, CPU1, 0 )
 	ROM( 0, 263-p1.bin,   0x000000, 0x100000, 0x27e4def3 )
@@ -4587,7 +4615,7 @@ FILENAME( mslug4, neogeo, 0, 0, 27, 0 )
 	REGION( 0x80000, GFX2, ENCRYPTED )
 
 	REGION( 0x20000, CPU2, 0 )
-	ROM( 0, 263-m1_decrypted.bin, 0x10000, 0x10000, 0x0c4c42f8 )
+	ROM( 0, 263-m1_decrypted.bin, 0x10000, 0x10000, 0xef5db532 )
 
 	REGION( 0x1000000, SOUND1, ENCRYPTED|SOUND_DISABLE )
 	ROM( 0, 263-v1.bin,   0x000000, 0x800000, 0x01e9b9cd )
@@ -4611,7 +4639,7 @@ FILENAME( ms4plus, mslug4, 0, 0, 57, 0 )
 	ROM( 0, 263-s1p.bin,  0x00000, 0x20000, 0x07ff87ce )
 
 	REGION( 0x20000, CPU2, 0 )
-	ROM( 0, 263-m1_decrypted.bin, 0x10000, 0x10000, 0x0c4c42f8 )
+	ROM( 0, 263-m1_decrypted.bin, 0x10000, 0x10000, 0xef5db532 )
 
 	REGION( 0x1000000, SOUND1, SOUND_DISABLE )
 	ROM( 0, ms4n_v1.rom,  0x000000, 0x800000, 0xfd6b982e )
@@ -4633,7 +4661,7 @@ FILENAME( rotd, neogeo, 0, 0, 28, 0 )
 	REGION( 0x20000, GFX2, ENCRYPTED )
 
 	REGION( 0x20000, CPU2, 0 )
-	ROM( 0, 264-m1_decrypted.bin, 0x10000, 0x10000, 0x7e06206d )
+	ROM( 0, 264-m1_decrypted.bin, 0x10000, 0x10000, 0xc5d36af9 )
 
 	REGION( 0x1000000, SOUND1, ENCRYPTED|SOUND_DISABLE )
 	ROM( 0, 264-v1.bin,   0x000000, 0x800000, 0xfa005812 )
@@ -4922,8 +4950,8 @@ FILENAME( pnyaa, neogeo, 0, 0, 23, 0 )
 	ROM( 0, 267-v1.bin,   0x000000, 0x400000, 0xe2e8e917 )
 
 	REGION( 0x1000000, GFX3, ENCRYPTED )
-	ROMX( 0, 267-c1.bin,   0x0000000, 0x800000, 0x2e20617a, 1, 1 )
-	ROMX( 0, 267-c2.bin,   0x0000001, 0x800000, 0x4edfa720, 1, 1 )
+	ROMX( 0, 267-c1.bin,   0x0000000, 0x800000, 0x5eebee65, 1, 1 )
+	ROMX( 0, 267-c2.bin,   0x0000001, 0x800000, 0x2b67187b, 1, 1 )
 END
 
 FILENAME( mslug5, neogeo, 0, 0, 16, 0 )
@@ -5039,7 +5067,7 @@ FILENAME( svcpcb, pcb, 0, 0, 31, 0 )
 	ROM( 0, 269-bios.bin, 0x00000, 0x80000, 0xb4590283 )
 
 	REGION( 0x30000, CPU2, 0 )
-	ROM( 0, 269-m1_decrypted.bin, 0x10000, 0x20000, 0x447b3123 )
+	ROM( 0, 269-m1_decrypted.bin, 0x10000, 0x20000, 0x7b7bf462 )
 
 	REGION( 0x1000000, SOUND1, ENCRYPTED|SOUND_DISABLE )
 	ROM( 0, 269-v1.bin,   0x000000, 0x800000, 0xc659b34c )
@@ -5061,7 +5089,7 @@ FILENAME( svcpcba, svcpcb, 0, 0, 31, 0 )
 	ROM( 0, 269-bios.bin, 0x00000, 0x80000, 0xb4590283 )
 
 	REGION( 0x30000, CPU2, 0 )
-	ROM( 0, 269-m1_decrypted.bin, 0x10000, 0x20000, 0x447b3123 )
+	ROM( 0, 269-m1_decrypted.bin, 0x10000, 0x20000, 0x7b7bf462 )
 
 	REGION( 0x1000000, SOUND1, ENCRYPTED|SOUND_DISABLE )
 	ROM( 0, 269-v1a.bin,  0x000000, 0x1000000, 0xa6af4753 )
@@ -5081,7 +5109,7 @@ FILENAME( svc, neogeo, 0, 0, 17, 0 )
 	REGION( 0x80000, GFX2, ENCRYPTED )
 
 	REGION( 0x30000, CPU2, 0 )
-	ROM( 0, 269-m1_decrypted.bin, 0x10000, 0x20000, 0x447b3123 )
+	ROM( 0, 269-m1_decrypted.bin, 0x10000, 0x20000, 0x7b7bf462 )
 
 	REGION( 0x1000000, SOUND1, ENCRYPTED|SOUND_DISABLE )
 	ROM( 0, 269-v1c.bin,  0x000000, 0x800000, 0xc659b34c )

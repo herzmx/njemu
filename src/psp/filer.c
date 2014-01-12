@@ -278,19 +278,14 @@ static int load_zipname(void)
 	char path[MAX_PATH], buf[256];
 	int size, found = 0;
 
-	sprintf(path, "%szipnamej." EXT, launchDir);
-	if ((fp = fopen(path, "rb")) != NULL)
+	if (ui_text_get_language() == LANG_JAPANESE)
 	{
-		fclose(fp);
-#if !JAPANESE_UI
-		if (load_jpnfont(0))
+		sprintf(path, "%szipnamej." EXT, launchDir);
+		if ((fp = fopen(path, "rb")) != NULL)
 		{
-			fp = fopen(path, "rb");
+			fclose(fp);
 			found = 1;
 		}
-#else
-		found = 1;
-#endif
 	}
 	if (!found)
 	{
@@ -347,9 +342,6 @@ static int load_zipname(void)
 
 static void free_zipname(void)
 {
-#if !JAPANESE_UI
-	free_jpnfont();
-#endif
 	zipname_num = 0;
 }
 
@@ -619,7 +611,6 @@ static void getDir(const char *path)
 #endif
 #if PSP_VIDEO_32BPP
 			if (stricmp(dir.d_name, "data") == 0) continue;
-			if (stricmp(dir.d_name, "font") == 0) continue;
 #endif
 #if (EMU_SYSTEM == MVS)
 			if (stricmp(dir.d_name, "memcard") == 0) continue;
@@ -898,7 +889,6 @@ void file_browser(void)
 	int i, sel = 0, rows = 11, top = 0;
 	int run_emulation = 0, update = 1, prev_sel = 0;
 	char *p;
-	char fw_version[32];
 #if (EMU_SYSTEM == NCDZ)
 	int title_counter = 60, title_image = -1;
 #endif
@@ -924,22 +914,24 @@ void file_browser(void)
 
 #if PSP_VIDEO_32BPP
 	load_wallpaper();
-	load_background(WP_LOGO);
-	show_background();
-	small_icon_shadow(6, 3, UI_COLOR(UI_PAL_TITLE), ICON_SYSTEM);
-	logo(32, 5, UI_COLOR(UI_PAL_TITLE));
 #else
 	ui_fill_frame(draw_frame, UI_PAL_BG2);
 #endif
 
+	load_background(WP_LOGO);
+	show_background();
+	small_icon_shadow(6, 3, UI_COLOR(UI_PAL_TITLE), ICON_SYSTEM);
+	logo(32, 5, UI_COLOR(UI_PAL_TITLE));
+
 #ifdef PSP_SLIM
-	draw_dialog(240-184, 136-40, 240+184, 136+40);
-	uifont_print_shadow_center(136-20, 255,255,120, APPNAME_STR " " VERSION_STR " for PSP Slim  by NJ");
-	uifont_print_shadow_center(136+10, 220,220,220, "http://nj-emu.hp.infoseek.co.jp");
+	draw_dialog(240-176, 136-48, 240+176, 136+48);
+	uifont_print_shadow_center(136-28, 255,255,120, APPNAME_STR " " VERSION_STR);
+	uifont_print_shadow_center(136-10, 255,255,255, "for PSP Slim and Light");
+	uifont_print_shadow_center(136+18, 220,220,220, "NJ (http://nj-emu.hp.infoseek.co.jp)");
 #else
 	draw_dialog(240-176, 136-40, 240+176, 136+40);
-	uifont_print_shadow_center(136-20, 255,255,120, APPNAME_STR " " VERSION_STR "  by NJ");
-	uifont_print_shadow_center(136+10, 220,220,220, "http://nj-emu.hp.infoseek.co.jp");
+	uifont_print_shadow_center(136-20, 255,255,120, APPNAME_STR " " VERSION_STR);
+	uifont_print_shadow_center(136+10, 220,220,220, "NJ (http://nj-emu.hp.infoseek.co.jp)");
 #endif
 	video_flip_screen(1);
 
@@ -956,19 +948,12 @@ void file_browser(void)
 	getDir(curr_dir);
 
 #ifdef PSP_SLIM
-	if (sceKernelDevkitVersion() < 0x03070110 || kuKernelGetModel() != PSP_MODEL_SLIM_AND_LITE)
+	if (devkit_version < 0x03060010 || kuKernelGetModel() != PSP_MODEL_SLIM_AND_LITE)
 	{
-#if PSP_VIDEO_32BPP
-		load_background(WP_LOGO);
 		show_background();
 		small_icon_shadow(6, 3, UI_COLOR(UI_PAL_TITLE), ICON_SYSTEM);
 		logo(32, 5, UI_COLOR(UI_PAL_TITLE));
-#else
-		ui_fill_frame(draw_frame, UI_PAL_BG2);
-#endif
-
 		messagebox(MB_PSPVERSIONERROR);
-
 		show_exit_screen();
 #if (EMU_SYSTEM == NCDZ)
 		return;
@@ -987,13 +972,9 @@ void file_browser(void)
 #if (EMU_SYSTEM == NCDZ)
 	if (bios_error)
 	{
-#if PSP_VIDEO_32BPP
 		show_background();
 		small_icon_shadow(6, 3, UI_COLOR(UI_PAL_TITLE), ICON_SYSTEM);
 		logo(32, 5, UI_COLOR(UI_PAL_TITLE));
-#else
-		ui_fill_frame(draw_frame, UI_PAL_BG2);
-#endif
 		video_flip_screen(1);
 
 		switch (bios_error)
@@ -1038,11 +1019,9 @@ void file_browser(void)
 				files[i] = NULL;
 			}
 
-			video_set_mode(16);
 			set_cpu_clock(psp_cpuclock);
 			emu_main();
 			set_cpu_clock(PSPCLOCK_222);
-			video_set_mode(32);
 
 			if (Loop)
 			{
@@ -1062,11 +1041,7 @@ void file_browser(void)
 			else break;
 		}
 
-#if PSP_VIDEO_32BPP
 		if (update & 1)
-#else
-		if (update)
-#endif
 		{
 			char path[MAX_PATH];
 
@@ -1168,7 +1143,6 @@ void file_browser(void)
 			update |= ui_show_popup(1);
 			video_flip_screen(1);
 		}
-#if PSP_VIDEO_32BPP
 		else if (update & 2)
 		{
 			int x, y, w, h;
@@ -1205,7 +1179,6 @@ void file_browser(void)
 			update |= ui_show_popup(0);
 			video_flip_screen(1);
 		}
-#endif
 		else
 		{
 			update = draw_battery_status(0);
@@ -1213,9 +1186,7 @@ void file_browser(void)
 			video_wait_vsync();
 		}
 
-#if PSP_VIDEO_32BPP
 		update |= ui_light_update();
-#endif
 		prev_sel = sel;
 
 		if (pad_pressed(PSP_CTRL_UP))

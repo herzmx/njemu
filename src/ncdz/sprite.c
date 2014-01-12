@@ -443,7 +443,7 @@ void blit_reset(void)
 	clip_min_y = FIRST_VISIBLE_LINE;
 	clip_max_y = LAST_VISIBLE_LINE;
 
-	clut = (UINT16 *)PSP_UNCACHE_PTR(&video_palettebank[neogeo_palette_index]);
+	clut = (UINT16 *)PSP_UNCACHE_PTR(&video_palettebank[palette_bank]);
 
 	blit_clear_all_sprite();
 }
@@ -463,7 +463,7 @@ void blit_start(int start, int end)
 
 	if (start == FIRST_VISIBLE_LINE)
 	{
-		clut = (UINT16 *)PSP_UNCACHE_PTR(&video_palettebank[neogeo_palette_index]);
+		clut = (UINT16 *)PSP_UNCACHE_PTR(&video_palettebank[palette_bank]);
 
 		fix_num = 0;
 
@@ -491,7 +491,7 @@ void blit_start(int start, int end)
 		sceGuTexMode(GU_PSM_T8, 0, 0, GU_TRUE);
 		sceGuTexFilter(GU_NEAREST, GU_NEAREST);
 		sceGuFinish();
-		sceGuSync(0, 0);
+		sceGuSync(0, GU_SYNC_FINISH);
 	}
 }
 
@@ -580,10 +580,10 @@ void blit_finish_fix(void)
 
 	vertices = (struct Vertex *)sceGuGetMemory(fix_num * sizeof(struct Vertex));
 	memcpy(vertices, vertices_fix, fix_num * sizeof(struct Vertex));
-	sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, fix_num, 0, vertices);
+	sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, fix_num, NULL, vertices);
 
 	sceGuFinish();
-	sceGuSync(0, 0);
+	sceGuSync(0, GU_SYNC_FINISH);
 }
 
 
@@ -673,7 +673,7 @@ void blit_finish_spr(void)
 		{
 			if (total_sprites)
 			{
-				sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, total_sprites, 0, vertices);
+				sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, total_sprites, NULL, vertices);
 				total_sprites = 0;
 				vertices = vertices_tmp;
 			}
@@ -692,8 +692,8 @@ void blit_finish_spr(void)
 	}
 
 	if (total_sprites)
-		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, total_sprites, 0, vertices);
+		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, total_sprites, NULL, vertices);
 
 	sceGuFinish();
-	sceGuSync(0, 0);
+	sceGuSync(0, GU_SYNC_FINISH);
 }

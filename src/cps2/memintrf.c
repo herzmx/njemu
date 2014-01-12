@@ -257,6 +257,9 @@ static int load_rom_gfx1(void)
 
 		file_close();
 	}
+
+	msg_printf(TEXT(DECODING_GFX), fname);
+	cps2_gfx_decode();
 #endif
 
 	return 1;
