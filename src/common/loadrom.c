@@ -10,7 +10,7 @@
 
 
 /******************************************************************************
-	ローカル関数
+	ローカル変数
 ******************************************************************************/
 
 static int rom_fd;
@@ -143,33 +143,42 @@ int cachefile_open(const char *fname)
 {
 	char path[MAX_PATH];
 
+	sprintf(path, "%s/%s_cache", cache_dir, game_name);
+	zip_open(path);
+	if ((rom_fd = zopen(fname)) != -1)
+	{
+		cache_type = CACHE_RAWFILE;
+		return rom_fd;
+	}
+
+	sprintf(path, "%s/%s_cache", cache_dir, cache_parent_name);
+	zip_open(path);
+	if ((rom_fd = zopen(fname)) != -1)
+	{
+		cache_type = CACHE_RAWFILE;
+		return rom_fd;
+	}
+
 	sprintf(path, "%s/%s_cache.zip", cache_dir, game_name);
 	if (zip_open(path) != -1)
 	{
 		if ((rom_fd = zopen(fname)) != -1)
+		{
+			cache_type = CACHE_ZIPFILE;
 			return rom_fd;
+		}
 		zip_close();
 	}
 
-	if (strlen(cache_parent_name))
+	sprintf(path, "%s/%s_cache.zip", cache_dir, cache_parent_name);
+	if (zip_open(path) != -1)
 	{
-		sprintf(path, "%s/%s_cache.zip", cache_dir, cache_parent_name);
-		if (zip_open(path) != -1)
+		if ((rom_fd = zopen(fname)) != -1)
 		{
-			if ((rom_fd = zopen(fname)) != -1)
-				return rom_fd;
-			zip_close();
+			cache_type = CACHE_ZIPFILE;
+			return rom_fd;
 		}
-	}
-	else
-	{
-		sprintf(path, "%s/%s_cache.zip", cache_dir, parent_name);
-		if (zip_open(path) != -1)
-		{
-			if ((rom_fd = zopen(fname)) != -1)
-				return rom_fd;
-			zip_close();
-		}
+		zip_close();
 	}
 
 	return -1;

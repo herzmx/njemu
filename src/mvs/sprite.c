@@ -96,7 +96,7 @@ static u8 fix_palette_is_dirty;
 #define SPR_TEXTURE_SIZE	((BUF_WIDTH/16)*((512*2)/16))
 #define SPR_HASH_MASK		0x1ff
 #define SPR_HASH_SIZE		0x200
-#define SPR_MAX_SPRITES		0x2000
+#define SPR_MAX_SPRITES		0x3000
 #define SPR_AUTOANIME		(3 << 20)
 #define SPR_AUTOANIME4		(1 << 20)
 #define SPR_AUTOANIME8		(2 << 20)

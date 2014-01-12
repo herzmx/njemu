@@ -17,9 +17,17 @@
 #define MAX_CACHE_BLOCKS	0x400
 #endif
 
+enum
+{
+	CACHE_NOTFOUND = 0,
+	CACHE_ZIPFILE,
+	CACHE_RAWFILE
+};
+
 extern u32 (*read_cache)(u32 offset);
 extern void (*update_cache)(u32 offset);
 extern u8 block_empty[MAX_CACHE_BLOCKS];
+extern int cache_type;
 
 void cache_init(void);
 int cache_start(void);

@@ -17,11 +17,13 @@
 #define CACHE_SAFETY		0x18000
 
 #if (EMU_SYSTEM == CPS2)
-#define GFX_MEMORY	memory_region_gfx1
-#define GFX_SIZE	memory_length_gfx1
+#define GFX_MEMORY		memory_region_gfx1
+#define GFX_SIZE		memory_length_gfx1
+#define CHECK_FNAME		"block_empty"
 #elif (EMU_SYSTEM == MVS)
-#define GFX_MEMORY	memory_region_gfx3
-#define GFX_SIZE	memory_length_gfx3
+#define GFX_MEMORY		memory_region_gfx3
+#define GFX_SIZE		memory_length_gfx3
+#define CHECK_FNAME		"000"
 #endif
 
 
@@ -32,6 +34,7 @@
 u32 (*read_cache)(u32 offset);
 void (*update_cache)(u32 offset);
 u8 ALIGN_DATA block_empty[MAX_CACHE_BLOCKS];
+int cache_type;
 
 
 /******************************************************************************
@@ -347,7 +350,8 @@ void cache_init(void)
 	int i;
 
 	num_cache  = 0;
-	cache_fd = -1;
+	cache_fd   = -1;
+	cache_type = CACHE_NOTFOUND;
 
 	read_cache   = read_cache_disable;
 	update_cache = update_cache_disable;
@@ -363,24 +367,50 @@ void cache_init(void)
 
 int cache_start(void)
 {
-	int i, found = 0;
+	int i, fd, found = 0;
 	u32 size = 0;
 	char path[MAX_PATH];
 
 	strcpy(cache_name, game_name);
-	sprintf(path, "%s/%s_cache.zip", cache_dir, cache_name);
-	if (zip_open(path) != -1)
-	{
-		found = 1;
-	}
 
-	if (!found && cache_parent_name[0])
+	if (cache_type == CACHE_RAWFILE)
 	{
-		strcpy(cache_name, cache_parent_name);
+		sprintf(path, "%s/%s_cache", cache_dir, cache_name);
+		zip_open(path);
+		if ((fd = zopen(CHECK_FNAME)) != -1)
+		{
+			zclose(fd);
+			found = 1;
+		}
+
+		if (!found && cache_parent_name[0])
+		{
+			strcpy(cache_name, cache_parent_name);
+			sprintf(path, "%s/%s_cache", cache_dir, cache_name);
+			zip_open(path);
+			if ((fd = zopen(CHECK_FNAME)) != -1)
+			{
+				zclose(fd);
+				found = 1;
+			}
+		}
+	}
+	else
+	{
 		sprintf(path, "%s/%s_cache.zip", cache_dir, cache_name);
 		if (zip_open(path) != -1)
 		{
 			found = 1;
+		}
+
+		if (!found && cache_parent_name[0])
+		{
+			strcpy(cache_name, cache_parent_name);
+			sprintf(path, "%s/%s_cache.zip", cache_dir, cache_name);
+			if (zip_open(path) != -1)
+			{
+				found = 1;
+			}
 		}
 	}
 
@@ -497,7 +527,10 @@ void cache_sleep(int flag)
 		{
 			char path[MAX_PATH];
 
-			sprintf(path, "%s/%s_cache.zip", cache_dir, cache_name);
+			if (cache_type == CACHE_RAWFILE)
+				sprintf(path, "%s/%s_cache", cache_dir, cache_name);
+			else
+				sprintf(path, "%s/%s_cache.zip", cache_dir, cache_name);
 			zip_open(path);
 		}
 	}

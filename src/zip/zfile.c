@@ -78,10 +78,11 @@ int zopen(const char *filename)
 
 	if (unzfile == NULL)
 	{
-		FILE *fp;
+		int fd;
 
 		strcpy(basedirend, filename);
-		return (fp = fopen(basedir, "rb")) ? (int)fp : -1;
+		fd = sceIoOpen(basedir, PSP_O_RDONLY, 0777);
+		return (fd < 0) ? -1 : fd;
 	}
 
 	if (unzLocateFile(unzfile, filename, 0) == UNZ_OK)
@@ -92,13 +93,13 @@ int zopen(const char *filename)
 }
 
 
-int zclose(int fp)
+int zclose(int fd)
 {
 	zip_cached_len = 0;
 
 	if (unzfile == NULL)
 	{
-		if (fp != -1) fclose((FILE *)fp);
+		if (fd != -1) sceIoClose(fd);
 		return 0;
 	}
 	return unzCloseCurrentFile(unzfile);
@@ -108,7 +109,7 @@ int zclose(int fp)
 int zread(int fd, void *buf, unsigned size)
 {
 	if (unzfile == NULL)
-		return fread(buf, 1, size, (FILE *)fd);
+		return sceIoRead(fd, buf, size);
 
 	return unzReadCurrentFile(unzfile, buf, size);
 }
@@ -117,7 +118,13 @@ int zread(int fd, void *buf, unsigned size)
 int zgetc(int fd)
 {
 	if (unzfile == NULL)
-		return fgetc((FILE *)fd);
+	{
+		int c;
+		if (sceIoRead(fd, &c, 1) == 0)
+			return EOF;
+		else
+			return -1;
+	}
 
 	if (zip_cached_len == 0)
 	{
@@ -136,12 +143,10 @@ int zsize(int fd)
 
 	if (unzfile == NULL)
 	{
-		FILE *fp = (FILE *)fd;
-		int len, pos = ftell(fp);
+		int len, pos = sceIoLseek(fd, 0, SEEK_CUR);
 
-		fseek(fp, 0, SEEK_END);
-		len = ftell(fp);
-		fseek(fp, pos, SEEK_SET);
+		len = sceIoLseek(fd, 0, SEEK_END);
+		sceIoLseek(fd, pos, SEEK_CUR);
 
 		return len;
 	}

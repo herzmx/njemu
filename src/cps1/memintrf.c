@@ -729,7 +729,7 @@ u8 m68000_read_memory_8(u32 offset)
 		}
 		break;
 
-	case 0xf1:
+	case 0xf10000:
 		switch (offset & 0xf000)
 		{
 		case 0x8000:
@@ -808,7 +808,7 @@ u16 m68000_read_memory_16(u32 offset)
 		}
 		break;
 
-	case 0xf1:
+	case 0xf10000:
 		switch (offset & 0xf000)
 		{
 		case 0x8000:
@@ -876,7 +876,7 @@ void m68000_write_memory_8(u32 offset, u8 data)
 		}
 		break;
 
-	case 0xf1:
+	case 0xf10000:
 		switch (offset & 0xf000)
 		{
 		case 0x8000:

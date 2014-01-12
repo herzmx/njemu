@@ -582,7 +582,7 @@ void file_browser(void)
 			*strrchr(game_dir, '/') = '\0';
 #if USE_CACHE
 			strcpy(cache_dir, launchDir);
-			strcat(cache_dir, "/cache");
+			strcat(cache_dir, "cache");
 #endif
 
 			free_zipname();
