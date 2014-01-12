@@ -12,6 +12,7 @@
 extern char startupDir[MAX_PATH];
 
 int file_exist(const char *path);
+char *find_file(char *pattern, char *path);
 void delete_files(const char *dirname, const char *pattern);
 #ifdef SAVE_STATE
 void find_state_file(u8 *slot);

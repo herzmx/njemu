@@ -62,10 +62,6 @@ struct driver_t
 {
 	const char *name;
 	const u32 cache_size;
-	const u16 object_tex_height;
-	const u16 scroll1_tex_height;
-	const u16 scroll2_tex_height;
-	const u16 scroll3_tex_height;
 	const u16 kludge;
 	const u16 flags;
 	const u8 inp_eeprom;
@@ -78,7 +74,7 @@ extern struct driver_t *driver;
 TIMER_CALLBACK( cps2_raster_interrupt );
 TIMER_CALLBACK( cps2_vblank_interrupt );
 
-void cps2_driver_init(void);
+int cps2_driver_init(void);
 void cps2_driver_reset(void);
 void cps2_driver_exit(void);
 
@@ -98,5 +94,7 @@ WRITE16_HANDLER( cps2_eeprom_port_w );
 STATE_SAVE( driver );
 STATE_LOAD( driver );
 #endif
+
+void cps2_decrypt_68k(void);
 
 #endif /* CPS2_DRIVER_H */

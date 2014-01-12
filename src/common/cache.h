@@ -12,8 +12,16 @@
 #if USE_CACHE
 
 #if (EMU_SYSTEM == CPS2)
+#define GFX_MEMORY			memory_region_gfx1
+#define GFX_SIZE			memory_length_gfx1
+#define CHECK_FNAME			"block_empty"
 #define MAX_CACHE_BLOCKS	0x200
 #elif (EMU_SYSTEM == MVS)
+#define GFX_MEMORY			memory_region_gfx3
+#define GFX_SIZE			memory_length_gfx3
+#define PCM_CACHE_SIZE		0x10000
+#define PCM_CACHE_MASK		0xffff
+#define PCM_CACHE_SHIFT		16
 #define MAX_CACHE_BLOCKS	0x400
 #endif
 
@@ -32,7 +40,6 @@ extern int pcm_cache_enable;
 extern u8 *block_empty;
 extern u32 block_offset[MAX_CACHE_BLOCKS];
 #endif
-extern int cache_type;
 
 void cache_init(void);
 int cache_start(void);

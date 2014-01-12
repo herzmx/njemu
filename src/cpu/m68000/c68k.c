@@ -33,6 +33,7 @@ c68k_struc ALIGN_DATA C68K;
 ******************************************************************************/
 
 static void ALIGN_DATA *JumpTable[0x10000];
+static u8 ALIGN_DATA c68k_bad_address[1 << C68K_FETCH_SFT];
 
 
 /******************************************************************************
@@ -68,10 +69,17 @@ static void C68k_ResetCallback(void)
 
 void C68k_Init(c68k_struc *CPU)
 {
+	int i;
+
 	memset(CPU, 0, sizeof(c68k_struc));
 
 	CPU->Interrupt_CallBack = C68k_InterruptCallback;
 	CPU->Reset_CallBack = C68k_ResetCallback;
+
+	memset(c68k_bad_address, 0xff, sizeof(c68k_bad_address));
+
+	for (i = 0; i < C68K_FETCH_BANK; i++)
+		CPU->Fetch[i] = (u32)c68k_bad_address;
 
 	C68k_Exec(NULL, 0);
 }

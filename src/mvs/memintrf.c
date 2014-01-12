@@ -115,52 +115,6 @@ static u16 (*neogeo_protection_16_r)(u32 offset, u16 mem_mask);
 static void (*neogeo_protection_16_w)(u32 offset, u16 data, u16 mem_mask);
 
 
-/******************************************************************************
-	エラーメッセージ表示
-******************************************************************************/
-
-/*------------------------------------------------------
-	メモリ確保エラーメッセージ表示
-------------------------------------------------------*/
-
-static void error_memory(const char *mem_name)
-{
-	zip_close();
-	msg_printf("ERROR: Could not allocate %s memory.\n", mem_name);
-	msg_printf("Press any button.\n");
-	pad_wait_press(PAD_WAIT_INFINITY);
-	Loop = LOOP_BROWSER;
-}
-
-
-/*------------------------------------------------------
-	ファイルオープンエラーメッセージ表示
-------------------------------------------------------*/
-
-static void error_rom(const char *rom_name)
-{
-	zip_close();
-	msg_printf("ERROR: CRC32 not correct. \"%s\"\n", rom_name);
-	msg_printf("Press any button.\n");
-	pad_wait_press(PAD_WAIT_INFINITY);
-	Loop = LOOP_BROWSER;
-}
-
-
-/*------------------------------------------------------
-	ROMファイルエラーメッセージ表示
-------------------------------------------------------*/
-
-static void error_file(const char *rom_name)
-{
-	zip_close();
-	msg_printf("ERROR: File not found or CRC32 not correct. \"%s\"\n", rom_name);
-	msg_printf("Press any button.\n");
-	pad_wait_press(PAD_WAIT_INFINITY);
-	Loop = LOOP_BROWSER;
-}
-
-
 /****************************************************************************
 	Decode GFX
 ****************************************************************************/
@@ -173,21 +127,21 @@ static void neogeo_decode_spr(u8 *mem, u32 length, u8 *usage)
 {
 	u32 tileno, numtiles = length / 128;
 
-	for (tileno = 0;tileno < numtiles;tileno++)
+	for (tileno = 0; tileno < numtiles; tileno++)
 	{
-		unsigned char swap[128];
+		u8 swap[128];
 		u8 *gfxdata;
 		int x,y;
-		unsigned int pen;
+		u32 pen;
 		int opaque = 0;
 
 		gfxdata = &mem[128 * tileno];
 
-		memcpy(swap,gfxdata,128);
+		memcpy(swap, gfxdata, 128);
 
 		for (y = 0;y < 16;y++)
 		{
-			u32 dw;
+			u32 dw, data;
 
 			dw = 0;
 			for (x = 0;x < 8;x++)
@@ -195,14 +149,20 @@ static void neogeo_decode_spr(u8 *mem, u32 length, u8 *usage)
 				pen  = ((swap[64 + 4*y + 3] >> x) & 1) << 3;
 				pen |= ((swap[64 + 4*y + 1] >> x) & 1) << 2;
 				pen |= ((swap[64 + 4*y + 2] >> x) & 1) << 1;
-				pen |=	(swap[64 + 4*y	  ] >> x) & 1;
+				pen |= ((swap[64 + 4*y + 0] >> x) & 1) << 0;
 				opaque += (pen & 0x0f) != 0;
 				dw |= pen << 4*x;
 			}
-			*(gfxdata++) = dw>>0;
-			*(gfxdata++) = dw>>8;
-			*(gfxdata++) = dw>>16;
-			*(gfxdata++) = dw>>24;
+
+			data = ((dw & 0x0000000f) >>  0) | ((dw & 0x000000f0) <<  4)
+				 | ((dw & 0x00000f00) <<  8) | ((dw & 0x0000f000) << 12)
+				 | ((dw & 0x000f0000) >> 12) | ((dw & 0x00f00000) >>  8)
+				 | ((dw & 0x0f000000) >>  4) | ((dw & 0xf0000000) >>  0);
+
+			*(gfxdata++) = data >>  0;
+			*(gfxdata++) = data >>  8;
+			*(gfxdata++) = data >> 16;
+			*(gfxdata++) = data >> 24;
 
 			dw = 0;
 			for (x = 0;x < 8;x++)
@@ -210,14 +170,20 @@ static void neogeo_decode_spr(u8 *mem, u32 length, u8 *usage)
 				pen  = ((swap[4*y + 3] >> x) & 1) << 3;
 				pen |= ((swap[4*y + 1] >> x) & 1) << 2;
 				pen |= ((swap[4*y + 2] >> x) & 1) << 1;
-				pen |=	(swap[4*y	 ] >> x) & 1;
+				pen |= ((swap[4*y + 0] >> x) & 1) << 0;
 				opaque += (pen & 0x0f) != 0;
 				dw |= pen << 4*x;
 			}
-			*(gfxdata++) = dw>>0;
-			*(gfxdata++) = dw>>8;
-			*(gfxdata++) = dw>>16;
-			*(gfxdata++) = dw>>24;
+
+			data = ((dw & 0x0000000f) >>  0) | ((dw & 0x000000f0) <<  4)
+				 | ((dw & 0x00000f00) <<  8) | ((dw & 0x0000f000) << 12)
+				 | ((dw & 0x000f0000) >> 12) | ((dw & 0x00f00000) >>  8)
+				 | ((dw & 0x0f000000) >>  4) | ((dw & 0xf0000000) >>  0);
+
+			*(gfxdata++) = data >>  0;
+			*(gfxdata++) = data >>  8;
+			*(gfxdata++) = data >> 16;
+			*(gfxdata++) = data >> 24;
 		}
 
 		if (opaque)
@@ -245,6 +211,7 @@ static void neogeo_decode_fix(u8 *mem, u32 length, u8 *usage)
 	u32 i, j;
 	u8 tile, opaque;
 	u8 *p, buf[32];
+	u32 *gfx = (u32 *)mem;
 
 	for (i = 0; i < length; i += 32)
 	{
@@ -266,6 +233,16 @@ static void neogeo_decode_fix(u8 *mem, u32 length, u8 *usage)
 		else
 			*usage = 0;
 		*usage++;
+	}
+
+	for (i = 0; i < length/4; i++)
+	{
+		u32 dw = gfx[i];
+		u32 data = ((dw & 0x0000000f) >>  0) | ((dw & 0x000000f0) <<  4)
+				 | ((dw & 0x00000f00) <<  8) | ((dw & 0x0000f000) << 12)
+				 | ((dw & 0x000f0000) >> 12) | ((dw & 0x00f00000) >>  8)
+				 | ((dw & 0x0f000000) >>  4) | ((dw & 0xf0000000) >>  0);
+		gfx[i] = data;
 	}
 }
 
@@ -289,7 +266,7 @@ static int load_rom_cpu1(void)
 
 	if (encrypt_cpu1)
 	{
-		msg_printf("Loading decrypted CPU1 ROM...\n");
+		msg_printf(TEXT(LOADING_DECRYPTED_CPU1_ROM));
 		if (cachefile_open("prom") == -1)
 		{
 			error_file("CPU1");
@@ -309,11 +286,11 @@ static int load_rom_cpu1(void)
 		{
 			if (file_open(game_name, parent, cpu1rom[i].crc, fname) == -1)
 			{
-				error_rom("CPU1");
+				error_crc("CPU1");
 				return 0;
 			}
 
-			msg_printf("Loading \"%s\"\n", fname);
+			msg_printf(TEXT(LOADING), fname);
 
 			i = rom_load(cpu1rom, memory_region_cpu1, i, num_cpu1rom);
 
@@ -348,11 +325,11 @@ static int load_rom_cpu2(void)
 	{
 		if (file_open(game_name, parent, cpu2rom[i].crc, fname) == -1)
 		{
-			error_rom("CPU2");
+			error_crc("CPU2");
 			return 0;
 		}
 
-		msg_printf("Loading \"%s\"\n", fname);
+		msg_printf(TEXT(LOADING), fname);
 
 		i = rom_load(cpu2rom, memory_region_cpu2, i, num_cpu2rom);
 
@@ -385,10 +362,10 @@ static int load_rom_gfx1(void)
 		return 0;
 	}
 
-	msg_printf("Loading \"sfix.sfx\"\n");
+	msg_printf(TEXT(LOADING_SFIX));
 	if (file_open(game_name, "neogeo", sfix_crc, fname) == -1)
 	{
-		error_rom("sfix.sfx");
+		error_crc("sfix.sfx");
 		return 0;
 	}
 	file_read(memory_region_gfx1, memory_length_gfx1);
@@ -420,21 +397,13 @@ static int load_rom_gfx2(void)
 
 	if (encrypt_gfx)
 	{
-		msg_printf("Loading decrypted GFX2 ROM...\n");
+		msg_printf(TEXT(LOADING_DECRYPTED_GFX2_ROM));
 		if (cachefile_open("srom") == -1)
 		{
 			error_file("GFX2");
 			return 0;
 		}
 		file_read(memory_region_gfx2, memory_length_gfx2);
-		file_close();
-
-		if (cachefile_open("fix_usage") == -1)
-		{
-			error_file("fix_usage (fix pen usage)");
-			return 0;
-		}
-		file_read(gfx_pen_usage[1], memory_length_gfx2 / 32);
 		file_close();
 	}
 	else
@@ -448,19 +417,19 @@ static int load_rom_gfx2(void)
 		{
 			if (file_open(game_name, parent, gfx2rom[i].crc, fname) == -1)
 			{
-				error_rom("GFX2");
+				error_crc("GFX2");
 				return 0;
 			}
 
-			msg_printf("Loading \"%s\"\n", fname);
+			msg_printf(TEXT(LOADING), fname);
 
 			i = rom_load(gfx2rom, memory_region_gfx2, i, num_gfx2rom);
 
 			file_close();
 		}
-
-		neogeo_decode_fix(memory_region_gfx2, memory_length_gfx2, gfx_pen_usage[1]);
 	}
+
+	neogeo_decode_fix(memory_region_gfx2, memory_length_gfx2, gfx_pen_usage[1]);
 
 	return 1;
 }
@@ -479,7 +448,7 @@ static int load_rom_gfx3(void)
 
 	if (encrypt_gfx)
 	{
-		msg_printf("Loading decrypted GFX3 ROM...\n");
+		msg_printf(TEXT(LOADING_DECRYPTED_GFX3_ROM));
 	}
 	else
 	{
@@ -496,11 +465,11 @@ static int load_rom_gfx3(void)
 			{
 				if (file_open(game_name, parent, gfx3rom[i].crc, fname) == -1)
 				{
-					error_rom("GFX3");
+					error_crc("GFX3");
 					return 0;
 				}
 
-				msg_printf("Loading \"%s\"\n", fname);
+				msg_printf(TEXT(LOADING), fname);
 
 				i = rom_load(gfx3rom, memory_region_gfx3, i, num_gfx3rom);
 
@@ -511,24 +480,16 @@ static int load_rom_gfx3(void)
 		}
 		else
 		{
-			msg_printf("Could not allocate memory for sprite data.\n");
-			msg_printf("Try to use sprite cache...\n");
+			msg_printf(TEXT(COULD_NOT_ALLOCATE_MEMORY_FOR_SPRITE_DATA));
+			msg_printf(TEXT(TRY_TO_USE_SPRITE_CACHE));
 		}
 	}
 
 	if (memory_region_gfx3 == NULL)
 	{
-		if (cachefile_open("spr_usage") == -1)
-		{
-			error_file("spr_usage (spr pen usage)");
-			return 0;
-		}
-		file_read(gfx_pen_usage[2], memory_length_gfx3 / 128);
-		file_close();
-
 		if (cache_start() == 0)
 		{
-			msg_printf("Press any button.\n");
+			msg_printf(TEXT(PRESS_ANY_BUTTON2));
 			pad_wait_press(PAD_WAIT_INFINITY);
 			Loop = LOOP_BROWSER;
 			return 0;
@@ -563,7 +524,7 @@ static int load_rom_sound1(void)
 
 	if (encrypt_snd1)
 	{
-		msg_printf("Loading decrypted SOUND1 ROM...\n");
+		msg_printf(TEXT(LOADING_DECRYPTED_SOUND1_ROM));
 		if (cachefile_open("vrom") == -1)
 		{
 			error_file("SOUND1");
@@ -583,11 +544,11 @@ static int load_rom_sound1(void)
 		{
 			if (file_open(game_name, parent, snd1rom[i].crc, fname) == -1)
 			{
-				error_rom("SOUND1");
+				error_crc("SOUND1");
 				return 0;
 			}
 
-			msg_printf("Loading \"%s\"\n", fname);
+			msg_printf(TEXT(LOADING), fname);
 
 			i = rom_load(snd1rom, memory_region_sound1, i, num_snd1rom);
 
@@ -626,11 +587,11 @@ static int load_rom_sound2(void)
 	{
 		if (file_open(game_name, parent, snd2rom[i].crc, fname) == -1)
 		{
-			error_rom("SOUND2");
+			error_crc("SOUND2");
 			return 0;
 		}
 
-		msg_printf("Loading \"%s\"\n", fname);
+		msg_printf(TEXT(LOADING), fname);
 
 		i = rom_load(snd2rom, memory_region_sound2, i, num_snd2rom);
 
@@ -668,11 +629,11 @@ static int load_rom_user1(int reload)
 
 		if (file_open(game_name, "neogeo", bios_crc[neogeo_bios], fname) == -1)
 		{
-			error_rom(bios_name[neogeo_bios]);
+			error_crc(bios_name[neogeo_bios]);
 			neogeo_bios = -1;
 			return 0;
 		}
-		if (!reload) msg_printf("Loading \"%s (%s)\"\n", fname, bios_name[neogeo_bios]);
+		if (!reload) msg_printf(TEXT(LOADING_BIOS), fname, bios_name[neogeo_bios]);
 		file_read(memory_region_user1, memory_length_user1);
 		file_close();
 	}
@@ -681,7 +642,7 @@ static int load_rom_user1(int reload)
 		if (encrypt_usr1)
 		{
 			// JAMMA PCB
-			msg_printf("Loading decrypted BIOS ROM...\n");
+			msg_printf(TEXT(LOADING_DECRYPTED_BIOS_ROM));
 			if (cachefile_open("biosrom") == -1)
 			{
 				error_file("BIOS (biosrom)");
@@ -696,10 +657,10 @@ static int load_rom_user1(int reload)
 			if (file_open(game_name, parent, usr1rom[0].crc, fname) == -1)
 			{
 				sprintf(fname, "%s BIOS", game_name);
-				error_rom(fname);
+				error_crc(fname);
 				return 0;
 			}
-			msg_printf("Loading \"%s\"\n", fname);
+			msg_printf(TEXT(LOADING), fname);
 		}
 		file_read(memory_region_user1, memory_length_user1);
 		file_close();
@@ -1038,12 +999,36 @@ int memory_init(void)
 	cache_init();
 	pad_wait_clear();
 	video_clear_screen();
-
-	msg_screen_init("Load ROM");
+	msg_screen_init(WP_LOGO, ICON_SYSTEM, TEXT(LOAD_ROM));
 
 	load_gamecfg(game_name);
 
-	msg_printf("Checking BIOS...\n");
+	memset(neogeo_memcard, 0, 0x800);
+	memset(neogeo_ram, 0, 0x10000);
+	memset(neogeo_sram16, 0, 0x10000);
+
+#ifdef ADHOC
+	if (adhoc_enable)
+	{
+		/* AdHoc通信時は一部オプションで固定の設定を使用 */
+		neogeo_raster_enable = 0;
+		option_vsync         = 0;
+		option_autoframeskip = 0;
+		option_frameskip     = 0;
+		option_showfps       = 0;
+		option_speedlimit    = 1;
+		option_sound_enable  = 1;
+		option_samplerate    = 1;
+		neogeo_dipswitch     = 0xff;
+
+		if (adhoc_server)
+			option_controller = INPUT_PLAYER1;
+		else
+			option_controller = INPUT_PLAYER2;
+	}
+#endif
+
+	msg_printf(TEXT(CHECKING_BIOS));
 
 	res = neogeo_bios;
 	if (res != -1)
@@ -1064,40 +1049,52 @@ int memory_init(void)
 
 		pad_wait_clear();
 		video_clear_screen();
-		msg_screen_init("Load ROM");
-		msg_printf("Checking BIOS...\n");
-		msg_printf("All NVRAM files are removed.\n");
+		msg_screen_init(WP_LOGO, ICON_SYSTEM, TEXT(LOAD_ROM));
+		msg_printf(TEXT(CHECKING_BIOS));
+		msg_printf(TEXT(ALL_NVRAM_FILES_ARE_REMOVED));
 	}
 
-	msg_printf("Checking ROM info...\n");
+	msg_printf(TEXT(CHECKING_ROM_INFO));
 
 	if ((res = load_rom_info(game_name)) != 0)
 	{
 		switch (res)
 		{
-		case 1: msg_printf("ERROR: This game not supported.\n"); break;
-		case 2: msg_printf("ERROR: ROM not found. (zip file name incorrect)\n"); break;
-		case 3: msg_printf("ERROR: rominfo.mvs not found.\n"); break;
+		case 1: msg_printf(TEXT(THIS_GAME_NOT_SUPPORTED)); break;
+		case 2: msg_printf(TEXT(ROM_NOT_FOUND)); break;
+		case 3: msg_printf(TEXT(ROMINFO_NOT_FOUND)); break;
 		}
-		msg_printf("Press any button.\n");
+		msg_printf(TEXT(PRESS_ANY_BUTTON2));
 		pad_wait_press(PAD_WAIT_INFINITY);
 		Loop = LOOP_BROWSER;
 		return 0;
 	}
 
 	if (parent_name[0])
-		msg_printf("ROM set \"%s\" (parent: %s).\n", game_name, parent_name);
+		msg_printf(TEXT(ROMSET_x_PARENT_x), game_name, parent_name);
 	else
-		msg_printf("ROM set \"%s\".\n", game_name);
+		msg_printf(TEXT(ROMSET_x), game_name);
+
+#ifdef ADHOC
+	if (!adhoc_enable)
+#endif
+	{
+#ifdef COMMAND_LIST
+		if (parent_name[0])
+			load_commandlist(game_name, parent_name);
+		else
+			load_commandlist(game_name, NULL);
+#endif
+	}
 
 	// Brezzasoft用の設定 - メモリを確保するので先に処理
 	if (machine_init_type == INIT_vliner || machine_init_type == INIT_jockeygp)
 	{
-		msg_printf("Allocate \"brza_sram\" memory.\n");
+		msg_printf(TEXT(ALLOCATE_BRZA_SRAM_MEMORY));
 		if ((brza_sram = (u16 *)malloc(0x2000)) == NULL)
 		{
-			msg_printf("ERROR: Could not allocate \"brza_sram\" memory.\n");
-			msg_printf("Press any button.\n");
+			msg_printf(TEXT(COULD_NOT_ALLOCATE_BRZA_SRAM_MEMORY));
+			msg_printf(TEXT(PRESS_ANY_BUTTON2));
 			pad_wait_press(PAD_WAIT_INFINITY);
 			Loop = LOOP_BROWSER;
 			return 0;
@@ -1117,7 +1114,7 @@ int memory_init(void)
 
 	if (disable_sound)
 	{
-		msg_printf("This game only work without sound.\n");
+		msg_printf(TEXT(THIS_GAME_ONLY_WORK_WITHOUT_SOUND));
 		neogeo_save_sound_flag = option_sound_enable;
 		option_sound_enable = 0;
 	}
@@ -1225,16 +1222,7 @@ int memory_init(void)
 		break;
 	}
 
-	memset(neogeo_memcard, 0, 0x800);
-	memset(neogeo_ram, 0, 0x10000);
-	memset(neogeo_sram16, 0, 0x10000);
-
 	neogeo_sram = (u8 *)neogeo_sram16;
-
-	msg_printf("Done.\n");
-
-	msg_screen_clear();
-	video_clear_screen();
 
 	return 1;
 }
@@ -1264,6 +1252,10 @@ void memory_shutdown(void)
 	if (memory_region_user1)  free(memory_region_user1);
 
 	if (neogeo_save_sound_flag) option_sound_enable = 1;
+
+#if PSP_VIDEO_32BPP
+	GFX_MEMORY = NULL;
+#endif
 }
 
 
@@ -1282,25 +1274,25 @@ u8 m68000_read_memory_8(u32 offset)
 
 	offset &= M68K_AMASK;
 
-	switch (offset & 0xf00000)
+	switch (offset >> 20)
 	{
-	case 0x000000: return READ_BYTE(memory_region_cpu1, offset);
-	case 0x100000: return READ_MIRROR_BYTE(neogeo_ram, offset, 0x00ffff);
-	case 0xc00000: return READ_MIRROR_BYTE(memory_region_user1, offset, bios_amask);
-	case 0xd00000: return READ_MIRROR_BYTE(neogeo_sram, offset, 0x00ffff);
+	case 0x0: return READ_BYTE(memory_region_cpu1, offset);
+	case 0x1: return READ_MIRROR_BYTE(neogeo_ram, offset, 0x00ffff);
+	case 0xc: return READ_MIRROR_BYTE(memory_region_user1, offset, bios_amask);
+	case 0xd: return READ_MIRROR_BYTE(neogeo_sram, offset, 0x00ffff);
 
-	case 0x200000: return (*neogeo_protection_16_r)(offset >> 1, mem_mask) >> shift;
-	case 0x400000: return neogeo_paletteram16_r(offset >> 1, mem_mask) >> shift;
-	case 0x800000: return neogeo_memcard16_r(offset >> 1, mem_mask) >> shift;
+	case 0x2: return (*neogeo_protection_16_r)(offset >> 1, mem_mask) >> shift;
+	case 0x4: return neogeo_paletteram16_r(offset >> 1, mem_mask) >> shift;
+	case 0x8: return neogeo_memcard16_r(offset >> 1, mem_mask) >> shift;
 
-	case 0x300000:
-		switch (offset & 0xff0000)
+	case 0x3:
+		switch (offset >> 16)
 		{
-		case 0x300000: return neogeo_controller1and4_16_r(offset >> 1, mem_mask) >> shift;
-		case 0x320000: return neogeo_timer16_r(offset >> 1, mem_mask) >> shift;
-		case 0x340000: return neogeo_controller2_16_r(offset >> 1, mem_mask) >> shift;
-		case 0x380000: return neogeo_controller3_16_r(offset >> 1, mem_mask) >> shift;
-		case 0x3c0000: return neogeo_video_16_r(offset >> 1, mem_mask) >> shift;
+		case 0x30: return neogeo_controller1and4_16_r(offset >> 1, mem_mask) >> shift;
+		case 0x32: return neogeo_timer16_r(offset >> 1, mem_mask) >> shift;
+		case 0x34: return neogeo_controller2_16_r(offset >> 1, mem_mask) >> shift;
+		case 0x38: return neogeo_controller3_16_r(offset >> 1, mem_mask) >> shift;
+		case 0x3c: return neogeo_video_16_r(offset >> 1, mem_mask) >> shift;
 		}
 		break;
 	}
@@ -1316,25 +1308,25 @@ u16 m68000_read_memory_16(u32 offset)
 {
 	offset &= M68K_AMASK;
 
-	switch (offset & 0xf00000)
+	switch (offset >> 20)
 	{
-	case 0x000000: return READ_WORD(memory_region_cpu1, offset);
-	case 0x100000: return READ_MIRROR_WORD(neogeo_ram, offset, 0x00ffff);
-	case 0xc00000: return READ_MIRROR_WORD(memory_region_user1, offset, bios_amask);
-	case 0xd00000: return READ_MIRROR_WORD(neogeo_sram, offset, 0x00ffff);
+	case 0x0: return READ_WORD(memory_region_cpu1, offset);
+	case 0x1: return READ_MIRROR_WORD(neogeo_ram, offset, 0x00ffff);
+	case 0xc: return READ_MIRROR_WORD(memory_region_user1, offset, bios_amask);
+	case 0xd: return READ_MIRROR_WORD(neogeo_sram, offset, 0x00ffff);
 
-	case 0x200000: return (*neogeo_protection_16_r)(offset >> 1, 0);
-	case 0x400000: return neogeo_paletteram16_r(offset >> 1, 0);
-	case 0x800000: return neogeo_memcard16_r(offset >> 1, 0);
+	case 0x2: return (*neogeo_protection_16_r)(offset >> 1, 0);
+	case 0x4: return neogeo_paletteram16_r(offset >> 1, 0);
+	case 0x8: return neogeo_memcard16_r(offset >> 1, 0);
 
-	case 0x300000:
-		switch (offset & 0xff0000)
+	case 0x3:
+		switch (offset >> 16)
 		{
-		case 0x300000: return neogeo_controller1and4_16_r(offset >> 1, 0);
-		case 0x320000: return neogeo_timer16_r(offset >> 1, 0);
-		case 0x340000: return neogeo_controller2_16_r(offset >> 1, 0);
-		case 0x380000: return neogeo_controller3_16_r(offset >> 1, 0);
-		case 0x3c0000: return neogeo_video_16_r(offset >> 1, 0);
+		case 0x30: return neogeo_controller1and4_16_r(offset >> 1, 0);
+		case 0x32: return neogeo_timer16_r(offset >> 1, 0);
+		case 0x34: return neogeo_controller2_16_r(offset >> 1, 0);
+		case 0x38: return neogeo_controller3_16_r(offset >> 1, 0);
+		case 0x3c: return neogeo_video_16_r(offset >> 1, 0);
 		}
 		break;
 	}
@@ -1353,23 +1345,23 @@ void m68000_write_memory_8(u32 offset, u8 data)
 
 	offset &= M68K_AMASK;
 
-	switch (offset & 0xf00000)
+	switch (offset >> 20)
 	{
-	case 0x100000: WRITE_MIRROR_BYTE(neogeo_ram, offset, data, 0x00ffff); return;
+	case 0x1: WRITE_MIRROR_BYTE(neogeo_ram, offset, data, 0x00ffff); return;
 
-	case 0x200000: (*neogeo_protection_16_w)(offset >> 1, data << shift, mem_mask); return;
-	case 0x400000: neogeo_paletteram16_w(offset >> 1, data << shift, mem_mask); return;
-	case 0x800000: neogeo_memcard16_w(offset >> 1, data << shift, mem_mask); return;
-	case 0xd00000: neogeo_sram16_w(offset >> 1, data << shift, mem_mask); return;
+	case 0x2: (*neogeo_protection_16_w)(offset >> 1, data << shift, mem_mask); return;
+	case 0x4: neogeo_paletteram16_w(offset >> 1, data << shift, mem_mask); return;
+	case 0x8: neogeo_memcard16_w(offset >> 1, data << shift, mem_mask); return;
+	case 0xd: neogeo_sram16_w(offset >> 1, data << shift, mem_mask); return;
 
-	case 0x300000:
-		switch (offset & 0xff0000)
+	case 0x3:
+		switch (offset >> 16)
 		{
-		case 0x300000: watchdog_reset_16_w(offset >> 1, data << shift, mem_mask); return;
-		case 0x320000: neogeo_z80_w(offset >> 1, data << shift, mem_mask); return;
-		case 0x380000: neogeo_syscontrol1_16_w(offset >> 1, data << shift, mem_mask); return;
-		case 0x3a0000: neogeo_syscontrol2_16_w(offset >> 1, data << shift, mem_mask); return;
-		case 0x3c0000: neogeo_video_16_w(offset >> 1, data << shift, mem_mask); return;
+		case 0x30: watchdog_reset_16_w(offset >> 1, data << shift, mem_mask); return;
+		case 0x32: neogeo_z80_w(offset >> 1, data << shift, mem_mask); return;
+		case 0x38: neogeo_syscontrol1_16_w(offset >> 1, data << shift, mem_mask); return;
+		case 0x3a: neogeo_syscontrol2_16_w(offset >> 1, data << shift, mem_mask); return;
+		case 0x3c: neogeo_video_16_w(offset >> 1, data << shift, mem_mask); return;
 		}
 		break;
 	}
@@ -1384,23 +1376,23 @@ void m68000_write_memory_16(u32 offset, u16 data)
 {
 	offset &= M68K_AMASK;
 
-	switch (offset & 0xf00000)
+	switch (offset >> 20)
 	{
-	case 0x100000: WRITE_MIRROR_WORD(neogeo_ram, offset, data, 0x00ffff); return;
+	case 0x1: WRITE_MIRROR_WORD(neogeo_ram, offset, data, 0x00ffff); return;
 
-	case 0x200000: (*neogeo_protection_16_w)(offset >> 1, data, 0); return;
-	case 0x400000: neogeo_paletteram16_w(offset >> 1, data, 0); return;
-	case 0x800000: neogeo_memcard16_w(offset >> 1, data, 0); return;
-	case 0xd00000: neogeo_sram16_w(offset >> 1, data, 0); return;
+	case 0x2: (*neogeo_protection_16_w)(offset >> 1, data, 0); return;
+	case 0x4: neogeo_paletteram16_w(offset >> 1, data, 0); return;
+	case 0x8: neogeo_memcard16_w(offset >> 1, data, 0); return;
+	case 0xd: neogeo_sram16_w(offset >> 1, data, 0); return;
 
-	case 0x300000:
-		switch (offset & 0xff0000)
+	case 0x3:
+		switch (offset >> 16)
 		{
-		case 0x300000: watchdog_reset_16_w(offset >> 1, data , 0); return;
-		case 0x320000: neogeo_z80_w(offset >> 1, data, 0); return;
-		case 0x380000: neogeo_syscontrol1_16_w(offset >> 1, data, 0); return;
-		case 0x3a0000: neogeo_syscontrol2_16_w(offset >> 1, data, 0); return;
-		case 0x3c0000: neogeo_video_16_w(offset >> 1, data, 0); return;
+		case 0x30: watchdog_reset_16_w(offset >> 1, data , 0); return;
+		case 0x32: neogeo_z80_w(offset >> 1, data, 0); return;
+		case 0x38: neogeo_syscontrol1_16_w(offset >> 1, data, 0); return;
+		case 0x3a: neogeo_syscontrol2_16_w(offset >> 1, data, 0); return;
+		case 0x3c: neogeo_video_16_w(offset >> 1, data, 0); return;
 		}
 		break;
 	}

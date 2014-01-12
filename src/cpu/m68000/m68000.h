@@ -25,12 +25,17 @@ void m68000_init(void);
 void m68000_reset(void);
 void m68000_exit(void);
 int  m68000_execute(int cycles);
+#if (EMU_SYSTEM == NCDZ)
+void m68000_execute2(u32 start_pc, u32 break_point);
+#endif
 void m68000_set_irq_line(int irqline, int state);
 void m68000_set_irq_callback(int (*callback)(int irqline));
 u32  m68000_get_reg(int regnum);
 void m68000_set_reg(int regnum, u32 val);
 
+#if (EMU_SYSTEM == CPS2)
 void m68000_set_encrypted_range(u32 start, u32 end, void *decrypted_rom);
+#endif
 
 #ifdef SAVE_STATE
 STATE_SAVE( m68000 );

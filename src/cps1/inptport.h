@@ -46,7 +46,6 @@ enum
 	MAX_INPUTS
 };
 
-
 enum
 {
 	INPUT_PLAYER1 = 0,
@@ -86,6 +85,10 @@ extern int input_max_players;
 extern int input_max_buttons;
 extern int analog_sensitivity;
 extern int af_interval;
+
+#ifdef ADHOC
+void adhoc_input_init(void);
+#endif
 
 void input_init(void);
 void input_shutdown(void);

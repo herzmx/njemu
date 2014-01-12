@@ -268,6 +268,7 @@ extern int neogeo_selected_vectors;
 void neogeo_driver_init(void);
 void neogeo_driver_exit(void);
 void neogeo_driver_reset(void);
+void neogeo_reset_driver_type(void);
 
 void neogeo_interrupt(void);
 void neogeo_raster_interrupt(int line, int busy);

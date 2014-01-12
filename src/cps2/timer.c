@@ -105,7 +105,7 @@ void timer_reset(void)
 	frame_base    = 0;
 	z80_suspended = 0;
 
-	time_slice = 1000000.0 / video_fps;
+	time_slice = 1000000.0 / FPS;
 
 	timer_set(QSOUND_INTERRUPT, TIME_IN_HZ(251), 0, qsound_interrupt);
 }
@@ -141,7 +141,7 @@ void timer_update_cpu(void)
 	if (scanline1 != RASTER_LINES) timer_set_raster_interrupt(RASTER_INTERRUPT1, scanline1);
 	if (scanline2 != RASTER_LINES) timer_set_raster_interrupt(RASTER_INTERRUPT2, scanline2);
 	timer_set_vblank_interrupt();
-	(*cps2_build_palette)();
+	if (driver->flags & 2) cps2_build_palette();
 
 	while (timer_left > 0)
 	{

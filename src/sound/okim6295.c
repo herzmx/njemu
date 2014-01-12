@@ -40,12 +40,14 @@ typedef struct
 {
 	ADPCMVoice voice[OKIM6295_VOICES];
 	int clock;
+	int rate;
 	int source_step;
 	int stream_pos;
 	s32 prev_sample;
 	s32 curr_sample;
 	s32 command;
 	u32 status;
+	u32 divisor;
 
 	u8 *rom_base;
 	u8 *sample_rom[OKIM6295_VOICES];
@@ -116,16 +118,19 @@ static void OKIM6295_init_tables(void)
 
 ***********************************************************************************************/
 
-void OKIM6295Init(int clock, int rate)
+void OKIM6295Init(int clock, int rate, int pin7)
 {
 	int i;
+	int divisor = pin7 ? 132 : 165;
 
 	memset(okim6295, 0, sizeof(okim6295_t));
 
 	okim6295->clock = clock;
-	okim6295->source_step = (clock << FRAC_BIT) / rate;
+	okim6295->rate  = rate;
+	okim6295->source_step = ((okim6295->clock / divisor) << FRAC_BIT) / okim6295->rate;
 	okim6295->stream_pos = 0;
 	okim6295->status = 0;
+	okim6295->divisor = divisor;
 
 	if (memory_region_sound1)
 	{
@@ -152,6 +157,21 @@ void OKIM6295Reset(void)
 	okim6295->status = 0;
 	okim6295->command = -1;
 	okim6295->stream_pos = 0;
+}
+
+
+/**********************************************************************************************
+
+     OKIM6295_set_samplerate
+
+***********************************************************************************************/
+
+void OKIM6295_set_samplerate(void)
+{
+	int samplerate = PSP_SAMPLERATE >> (2 - option_samplerate);
+
+	okim6295->rate  = samplerate;
+	okim6295->source_step = ((okim6295->clock / okim6295->divisor) << FRAC_BIT) / okim6295->rate;
 }
 
 
@@ -332,6 +352,21 @@ WRITE8_HANDLER( OKIM6295_data_w )
 }
 
 
+/**********************************************************************************************
+
+     OKIM6295_set_pin7_w -- write pin 7 value
+
+***********************************************************************************************/
+
+WRITE8_HANDLER( OKIM6295_set_pin7_w )
+{
+	int divisor = data ? 132 : 165;
+
+	okim6295->source_step = ((okim6295->clock / divisor) << FRAC_BIT) / okim6295->rate;
+	okim6295->divisor = divisor;
+}
+
+
 /******************************************************************************
 	セーブ/ロード ステート
 ******************************************************************************/
@@ -356,10 +391,12 @@ STATE_SAVE( okim6295 )
 	}
 
 	state_save_long(&okim6295->clock, 1);
+	state_save_long(&okim6295->rate, 1);
 	state_save_long(&okim6295->source_step, 1);
 	state_save_long(&okim6295->stream_pos, 1);
 	state_save_long(&okim6295->command, 1);
 	state_save_long(&okim6295->status, 1);
+	state_save_long(&okim6295->divisor, 1);
 }
 
 STATE_LOAD( okim6295 )
@@ -380,10 +417,12 @@ STATE_LOAD( okim6295 )
 	}
 
 	state_load_long(&okim6295->clock, 1);
+	state_load_long(&okim6295->rate, 1);
 	state_load_long(&okim6295->source_step, 1);
 	state_load_long(&okim6295->stream_pos, 1);
 	state_load_long(&okim6295->command, 1);
 	state_load_long(&okim6295->status, 1);
+	state_load_long(&okim6295->divisor, 1);
 }
 
 #endif /* SAVE_STATE */

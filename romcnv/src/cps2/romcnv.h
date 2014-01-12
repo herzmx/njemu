@@ -1,20 +1,25 @@
 #ifndef ROMCNV_H
 #define ROMCNV_H
 
+typedef unsigned char						u8;
+typedef signed char 						s8;
+typedef unsigned short						u16;
+typedef signed short						s16;
+typedef unsigned int						u32;
+typedef signed int							s32;
+#ifdef _MSC_VER
+typedef unsigned __int64					u64;
+typedef signed __int64						s64;
+#else
+__extension__ typedef unsigned long long	u64;
+__extension__ typedef signed long long		s64;
+#endif
+
+#ifdef WIN32
 #define COBJMACROS
-
-typedef unsigned char		u8;
-typedef unsigned short		u16;
-typedef unsigned int		u32;
-typedef unsigned __int64    u64;
-typedef char				s8;
-typedef short				s16;
-typedef int					s32;
-typedef signed __int64      s64;
-
 #include <windows.h>
-#include <windowsx.h>
 #include <shlobj.h>
+#endif
 #include <stdio.h>
 #include <conio.h>
 #include <direct.h>

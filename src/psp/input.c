@@ -2,7 +2,7 @@
 
 	input.c
 
-    PSP input control functions
+    PSPコントローラ入力制御
 
 ******************************************************************************/
 
@@ -21,8 +21,12 @@ static TICKER curr_time;
 static TICKER prev_time;
 
 
+/******************************************************************************
+	グローバル関数
+******************************************************************************/
+
 /*--------------------------------------------------------
-	Initialize pad
+	パッドを初期化
 --------------------------------------------------------*/
 
 void pad_init(void)
@@ -38,7 +42,7 @@ void pad_init(void)
 
 
 /*--------------------------------------------------------
-	Poll pad
+	パッドの押下状態取得
 --------------------------------------------------------*/
 
 u32 poll_gamepad(void)
@@ -58,14 +62,17 @@ u32 poll_gamepad(void)
 	if (paddata.Lx <= 0x30) paddata.Buttons |= PSP_CTRL_LEFT;  // LEFT
 	if (paddata.Lx >= 0xD0) paddata.Buttons |= PSP_CTRL_RIGHT; // RIGHT
 #endif
-
+#ifdef KERNEL_MODE
+	return paddata.Buttons | home_button;
+#else
 	return paddata.Buttons;
+#endif
 }
 
 
 /*--------------------------------------------------------
-	Poll pad (analog)
- -------------------------------------------------------*/
+	パッドの押下状態取得(アナログ)
+--------------------------------------------------------*/
 
 #if (EMU_SYSTEM == MVS)
 
@@ -85,14 +92,18 @@ u32 poll_gamepad_analog(void)
 	data |= paddata.Lx << 16;
 	data |= paddata.Ly << 24;
 
+#ifdef KERNEL_MODE
+	return data | home_button;
+#else
 	return data;
+#endif
 }
 
 #endif
 
 
 /*--------------------------------------------------------
-	Update pad status
+	パッド押下情報更新
 --------------------------------------------------------*/
 
 void pad_update(void)
@@ -135,7 +146,7 @@ void pad_update(void)
 
 
 /*--------------------------------------------------------
-	Get button status
+	ボタン押下状態の取得
 --------------------------------------------------------*/
 
 int pad_pressed(u32 code)
@@ -145,7 +156,7 @@ int pad_pressed(u32 code)
 
 
 /*--------------------------------------------------------
-	Check any buttons are pressed
+	指定コード以外の全ボタンの押下状態取得
 --------------------------------------------------------*/
 
 int pad_pressed_any(u32 disable_code)
@@ -155,7 +166,7 @@ int pad_pressed_any(u32 disable_code)
 
 
 /*--------------------------------------------------------
-	Wait clear pad status
+	ボタンの押下状態がクリアされるまで待つ
 --------------------------------------------------------*/
 
 void pad_wait_clear(void)
@@ -172,7 +183,7 @@ void pad_wait_clear(void)
 
 
 /*--------------------------------------------------------
-	Wait press any buttons
+	何かボタンが押されるまで待つ
 --------------------------------------------------------*/
 
 void pad_wait_press(int msec)

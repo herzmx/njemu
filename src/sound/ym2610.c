@@ -673,6 +673,7 @@ typedef struct
 } ADPCMA;
 
 
+#if (EMU_SYSTEM == MVS)
 /* ADPCM type B struct */
 typedef struct adpcmb_state
 {
@@ -706,7 +707,7 @@ typedef struct adpcmb_state
     */
 	u8		PCM_BSY;		/* 1 when ADPCM is playing; Y8950/YM2608 only */
 } ADPCMB;
-
+#endif
 
 /* here's the virtual YM2610 */
 static struct ym2610_t
@@ -721,8 +722,10 @@ static struct ym2610_t
 	ADPCMA	adpcma[6];			/* adpcm channels       */
 	u8		adpcm_arrivedEndAddress;
 
+#if (EMU_SYSTEM == MVS)
 	/* ADPCM-B unit */
 	ADPCMB	adpcmb;				/* Delta-T ADPCM unit   */
+#endif
 
 } ALIGN_DATA YM2610;
 
@@ -734,7 +737,9 @@ static s32	mem;			/* one sample delay memory */
 static s32	ALIGN_DATA out_fm[8];		/* outputs of working channels */
 static s32	out_ssg;					/* channel output CHENTER only for SSG */
 static s32	ALIGN_DATA out_adpcma[4];	/* channel output NONE,LEFT,RIGHT or CENTER for YM2608/YM2610 ADPCM */
+#if (EMU_SYSTEM == MVS)
 static s32	ALIGN_DATA out_delta[4];	/* channel output NONE,LEFT,RIGHT or CENTER for YM2608/YM2610 DELTAT*/
+#endif
 
 static u32	LFO_AM;			/* runtime LFO calculations helper */
 static s32	LFO_PM;			/* runtime LFO calculations helper */
@@ -2182,9 +2187,10 @@ static void SSG_reset(void)
 
 /*********************************************************************************************/
 
+#if (EMU_SYSTEM == MVS)
 static void (*OPNB_ADPCMA_calc_chan)(int c, ADPCMA *ch);
 static void (*OPNB_ADPCMB_calc)(ADPCMB *adpcmb);
-
+#endif
 
 /*********************************************************************************************/
 
@@ -2193,8 +2199,10 @@ static void (*OPNB_ADPCMB_calc)(ADPCMB *adpcmb);
 #define ADPCMA_ADDRESS_SHIFT 8   /* adpcm A address shift */
 
 static u8 *pcmbufA;
-static u8 *pcmbufA_cache[6];
 static u32 pcmsizeA;
+#if (EMU_SYSTEM == MVS)
+static u8 *pcmbufA_cache[6];
+#endif
 
 
 /* Algorithm and tables verified on real YM2610 */
@@ -2234,7 +2242,11 @@ static void OPNB_ADPCMA_init_table(void)
 }
 
 /* ADPCM A (Non control type) : calculate one channel output */
+#if (EMU_SYSTEM == MVS)
 static void OPNB_ADPCMA_calc_chan_static(int c, ADPCMA *ch)
+#else
+static void OPNB_ADPCMA_calc_chan(int c, ADPCMA *ch)
+#endif
 {
 	u32 step;
 	u8  data;
@@ -2289,6 +2301,7 @@ static void OPNB_ADPCMA_calc_chan_static(int c, ADPCMA *ch)
 	*ch->pan += ch->adpcma_out;
 }
 
+#if (EMU_SYSTEM == MVS)
 static void OPNB_ADPCMA_calc_chan_dynamic(int c, ADPCMA *ch)
 {
 	u32 step;
@@ -2343,6 +2356,7 @@ static void OPNB_ADPCMA_calc_chan_dynamic(int c, ADPCMA *ch)
 	/* output for work of output channels (out_adpcma[OPNxxxx]) */
 	*ch->pan += ch->adpcma_out;
 }
+#endif
 
 /* ADPCM type A Write */
 static void OPNB_ADPCMA_write(int r, int v)
@@ -2454,6 +2468,8 @@ static void OPNB_ADPCMA_write(int r, int v)
 
 
 /*********************************************************************************************/
+
+#if (EMU_SYSTEM == MVS)
 
 /* DELTA-T particle adjuster */
 #define ADPCMB_DELTA_MAX (24576)
@@ -2743,6 +2759,8 @@ static void OPNB_ADPCMB_write(ADPCMB *adpcmb, int r, int v)
 	}
 }
 
+#endif
+
 
 /*********************************************************************************************/
 
@@ -2790,7 +2808,9 @@ static void YM2610Update(s32 *buffer, int length)
 
 		/* clear output acc. */
 		out_adpcma[OUTD_LEFT] = out_adpcma[OUTD_RIGHT]= out_adpcma[OUTD_CENTER] = 0;
+#if (EMU_SYSTEM == MVS)
 		out_delta[OUTD_LEFT] = out_delta[OUTD_RIGHT]= out_delta[OUTD_CENTER] = 0;
+#endif
 
 		/* clear outputs */
 		out_fm[1] = 0;
@@ -2823,9 +2843,11 @@ static void YM2610Update(s32 *buffer, int length)
 		/* calculate SSG */
 		outn = SSG_CALC(outn);
 
+#if (EMU_SYSTEM == MVS)
 		/* deltaT ADPCM */
 		if (YM2610.adpcmb.portstate & 0x80)
 			OPNB_ADPCMB_calc(&YM2610.adpcmb);
+#endif
 
 		for (j = 0; j < 6; j++)
 		{
@@ -2838,8 +2860,10 @@ static void YM2610Update(s32 *buffer, int length)
 		lt =  out_adpcma[OUTD_LEFT]  + out_adpcma[OUTD_CENTER];
 		rt =  out_adpcma[OUTD_RIGHT] + out_adpcma[OUTD_CENTER];
 
+#if (EMU_SYSTEM == MVS)
 		lt += (out_delta[OUTD_LEFT]  + out_delta[OUTD_CENTER]) >> 9;
 		rt += (out_delta[OUTD_RIGHT] + out_delta[OUTD_CENTER]) >> 9;
+#endif
 
 		lt += out_ssg;
 		rt += out_ssg;
@@ -2862,7 +2886,9 @@ static void YM2610Update(s32 *buffer, int length)
 
 void YM2610Init(int clock, int rate,
 				void *pcmroma, int pcmsizea,
+#if (EMU_SYSTEM == MVS)
 				void *pcmromb, int pcmsizeb,
+#endif
 				FM_TIMERHANDLER TimerHandler, FM_IRQHANDLER IRQHandler)
 {
 	sound->stack    = 0x10000;
@@ -2886,6 +2912,7 @@ void YM2610Init(int clock, int rate,
 	YM2610.OPN.ST.IRQ_Handler   = IRQHandler;
 	/* SSG */
 	SSG.step = ((double)SSG_STEP * rate * 8) / clock;
+#if (EMU_SYSTEM == MVS)
 	if (pcm_cache_enable)
 	{
 		OPNB_ADPCMA_calc_chan = OPNB_ADPCMA_calc_chan_dynamic;
@@ -2910,8 +2937,12 @@ void YM2610Init(int clock, int rate,
 		pcmbufB = (u8 *)pcmromb;
 		pcmsizeB = pcmsizeb;
 	}
-
 	YM2610.adpcmb.status_change_EOS_bit = 0x80;	/* status flag: set bit7 on End Of Sample */
+#else
+	/* ADPCM-A */
+	pcmbufA = (u8 *)pcmroma;
+	pcmsizeA = pcmsizea;
+#endif
 
 	YM2610Reset();
 }
@@ -2967,13 +2998,16 @@ void YM2610Reset(void)
 		YM2610.adpcma[i].adpcma_acc  = 0;
 		YM2610.adpcma[i].adpcma_step = 0;
 		YM2610.adpcma[i].adpcma_out  = 0;
+#if (EMU_SYSTEM == MVS)
 		if (pcm_cache_enable)
 			pcmbufA_cache[i] = pcm_get_cache(i);
+#endif
 	}
 	YM2610.adpcmaTL = 0x3f;
 
 	YM2610.adpcm_arrivedEndAddress = 0;
 
+#if (EMU_SYSTEM == MVS)
 	/* ADPCM-B unit */
 	YM2610.adpcmb.freqbase     = OPN->ST.freqbase;
 	YM2610.adpcmb.output_range = 1 << 23;
@@ -3000,7 +3034,28 @@ void YM2610Reset(void)
 	/* set BRDY bit in status register */
 	if (YM2610.adpcmb.status_change_BRDY_bit)
 		YM2610.adpcm_arrivedEndAddress |= YM2610.adpcmb.status_change_BRDY_bit;
+#endif
 }
+
+void YM2610_set_samplerate(void)
+{
+	int i, samplerate = PSP_SAMPLERATE >> (2 - option_samplerate);
+
+	YM2610.OPN.ST.rate = samplerate;
+	SSG.step = ((double)SSG_STEP * samplerate * 8) / YM2610.OPN.ST.clock;
+	OPNSetPres(&YM2610.OPN, 6*24, 6*24, 4*2); /* OPN 1/6, SSG 1/4 */
+
+	for (i = 0; i < 6; i++)
+	{
+		YM2610.adpcma[i].step = (u32)((float)(1 << ADPCM_SHIFT) * ((float)YM2610.OPN.ST.freqbase) / 3.0);
+	}
+
+#if (EMU_SYSTEM == MVS)
+	YM2610.adpcmb.freqbase = YM2610.OPN.ST.freqbase;
+	YM2610.adpcmb.step = (u32)((double)YM2610.adpcmb.delta * YM2610.adpcmb.freqbase);
+#endif
+}
+
 
 /* YM2610 write */
 /* a = address */
@@ -3037,6 +3092,7 @@ int YM2610Write(int a, u8 v)
 		case 0x10: /* DeltaT ADPCM */
 			switch (addr)
 			{
+#if (EMU_SYSTEM == MVS)
 			case 0x10:	/* control 1 */
 			case 0x11:	/* control 2 */
 			case 0x12:	/* start address L */
@@ -3049,6 +3105,7 @@ int YM2610Write(int a, u8 v)
 			case 0x1b:	/* volume */
 				OPNB_ADPCMB_write(&YM2610.adpcmb, addr, v);
 				break;
+#endif
 
 			case 0x1c: /*  FLAG CONTROL : Extend Status Clear/Mask */
 				{
@@ -3057,7 +3114,9 @@ int YM2610Write(int a, u8 v)
 					for (ch = 0; ch < 6; ch++)
 						YM2610.adpcma[ch].flagMask = statusmask & (1 << ch);
 
+#if (EMU_SYSTEM == MVS)
 					YM2610.adpcmb.status_change_EOS_bit = statusmask & 0x80;	/* status flag: set bit7 on End Of Sample */
+#endif
 
 					/* clear arrived flag */
 					YM2610.adpcm_arrivedEndAddress &= statusmask;
@@ -3210,6 +3269,7 @@ STATE_SAVE( ym2610 )
 		state_save_long(&YM2610.adpcma[ch].adpcma_out, 1);
 	}
 
+#if (EMU_SYSTEM == MVS)
 	state_save_byte(&YM2610.adpcmb.portstate, 1);
 	state_save_long(&YM2610.adpcmb.now_addr, 1);
 	state_save_long(&YM2610.adpcmb.now_step, 1);
@@ -3217,8 +3277,7 @@ STATE_SAVE( ym2610 )
 	state_save_long(&YM2610.adpcmb.prev_acc, 1);
 	state_save_long(&YM2610.adpcmb.adpcmd, 1);
 	state_save_long(&YM2610.adpcmb.adpcml, 1);
-
-	state_save_long(&option_samplerate, 1);
+#endif
 }
 
 STATE_LOAD( ym2610 )
@@ -3273,6 +3332,7 @@ STATE_LOAD( ym2610 )
 		state_load_long(&YM2610.adpcma[ch].adpcma_out, 1);
 	}
 
+#if (EMU_SYSTEM == MVS)
 	state_load_byte(&YM2610.adpcmb.portstate, 1);
 	state_load_long(&YM2610.adpcmb.now_addr, 1);
 	state_load_long(&YM2610.adpcmb.now_step, 1);
@@ -3280,8 +3340,7 @@ STATE_LOAD( ym2610 )
 	state_load_long(&YM2610.adpcmb.prev_acc, 1);
 	state_load_long(&YM2610.adpcmb.adpcmd, 1);
 	state_load_long(&YM2610.adpcmb.adpcml, 1);
-
-	state_load_long(&option_samplerate, 1);
+#endif
 
 	for (r = 0; r < 16; r++)
 	{
@@ -3317,6 +3376,7 @@ STATE_LOAD( ym2610 )
 		OPNB_ADPCMA_write(r + 0x128, YM2610.regs[r + 0x128]);
 	}
 
+#if (EMU_SYSTEM == MVS)
 	YM2610.adpcmb.volume = 0;
 
 	for (r = 1; r < 16; r++)
@@ -3331,6 +3391,7 @@ STATE_LOAD( ym2610 )
 		if (pcmbufB)
 			YM2610.adpcmb.now_data = *(pcmbufB + (YM2610.adpcmb.now_addr >> 1));
 	}
+#endif
 }
 
 #endif /* SAVE_STATE */

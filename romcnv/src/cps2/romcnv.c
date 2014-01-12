@@ -1,7 +1,19 @@
-#include "romcnv.h"
-#include "zip32j.h"
+/*****************************************************************************
 
-#define SPR_NOT_EMPTY			0x80
+	romcnv.c
+
+	ROM converter for CPS2PSP
+
+******************************************************************************/
+
+#include "romcnv.h"
+
+
+#define SPR_BLANK		0x00
+#define SPR_NOT_BLANK	0x02
+#define SPR_OPAQUE		0x01
+
+#define MAX_GFX1ROM		32
 
 enum
 {
@@ -25,6 +37,13 @@ enum
 	TILE_SIZE_MAX
 };
 
+
+/******************************************************************************
+	ローカル変数
+******************************************************************************/
+
+static char delimiter = '/';
+
 static u8  *memory_region_gfx1;
 static u32 memory_length_gfx1;
 
@@ -38,69 +57,6 @@ static char launchDir[MAX_PATH];
 static char game_name[16];
 static char parent_name[16];
 static char cache_name[16];
-
-
-struct cacheinfo_t
-{
-	const char *name;
-	u32  object_start;
-	u32  object_end;
-	u32  scroll1_start;
-	u32  scroll1_end;
-	u32  scroll2_start;
-	u32  scroll2_end;
-	u32  scroll3_start;
-	u32  scroll3_end;
-	u32  object2_start;
-	u32  object2_end;
-};
-
-struct cacheinfo_t CPS2_cacheinfo[] =
-{
-//    name        object              scroll1             scroll2             scroll3             object/scroll2
-	{ "ssf2",     0x000000, 0x7fffff, 0x800000, 0x88ffff, 0x900000, 0xabffff, 0xac0000, 0xbbffff, 0,         0,        },
-	{ "ddtod",    0x000000, 0x7fffff, 0x800000, 0x8fffff, 0x900000, 0xafffff, 0xac0000, 0xbfffff, 0,         0,        },
-	{ "ecofghtr", 0x000000, 0x7fffff, 0x800000, 0x83ffff, 0x880000, 0x99ffff, 0xa00000, 0xabffff, 0,         0,        },
-	{ "ssf2t",    0x000000, 0x7fffff, 0x800000, 0x88ffff, 0x900000, 0xabffff, 0xac0000, 0xffffff, 0,         0,        },
-	{ "xmcota",   0x000000, 0x7dffff, 0x800000, 0x8dffff, 0xb00000, 0xfdffff, 0x8e0000, 0xafffff, 0x1000000, 0x1ffffff },
-	{ "armwar",   0x000000, 0x7fffff, 0x800000, 0x85ffff, 0x860000, 0x9bffff, 0x9c0000, 0xa5ffff, 0xa60000,  0x12fffff },
-	{ "avsp",     0x000000, 0x7fffff, 0x800000, 0x87ffff, 0x880000, 0x9fffff, 0xa00000, 0xafffff, 0,         0,        },
-	{ "dstlk",    0x000000, 0x7cffff, 0x800000, 0x87ffff, 0x880000, 0x9bffff, 0x9c0000, 0xabffff, 0xac0000,  0x13fffff },
-	{ "ringdest", 0x000000, 0x7fffff, 0x800000, 0x87ffff, 0x880000, 0x9fffff, 0xac0000, 0xcfffff, 0xd40000,  0x11fffff },
-	{ "cybots",   0x000000, 0x7dffff, 0x800000, 0x8bffff, 0x8c0000, 0xb3ffff, 0xb40000, 0xcbffff, 0xcc0000,  0x1ffffff },
-	{ "msh",      0x000000, 0x7fffff, 0x800000, 0x8cffff, 0xb00000, 0xffffff, 0x8e0000, 0xafffff, 0x1000000, 0x1ffffff },
-	{ "nwarr",    0x000000, 0x7cffff, 0x800000, 0x87ffff, 0x880000, 0x9bffff, 0x9c0000, 0xabffff, 0xac0000,  0x1f8ffff },
-	{ "sfa",      0x000000, 0x000000, 0x800000, 0x81ffff, 0x820000, 0xf8ffff, 0xfa0000, 0xfeffff, 0,         0,        },
-	{ "rckmanj",  0x000000, 0x000000, 0x800000, 0x85ffff, 0x860000, 0xe6ffff, 0xe80000, 0xfeffff, 0,         0,        },
-	{ "19xx",     0x000000, 0x16ffff, 0x800000, 0x83ffff, 0x840000, 0x9bffff, 0x9c0000, 0xafffff, 0xb00000,  0xffffff, },
-	{ "ddsom",    0x000000, 0x7dffff, 0x800000, 0x8bffff, 0x8c0000, 0xbdffff, 0xbe0000, 0xdbffff, 0xde0000,  0x179ffff },
-	{ "megaman2", 0x000000, 0x000000, 0x800000, 0x85ffff, 0x860000, 0xecffff, 0xee0000, 0xffffff, 0,         0,        },
-	{ "qndream",  0x000000, 0x000000, 0x800000, 0x81ffff, 0x840000, 0xefffff, 0x820000, 0x83ffff, 0,         0,        },
-	{ "sfa2",     0x000000, 0x79ffff, 0x800000, 0x91ffff, 0xa40000, 0xccffff, 0x920000, 0xa3ffff, 0xd20000,  0x138ffff },
-	{ "spf2t",    0x000000, 0x000000, 0x800000, 0x82ffff, 0x840000, 0xb8ffff, 0xb90000, 0xbcffff, 0,         0,        },
-	{ "xmvsf",    0x000000, 0x7effff, 0x800000, 0x8fffff, 0xaa0000, 0xffffff, 0x900000, 0xa7ffff, 0x1000000, 0x1ffffff },
-	{ "batcir",   0x000000, 0x7dffff, 0x800000, 0x817fff, 0x818000, 0x937fff, 0x938000, 0xa3ffff, 0xa48000,  0xd8ffff, },
-	{ "csclub",   0x000000, 0x000000, 0x8c0000, 0x8fffff, 0x900000, 0xffffff, 0x800000, 0x8bffff, 0,         0,        },
-	{ "mshvsf",   0x000000, 0x7fffff, 0x800000, 0x8dffff, 0xa80000, 0xfeffff, 0x8e0000, 0xa6ffff, 0x1000000, 0x1feffff },
-	{ "sgemf",    0x000000, 0x7fffff, 0x800000, 0x8d1fff, 0xa22000, 0xfdffff, 0x8d2000, 0xa21fff, 0x1000000, 0x13fffff },
-	{ "vhunt2",   0x000000, 0x7affff, 0x800000, 0x8affff, 0xa10000, 0xfdffff, 0x8c0000, 0xa0ffff, 0x1000000, 0x1fdffff },
-	{ "vsav",     0x000000, 0x7fffff, 0x800000, 0x8bffff, 0x9c0000, 0xffffff, 0x8c0000, 0x9bffff, 0x1000000, 0x1feffff },
-	{ "vsav2",    0x000000, 0x7fffff, 0x800000, 0x8affff, 0xa10000, 0xfdffff, 0x8c0000, 0xa0ffff, 0x1000000, 0x1fdffff },
-	{ "mvsc",     0x000000, 0x7cffff, 0x800000, 0x91ffff, 0xb40000, 0xd0ffff, 0x920000, 0xb2ffff, 0xd20000,  0x1feffff },
-	{ "sfa3",     0x000000, 0x7dffff, 0x800000, 0x95ffff, 0xb60000, 0xffffff, 0x960000, 0xb5ffff, 0x1000000, 0x1fcffff },
-	{ "gigawing", 0x000000, 0x7fffff, 0x800000, 0x87ffff, 0x880000, 0xa7ffff, 0xa80000, 0xdcffff, 0xe00000,  0xffffff, },
-	{ "mmatrix",  0x000000, 0x7fffff, 0x800000, 0x8fffff, 0x800000, 0xd677ff, 0x800000, 0xd677ff, 0x1000000, 0x1ffffff },
-	{ "mpangj",   0x000000, 0x000000, 0x800000, 0x82ffff, 0x840000, 0x9dffff, 0xa00000, 0xbdffff, 0xc00000,  0xffffff, },
-	{ "puzloop2", 0x000000, 0x81ffff, 0x800000, 0x97ffff, 0xa00000, 0xc8ffff, 0xd80000, 0xebffff, 0,         0,        },
-	{ "choko",    0x000000, 0x7fffff, 0x800000, 0xffffff, 0x800000, 0xffffff, 0x800000, 0xffffff, 0,         0,        },
-	{ "dimahoo",  0x000000, 0x7fffff, 0x800000, 0x8bffff, 0xb80000, 0xffffff, 0x8e0000, 0xb6ffff, 0,         0,        },
-	{ "1944",     0x000000, 0x7fffff, 0x800000, 0x87ffff, 0x880000, 0xcdffff, 0xd00000, 0xfeffff, 0x1000000, 0x13bffff },
-	{ "progear",  0x000000, 0x7fffff, 0x800000, 0xa0afff, 0xa0b000, 0xd86fff, 0xd87000, 0xffffff, 0,         0,        },
-	{ "hsf2a",    0x000000, 0x7fffff, 0x800000, 0x1ffffff,0x800000, 0x1ffffff,0x800000, 0x1ffffff,0,         0,        },
-	{ "jyangoku", 0x000000, 0x7fffff, 0x800000, 0xffffff, 0x800000, 0xffffff, 0x800000, 0xffffff, 0,         0,        },
-	{ NULL }
-};
-
 
 static u8 block_empty[0x200];
 
@@ -144,8 +100,6 @@ static u8 blank_tile[128] =
 	0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff
 };
 
-struct cacheinfo_t *cacheinfo;
-
 struct rom_t
 {
 	u32 type;
@@ -157,18 +111,89 @@ struct rom_t
 	int skip;
 };
 
-#define MAX_GFX1ROM		32
-
 static struct rom_t gfx1rom[MAX_GFX1ROM];
 static int num_gfx1rom;
-
 static int rom_fd = -1;
 
 
-static void file_close(void);
+struct cacheinfo_t
+{
+	const char *name;
+	u32  object_start;
+	u32  object_end;
+	u32  scroll1_start;
+	u32  scroll1_end;
+	u32  scroll2_start;
+	u32  scroll2_end;
+	u32  scroll3_start;
+	u32  scroll3_end;
+	u32  object2_start;
+	u32  object2_end;
+};
+
+struct cacheinfo_t *cacheinfo;
+
+struct cacheinfo_t CPS2_cacheinfo[] =
+{
+//    name        object              scroll1             scroll2             scroll3             object/scroll2
+	{ "ssf2",     0x000000, 0x7fffff, 0x800000, 0x88ffff, 0x900000, 0xabffff, 0xac0000, 0xbbffff, 0,         0         },
+	{ "ddtod",    0x000000, 0x7fffff, 0x800000, 0x8fffff, 0x900000, 0xafffff, 0xac0000, 0xbfffff, 0,         0         },
+	{ "ecofghtr", 0x000000, 0x7fffff, 0x800000, 0x83ffff, 0x880000, 0x99ffff, 0xa00000, 0xabffff, 0,         0         },
+	{ "ssf2t",    0x000000, 0x7fffff, 0x800000, 0x88ffff, 0x900000, 0xabffff, 0xac0000, 0xffffff, 0,         0         },
+	{ "xmcota",   0x000000, 0x7dffff, 0x800000, 0x8dffff, 0xb00000, 0xfdffff, 0x8e0000, 0xafffff, 0x1000000, 0x1ffffff },
+	{ "armwar",   0x000000, 0x7fffff, 0x800000, 0x85ffff, 0x860000, 0x9bffff, 0x9c0000, 0xa5ffff, 0xa60000,  0x12fffff },
+	{ "avsp",     0x000000, 0x7fffff, 0x800000, 0x87ffff, 0x880000, 0x9fffff, 0xa00000, 0xafffff, 0,         0         },
+	{ "dstlk",    0x000000, 0x7cffff, 0x800000, 0x87ffff, 0x880000, 0x9bffff, 0x9c0000, 0xabffff, 0xac0000,  0x13fffff },
+	{ "ringdest", 0x000000, 0x7fffff, 0x800000, 0x87ffff, 0x880000, 0x9fffff, 0xac0000, 0xcfffff, 0xd40000,  0x11fffff },
+	{ "cybots",   0x000000, 0x7dffff, 0x800000, 0x8bffff, 0x8c0000, 0xb3ffff, 0xb40000, 0xcbffff, 0xcc0000,  0x1ffffff },
+	{ "msh",      0x000000, 0x7fffff, 0x800000, 0x8cffff, 0xb00000, 0xffffff, 0x8e0000, 0xafffff, 0x1000000, 0x1ffffff },
+	{ "nwarr",    0x000000, 0x7cffff, 0x800000, 0x87ffff, 0x880000, 0x9bffff, 0x9c0000, 0xabffff, 0xac0000,  0x1f8ffff },
+	{ "sfa",      0x000000, 0x000000, 0x800000, 0x81ffff, 0x820000, 0xf8ffff, 0xfa0000, 0xfeffff, 0,         0         },
+	{ "mmancp2u", 0x000000, 0x000000, 0x800000, 0x85ffff, 0x860000, 0xe6ffff, 0xe80000, 0xfeffff, 0,         0         },
+	{ "19xx",     0x000000, 0x16ffff, 0x800000, 0x83ffff, 0x840000, 0x9bffff, 0x9c0000, 0xafffff, 0xb00000,  0xffffff  },
+	{ "ddsom",    0x000000, 0x7dffff, 0x800000, 0x8bffff, 0x8c0000, 0xbdffff, 0xbe0000, 0xdbffff, 0xde0000,  0x179ffff },
+	{ "megaman2", 0x000000, 0x000000, 0x800000, 0x85ffff, 0x860000, 0xecffff, 0xee0000, 0xffffff, 0,         0         },
+	{ "qndream",  0x000000, 0x000000, 0x800000, 0x81ffff, 0x840000, 0xefffff, 0x820000, 0x83ffff, 0,         0         },
+	{ "sfa2",     0x000000, 0x79ffff, 0x800000, 0x91ffff, 0xa40000, 0xccffff, 0x920000, 0xa3ffff, 0xd20000,  0x138ffff },
+	{ "spf2t",    0x000000, 0x000000, 0x800000, 0x82ffff, 0x840000, 0xb8ffff, 0xb90000, 0xbcffff, 0,         0         },
+	{ "xmvsf",    0x000000, 0x7effff, 0x800000, 0x8fffff, 0xaa0000, 0xffffff, 0x900000, 0xa7ffff, 0x1000000, 0x1ffffff },
+	{ "batcir",   0x000000, 0x7dffff, 0x800000, 0x817fff, 0x818000, 0x937fff, 0x938000, 0xa3ffff, 0xa48000,  0xd8ffff  },
+	{ "csclub",   0x000000, 0x000000, 0x8c0000, 0x8fffff, 0x900000, 0xffffff, 0x800000, 0x8bffff, 0,         0         },
+	{ "mshvsf",   0x000000, 0x7fffff, 0x800000, 0x8dffff, 0xa80000, 0xfeffff, 0x8e0000, 0xa6ffff, 0x1000000, 0x1feffff },
+	{ "sgemf",    0x000000, 0x7fffff, 0x800000, 0x8d1fff, 0xa22000, 0xfdffff, 0x8d2000, 0xa21fff, 0x1000000, 0x13fffff },
+	{ "vhunt2",   0x000000, 0x7affff, 0x800000, 0x8affff, 0xa10000, 0xfdffff, 0x8c0000, 0xa0ffff, 0x1000000, 0x1fdffff },
+	{ "vsav",     0x000000, 0x7fffff, 0x800000, 0x8bffff, 0x9c0000, 0xffffff, 0x8c0000, 0x9bffff, 0x1000000, 0x1feffff },
+	{ "vsav2",    0x000000, 0x7fffff, 0x800000, 0x8affff, 0xa10000, 0xfdffff, 0x8c0000, 0xa0ffff, 0x1000000, 0x1fdffff },
+	{ "mvsc",     0x000000, 0x7cffff, 0x800000, 0x91ffff, 0xb40000, 0xd0ffff, 0x920000, 0xb2ffff, 0xd20000,  0x1feffff },
+	{ "sfa3",     0x000000, 0x7dffff, 0x800000, 0x95ffff, 0xb60000, 0xffffff, 0x960000, 0xb5ffff, 0x1000000, 0x1fcffff },
+	{ "jyangoku", 0x000000, 0x7fffff, 0x800000, 0xffffff, 0x800000, 0xffffff, 0x800000, 0xffffff, 0,         0         },
+	{ "hsf2",     0x000000, 0x7fffff, 0x800000, 0x1ffffff,0x800000, 0x1ffffff,0x800000, 0x1ffffff,0,         0         },
+	{ "gigawing", 0x000000, 0x7fffff, 0x800000, 0x87ffff, 0x880000, 0xa7ffff, 0xa80000, 0xdcffff, 0xe00000,  0xffffff  },
+	{ "mmatrix",  0x000000, 0x7fffff, 0x800000, 0x8fffff, 0x800000, 0xd677ff, 0x800000, 0xd677ff, 0x1000000, 0x1ffffff },
+	{ "mpangj",   0x000000, 0x000000, 0x800000, 0x82ffff, 0x840000, 0x9dffff, 0xa00000, 0xbdffff, 0xc00000,  0xffffff  },
+	{ "mpang",    0x000000, 0x000000, 0x800000, 0x82ffff, 0x840000, 0x9dffff, 0xa00000, 0xbdffff, 0xc00000,  0xffffff  },
+	{ "pzloop2",  0x000000, 0x81ffff, 0x800000, 0x97ffff, 0xa00000, 0xc8ffff, 0xd80000, 0xebffff, 0,         0         },
+	{ "choko",    0x000000, 0x7fffff, 0x800000, 0xffffff, 0x800000, 0xffffff, 0x800000, 0xffffff, 0,         0         },
+	{ "dimahoo",  0x000000, 0x7fffff, 0x800000, 0x8bffff, 0xb80000, 0xffffff, 0x8e0000, 0xb6ffff, 0,         0         },
+	{ "1944",     0x000000, 0x7fffff, 0x800000, 0x87ffff, 0x880000, 0xcdffff, 0xd00000, 0xfeffff, 0x1000000, 0x13bffff },
+	{ "progear",  0x000000, 0x7fffff, 0x800000, 0xa0afff, 0xa0b000, 0xd86fff, 0xd87000, 0xffffff, 0,         0         },
+	{ NULL }
+};
 
 
-int file_dialog(HWND hwnd, LPCSTR filter, char *fname, u32 flags)
+/******************************************************************************
+	ローカル関数
+******************************************************************************/
+
+#ifdef WIN32
+
+static int is_win9x = 0;
+
+/*--------------------------------------------------------
+	「ファイルを開く」ダイアログを表示
+--------------------------------------------------------*/
+
+static int file_dialog(HWND hwnd, LPCSTR filter, char *fname, u32 flags)
 {
 	OPENFILENAME OFN;
 
@@ -184,7 +209,12 @@ int file_dialog(HWND hwnd, LPCSTR filter, char *fname, u32 flags)
 	return GetOpenFileName(&OFN);
 }
 
-int folder_dialog(HWND hwnd, char *path)
+
+/*--------------------------------------------------------
+	「フォルダを開く」ダイアログを表示
+--------------------------------------------------------*/
+
+static int folder_dialog(HWND hwnd, char *path)
 {
 	BROWSEINFO BINFO;
 	LPITEMIDLIST pidl;
@@ -209,6 +239,255 @@ int folder_dialog(HWND hwnd, char *path)
 	return res;
 }
 
+
+/*--------------------------------------------------------
+	デリミタを変換
+--------------------------------------------------------*/
+
+#define issjis1(c)	(((c) >= 0x81 && (c) <= 0x9f) | ((c) >= 0xe0 && (c) <= 0xfc))
+
+static void convert_delimiter(char *path)
+{
+	if (!is_win9x)
+	{
+		char *p = path;
+		int i, len = strlen(path);
+
+		for (i = 0; i < len; i++)
+		{
+			if (*p == '\\')
+			{
+				if (i == 0 || !issjis1(*(u8 *)(p - 1)))
+					*p = '/';
+			}
+			p++;
+		}
+	}
+}
+
+#endif /* WIN32 */
+
+
+/*--------------------------------------------------------
+	エラーメッセージ表示
+--------------------------------------------------------*/
+
+static void error_memory(const char *mem_name, int pause)
+{
+	zip_close();
+	printf("ERROR: Could not allocate %s memory.\n", mem_name);
+	if (pause)
+	{
+		printf("Press any button.\n");
+		getch();
+	}
+}
+
+
+static void error_rom(const char *rom_name, int pause)
+{
+	zip_close();
+	printf("ERROR: File not found or CRC32 not correct. \"%s\"\n", rom_name);
+	if (pause)
+	{
+		printf("Press any button.\n");
+		getch();
+	}
+}
+
+
+/*--------------------------------------------------------
+	ROMファイルを閉じる
+--------------------------------------------------------*/
+
+static void file_close(void)
+{
+	if (rom_fd != -1)
+	{
+		zclose(rom_fd);
+		zip_close();
+		rom_fd = -1;
+	}
+}
+
+
+/*--------------------------------------------------------
+	ROMファイルを開く
+--------------------------------------------------------*/
+
+static int file_open(const char *fname1, const char *fname2, const u32 crc, char *fname)
+{
+	int found = 0;
+	struct zip_find_t file;
+	char path[MAX_PATH];
+
+	file_close();
+
+	sprintf(path, "%s%c%s.zip", zip_dir, delimiter, fname1);
+
+	if (zip_open(path, "rb") != -1)
+	{
+		if (zip_findfirst(&file))
+		{
+			if (file.crc32 == crc)
+			{
+				found = 1;
+			}
+			else
+			{
+				while (zip_findnext(&file))
+				{
+					if (file.crc32 == crc)
+					{
+						found = 1;
+						break;
+					}
+				}
+			}
+		}
+		if (!found) zip_close();
+	}
+
+	if (!found && fname2 != NULL)
+	{
+		sprintf(path, "%s%c%s.zip", zip_dir, delimiter, fname2);
+
+		if (zip_open(path, "rb") != -1)
+		{
+			if (zip_findfirst(&file))
+			{
+				if (file.crc32 == crc)
+				{
+					found = 2;
+				}
+				else
+				{
+					while (zip_findnext(&file))
+					{
+						if (file.crc32 == crc)
+						{
+							found = 2;
+							break;
+						}
+					}
+				}
+			}
+			if (!found) zip_close();
+		}
+	}
+
+	if (found)
+	{
+		if (fname) strcpy(fname, file.name);
+		rom_fd = zopen(file.name);
+		return rom_fd;
+	}
+
+	return -1;
+}
+
+
+/*--------------------------------------------------------
+	ROMファイルを指定バイト読み込む
+--------------------------------------------------------*/
+
+static int file_read(void *buf, size_t length)
+{
+	if (rom_fd != -1)
+		return zread(rom_fd, buf, length);
+	return -1;
+}
+
+
+/*--------------------------------------------------------
+	ROMファイルを1バイト読み込む
+--------------------------------------------------------*/
+
+static int file_getc(void)
+{
+	if (rom_fd != -1)
+		return zgetc(rom_fd);
+	return -1;
+}
+
+
+/*--------------------------------------------------------
+	ROMを指定メモリエリアに読み込む
+--------------------------------------------------------*/
+
+static int rom_load(struct rom_t *rom, u8 *mem, int idx, int max)
+{
+	int offset, length;
+
+_continue:
+	offset = rom[idx].offset;
+
+	if (rom[idx].skip == 0)
+	{
+		file_read(&mem[offset], rom[idx].length);
+
+		if (rom[idx].type == ROM_WORDSWAP)
+			swab(&mem[offset], &mem[offset], rom[idx].length);
+	}
+	else
+	{
+		int c;
+		int skip = rom[idx].skip + rom[idx].group;
+
+		length = 0;
+
+		if (rom[idx].group == 1)
+		{
+			if (rom[idx].type == ROM_WORDSWAP)
+				offset ^= 1;
+
+			while (length < rom[idx].length)
+			{
+				if ((c = file_getc()) == EOF) break;
+				mem[offset] = c;
+				offset += skip;
+				length++;
+			}
+		}
+		else
+		{
+			while (length < rom[idx].length)
+			{
+				if ((c = file_getc()) == EOF) break;
+				mem[offset + 0] = c;
+				if ((c = file_getc()) == EOF) break;
+				mem[offset + 1] = c;
+				offset += skip;
+				length += 2;
+			}
+		}
+	}
+
+	if (++idx != max)
+	{
+		if (rom[idx].type == ROM_CONTINUE)
+		{
+			goto _continue;
+		}
+	}
+
+	return idx;
+}
+
+
+/*--------------------------------------------------------
+	文字列の比較
+--------------------------------------------------------*/
+
+static int str_cmp(const char *s1, const char *s2)
+{
+	return strnicmp(s1, s2, strlen(s2));
+}
+
+
+/******************************************************************************
+	CPS2用関数
+******************************************************************************/
 
 static void unshuffle(u64 *buf, int len)
 {
@@ -242,7 +521,7 @@ static void cps2_gfx_decode(void)
 	for (i = 0; i < memory_length_gfx1 / 4; i++)
 	{
 		u32 src = gfx[4 * i] + (gfx[4 * i + 1] << 8) + (gfx[4 * i + 2] << 16) + (gfx[4 * i + 3] << 24);
-		u32 dwval = 0;
+		u32 dw = 0, data;
 
 		for (j = 0; j < 8; j++)
 		{
@@ -254,12 +533,18 @@ static void cps2_gfx_decode(void)
 			if (mask & 0x00ff0000) n |= 4;
 			if (mask & 0xff000000) n |= 8;
 
-			dwval |= n << (j * 4);
+			dw |= n << (j * 4);
 		}
-		gfx[4 * i + 0] = dwval >>  0;
-		gfx[4 * i + 1] = dwval >>  8;
-		gfx[4 * i + 2] = dwval >> 16;
-		gfx[4 * i + 3] = dwval >> 24;
+
+		data = ((dw & 0x0000000f) >>  0) | ((dw & 0x000000f0) <<  4)
+			 | ((dw & 0x00000f00) <<  8) | ((dw & 0x0000f000) << 12)
+			 | ((dw & 0x000f0000) >> 12) | ((dw & 0x00f00000) >>  8)
+			 | ((dw & 0x0f000000) >>  4) | ((dw & 0xf0000000) >>  0);
+
+		gfx[4 * i + 0] = data >>  0;
+		gfx[4 * i + 1] = data >>  8;
+		gfx[4 * i + 2] = data >> 16;
+		gfx[4 * i + 3] = data >> 24;
 	}
 }
 
@@ -410,7 +695,7 @@ static void clear_empty_blocks(void)
 		for (i = 0xd0; i <= 0xd3; i++)
 			memset(&memory_region_gfx1[i << 16], 0xff, 0x10000);
 	}
-	else if (!strcmp(cacheinfo->name, "mpangj"))
+	else if (!strcmp(cacheinfo->name, "mpang") || !strcmp(cacheinfo->name, "mpangj"))
 	{
 		memset(&memory_region_gfx1[0x820000 + 16*11*128], 0xff, 16*21*128);
 		memset(&memory_region_gfx1[0x830000], 0xff, 0x10000);
@@ -436,7 +721,7 @@ static void clear_empty_blocks(void)
 		for (i = 0xd7; i <= 0xff; i++)
 			memset(&memory_region_gfx1[i << 16], 0xff, 0x10000);
 	}
-	else if (!strcmp(cacheinfo->name, "puzloop2"))
+	else if (!strcmp(cacheinfo->name, "pzloop2"))
 	{
 		memset(&memory_region_gfx1[0x170000 + 16*16*128], 0xff, 16*16*128);
 		memset(&memory_region_gfx1[0x1c0000 + 16* 9*128], 0xff, 16*23*128);
@@ -526,8 +811,8 @@ static void clear_empty_blocks(void)
 
 static int calc_pen_usage(void)
 {
-	int i, j, size;
-	u32 *tile;
+	int i, j, k, size;
+	u32 *tile, data;
 	u32 s0 = cacheinfo->object_start;
 	u32 e0 = cacheinfo->object_end;
 	u32 s1 = cacheinfo->scroll1_start;
@@ -564,7 +849,7 @@ static int calc_pen_usage(void)
 		int s5 = 0x000000;
 		int e5 = 0x000000;
 
-		if (!strcmp(cacheinfo->name, "puzloop2"))
+		if (!strcmp(cacheinfo->name, "pzloop2"))
 		{
 			s5 = 0x802800;
 			e5 = 0x87ffff;
@@ -576,18 +861,19 @@ static int calc_pen_usage(void)
 
 			for (j = 0; j < 8; j++)
 			{
-				if (strcmp(cacheinfo->name, "mmatrix") != 0
-				&& strcmp(cacheinfo->name, "choko") != 0
-				&& strcmp(cacheinfo->name, "hsf2a") != 0
-				)
-				{
-					if (tile[0] == tile[1])
-						tile[0] = 0xffffffff;
-				}
 				tile++;
-				if (*tile++ == 0xffffffff) count++;
+				data = *tile++;
+				for (k = 0; k < 8; k++)
+				{
+					if ((data & 0x0f) == 0x0f)
+						count++;
+					data >>= 4;
+				}
 			}
-			if (count != 8) gfx_pen_usage[TILE08][i] = SPR_NOT_EMPTY;
+			if (count == 0)
+				gfx_pen_usage[TILE08][i] = SPR_OPAQUE;
+			else if (count != 8*8)
+				gfx_pen_usage[TILE08][i] = SPR_NOT_BLANK;
 		}
 	}
 
@@ -624,9 +910,18 @@ static int calc_pen_usage(void)
 
 			for (j = 0; j < 2*16; j++)
 			{
-				if (*tile++ == 0xffffffff) count++;
+				data = *tile++;
+				for (k = 0; k < 8; k++)
+				{
+					if ((data & 0x0f) == 0x0f)
+						count++;
+					data >>= 4;
+				}
 			}
-			if (count != 2*16) gfx_pen_usage[TILE16][i] = SPR_NOT_EMPTY;
+			if (count == 0)
+				gfx_pen_usage[TILE16][i] = SPR_OPAQUE;
+			else if (count != 2*16*8)
+				gfx_pen_usage[TILE16][i] = SPR_NOT_BLANK;
 		}
 	}
 
@@ -657,9 +952,18 @@ static int calc_pen_usage(void)
 
 			for (j = 0; j < 4*32; j++)
 			{
-				if (*tile++ == 0xffffffff) count++;
+				data = *tile++;
+				for (k = 0; k < 8; k++)
+				{
+					if ((data & 0x0f) == 0x0f)
+						count++;
+					data >>= 4;
+				}
 			}
-			if (count != 4*32) gfx_pen_usage[TILE32][i] = SPR_NOT_EMPTY;
+			if (count == 0)
+				gfx_pen_usage[TILE32][i] = SPR_OPAQUE;
+			else if (count != 4*32*8)
+				gfx_pen_usage[TILE32][i] = SPR_NOT_BLANK;
 		}
 	}
 
@@ -667,191 +971,14 @@ static int calc_pen_usage(void)
 }
 
 
-static void error_memory(const char *mem_name)
+static int load_rom_gfx1(int pause)
 {
-	zip_close();
-	printf("ERROR: Could not allocate %s memory.\n", mem_name);
-	printf("Press any button.\n");
-	getch();
-}
-
-
-static void error_rom(const char *rom_name)
-{
-	zip_close();
-	printf("ERROR: File not found or CRC32 not correct. \"%s\"\n", rom_name);
-	printf("Press any button.\n");
-	getch();
-}
-
-
-int file_open(const char *fname1, const char *fname2, const u32 crc, char *fname)
-{
-	int found = 0;
-	struct zip_find_t file;
-	char path[MAX_PATH];
-
-	file_close();
-
-	sprintf(path, "%s\\%s.zip", zip_dir, fname1);
-
-	if (zip_open(path) != -1)
-	{
-		if (zip_findfirst(&file))
-		{
-			if (file.crc32 == crc)
-			{
-				found = 1;
-			}
-			else
-			{
-				while (zip_findnext(&file))
-				{
-					if (file.crc32 == crc)
-					{
-						found = 1;
-						break;
-					}
-				}
-			}
-		}
-		if (!found) zip_close();
-	}
-
-	if (!found && fname2 != NULL)
-	{
-		sprintf(path, "%s\\%s.zip", zip_dir, fname2);
-
-		if (zip_open(path) != -1)
-		{
-			if (zip_findfirst(&file))
-			{
-				if (file.crc32 == crc)
-				{
-					found = 2;
-				}
-				else
-				{
-					while (zip_findnext(&file))
-					{
-						if (file.crc32 == crc)
-						{
-							found = 2;
-							break;
-						}
-					}
-				}
-			}
-			if (!found) zip_close();
-		}
-	}
-
-	if (found)
-	{
-		if (fname) strcpy(fname, file.name);
-		rom_fd = zopen(file.name);
-		return rom_fd;
-	}
-
-	return -1;
-}
-
-
-void file_close(void)
-{
-	if (rom_fd != -1)
-	{
-		zclose(rom_fd);
-		zip_close();
-		rom_fd = -1;
-	}
-}
-
-
-int file_read(void *buf, size_t length)
-{
-	if (rom_fd != -1)
-		return zread(rom_fd, buf, length);
-	return -1;
-}
-
-
-int file_getc(void)
-{
-	if (rom_fd != -1)
-		return zgetc(rom_fd);
-	return -1;
-}
-
-
-int rom_load(struct rom_t *rom, u8 *mem, int f, int idx, int max)
-{
-	int offset, length;
-
-_continue:
-	offset = rom[idx].offset;
-
-	if (rom[idx].skip == 0)
-	{
-		file_read(&mem[offset], rom[idx].length);
-
-		if (rom[idx].type == ROM_WORDSWAP)
-			swab(&mem[offset], &mem[offset], rom[idx].length);
-	}
-	else
-	{
-		int c;
-		int skip = rom[idx].skip + rom[idx].group;
-
-		length = 0;
-
-		if (rom[idx].group == 1)
-		{
-			if (rom[idx].type == ROM_WORDSWAP)
-				offset ^= 1;
-
-			while (length < rom[idx].length)
-			{
-				if ((c = file_getc()) == EOF) break;
-				mem[offset] = c;
-				offset += skip;
-				length++;
-			}
-		}
-		else
-		{
-			while (length < rom[idx].length)
-			{
-				if ((c = file_getc()) == EOF) break;
-				mem[offset + 0] = c;
-				if ((c = file_getc()) == EOF) break;
-				mem[offset + 1] = c;
-				offset += skip;
-				length += 2;
-			}
-		}
-	}
-
-	if (++idx != max)
-	{
-		if (rom[idx].type == ROM_CONTINUE)
-		{
-			goto _continue;
-		}
-	}
-
-	return idx;
-}
-
-
-static int load_rom_gfx1(void)
-{
-	int i, f;
+	int i;
 	char fname[32], *parent;
 
 	if ((memory_region_gfx1 = calloc(1, memory_length_gfx1)) == NULL)
 	{
-		error_memory("REGION_GFX1");
+		error_memory("REGION_GFX1", pause);
 		return 0;
 	}
 
@@ -859,15 +986,15 @@ static int load_rom_gfx1(void)
 
 	for (i = 0; i < num_gfx1rom; )
 	{
-		if ((f = file_open(game_name, parent_name, gfx1rom[i].crc, fname)) == -1)
+		if (file_open(game_name, parent_name, gfx1rom[i].crc, fname) == -1)
 		{
-			error_rom("GFX1");
+			error_rom("GFX1", pause);
 			return 0;
 		}
 
 		printf("Loading \"%s\"\n", fname);
 
-		i = rom_load(gfx1rom, memory_region_gfx1, f, i, num_gfx1rom);
+		i = rom_load(gfx1rom, memory_region_gfx1, i, num_gfx1rom);
 
 		file_close();
 	}
@@ -876,13 +1003,7 @@ static int load_rom_gfx1(void)
 }
 
 
-int str_cmp(const char *s1, const char *s2)
-{
-	return strnicmp(s1, s2, strlen(s2));
-}
-
-
-int load_rom_info(const char *game_name)
+static int load_rom_info(const char *game_name)
 {
 	FILE *fp;
 	char path[MAX_PATH];
@@ -892,7 +1013,7 @@ int load_rom_info(const char *game_name)
 
 	num_gfx1rom = 0;
 
-	sprintf(path, "%s\\rominfo.cps2", launchDir);
+	sprintf(path, "%s%crominfo.cps2", launchDir, delimiter);
 
 	if ((fp = fopen(path, "r")) != NULL)
 	{
@@ -1018,7 +1139,7 @@ static void free_memory(void)
 }
 
 
-static int convert_rom(char *game_name)
+static int convert_rom(char *game_name, int pause)
 {
 	int i, res;
 
@@ -1053,6 +1174,10 @@ static int convert_rom(char *game_name)
 	{
 		cache_name[0] = '\0';
 	}
+	else if (!strcmp(game_name, "mpangj"))
+	{
+		cache_name[0] = '\0';
+	}
 	else
 	{
 		strcpy(cache_name, parent_name);
@@ -1080,7 +1205,7 @@ static int convert_rom(char *game_name)
 
 	if (cacheinfo)
 	{
-		if (load_rom_gfx1())
+		if (load_rom_gfx1(pause))
 		{
 			cps2_gfx_decode();
 			clear_empty_blocks();
@@ -1102,11 +1227,13 @@ static int create_raw_cache(char *game_name, int pause)
 {
 	FILE *fp;
 	int i, offset;
-	const char version[8] = "CPS2V09\0";
+	char version[8];
 	u32 header_size, aligned_size, block[0x200];
 	char fname[MAX_PATH];
 
-	_chdir("cache");
+	sprintf(version, "CPS2V%d%d\0", VERSION_MAJOR, VERSION_MINOR);
+
+	chdir("cache");
 
 	header_size = 8;
 	header_size += gfx_total_elements[TILE08];
@@ -1133,7 +1260,7 @@ static int create_raw_cache(char *game_name, int pause)
 	sprintf(fname, "%s.cache", game_name);
 	if ((fp = fopen(fname, "wb")) == NULL)
 	{
-		_chdir("..");
+		chdir("..");
 		printf("ERROR: Could not create file.\n");
 		return 0;
 	}
@@ -1158,172 +1285,197 @@ static int create_raw_cache(char *game_name, int pause)
 
 	fclose(fp);
 
-	_chdir("..");
+	chdir("..");
 
 	return 1;
 }
 
 
+static void print_progress(int count, int total)
+{
+	int i, progress = (count * 100) / total;
+
+	printf("%3d%% [", progress);
+	for (i = 0; i < progress/2; i++) printf("*");
+	for (; i < 50; i++) printf(".");
+	printf("]\r");
+}
+
+
 static int create_zip_cache(char *game_name, int pause)
 {
-	FILE *fp;
-	u32 i, j, block, res = 0;
-	char fname[MAX_PATH], path[MAX_PATH], zipname[MAX_PATH], cmdline[MAX_PATH * 2];
-	char buffer[2048];
+	int fd;
+	u32 block, res = 0, total = 0, count = 0;
+	char version[8], fname[MAX_PATH], zipname[MAX_PATH];
 
-	if (_chdir("temp") != 0)
-	{
-		if (_mkdir("temp") != 0)
-		{
-			printf("Error: Could not create directory \"temp\".\n");
-			printf("Press any key to exit.\n");
-			getch();
-			return 0;
-		}
-		else
-		{
-			_chdir("temp");
-		}
-	}
+	sprintf(version, "CPS2V%d%d\0", VERSION_MAJOR, VERSION_MINOR);
+
+	chdir("cache");
+
+	sprintf(zipname, "%s%ccache%c%s_cache.zip", launchDir, delimiter, delimiter, game_name);
+	remove(zipname);
 
 	printf("Create cache file...\n");
 
-	for (block = 0; block < 0x200; block++)
+	if (zip_open(zipname, "wb") < 0)
 	{
-		if (block_empty[block]) continue;
-
-		sprintf(fname, "%03x", block);
-		if ((fp = fopen(fname, "wb")) == NULL) goto error;
-		fwrite(&memory_region_gfx1[block << 16], 1, 0x10000, fp);
-		fclose(fp);
+		printf("Error: Could not create zip file \"cache%c%s_cache.zip\".\n", delimiter, game_name);
+		goto error;
 	}
 
-	if ((fp = fopen("tile8_usage", "wb")) == NULL) goto error;
-	fwrite(gfx_pen_usage[TILE08], 1, gfx_total_elements[TILE08], fp);
-	fclose(fp);
+	printf("Compress to zip file... \"cache%c%s_cache.zip\"\n", delimiter, game_name);
 
-	if ((fp = fopen("tile16_usage", "wb")) == NULL) goto error;
-	fwrite(gfx_pen_usage[TILE16], 1, gfx_total_elements[TILE16], fp);
-	fclose(fp);
+	for (block = 0; block < 0x200; block++)
+		if (!block_empty[block]) total++;
+	total++;
 
-	if ((fp = fopen("tile32_usage", "wb")) == NULL) goto error;
-	fwrite(gfx_pen_usage[TILE32], 1, gfx_total_elements[TILE32], fp);
-	fclose(fp);
-
-	if ((fp = fopen("block_empty", "wb")) == NULL) goto error;
-	fwrite(block_empty, 1, 0x200, fp);
-	fclose(fp);
-
-	if ((fp = fopen("response.txt", "w")) == NULL) goto error;
-
-	sprintf(path, "%s\\temp\\", launchDir);
+	print_progress(0, total);
 
 	for (block = 0; block < 0x200; block++)
 	{
 		if (block_empty[block]) continue;
 
 		sprintf(fname, "%03x", block);
-		fprintf(fp, "-D -j -r -9 \"%s\" \"%s\"\n", path, fname);
+		if ((fd = zopen(fname)) < 0) goto error;
+		zwrite(fd, &memory_region_gfx1[block << 16], 0x10000);
+		zclose(fd);
+		print_progress(++count, total);
 	}
 
-	fprintf(fp, "-D -j -r -9 \"%s\" \"%s\"\n", path, "tile8_usage");
-	fprintf(fp, "-D -j -r -9 \"%s\" \"%s\"\n", path, "tile16_usage");
-	fprintf(fp, "-D -j -r -9 \"%s\" \"%s\"\n", path, "tile32_usage");
-	fprintf(fp, "-D -j -r -9 \"%s\" \"%s\"\n", path, "block_empty");
+	if ((fd = zopen("cache_info")) < 0) goto error;
+	zwrite(fd, version, 8);
+	zwrite(fd, gfx_pen_usage[TILE08], gfx_total_elements[TILE08]);
+	zwrite(fd, gfx_pen_usage[TILE16], gfx_total_elements[TILE16]);
+	zwrite(fd, gfx_pen_usage[TILE32], gfx_total_elements[TILE32]);
+	zwrite(fd, block_empty, 0x200);
+	zclose(fd);
 
-	fclose(fp);
+	print_progress(++count, total);
+	printf("\n");
 
-	printf("Compress to zip file... \"cache\\%s_cache.zip\"\n", game_name);
-
-	sprintf(zipname, "%s\\cache\\%s_cache.zip", launchDir, game_name);
-	remove(zipname);
-
-	sprintf(cmdline, "\"%s\" @\"%s\\response.txt\"", zipname, path);
-	if (Zip(NULL, cmdline, NULL, 0) == 0)
-	{
-		res = 1;
-	}
+	res = 1;
 
 error:
+	zip_close();
+
 	if (!res) printf("ERROR: Could not create file.\n");
 
-	remove("response.txt");
-	for (i = 0; i < 0x200; i++)
-	{
-		sprintf(fname, "%03x", i);
-		remove(fname);
-	}
-	remove("tile8_usage");
-	remove("tile16_usage");
-	remove("tile32_usage");
-	remove("block_empty");
-
-	_chdir("..");
+	chdir("..");
 
 	return res;
 }
 
 
+#ifdef WIN32
+#define DELIMITER	'\\'
+#else
+#define DELIMITER	'/'
+#endif
+
 int main(int argc, char *argv[])
 {
 	char *p, path[MAX_PATH];
-	int i, path_found = 0, all = 0, zip = 0, pause = 1, res = 1;
+	int i, path_found = 0, all = 0, zip = 0, res = 1;
+#ifdef WIN32
+	int pause = 1;
+	OSVERSIONINFO osvi;
+
+	osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
+	GetVersionEx(&osvi);
+
+	if (osvi.dwMajorVersion == 4)
+	{
+		is_win9x  = 1;
+		delimiter = '\\';
+	}
+#else
+	int pause = 0;
+#endif
 
 	printf("-------------------------------------------\n");
-	printf(" ROM converter for CPS2 Emulator ver.9.2\n");
+	printf(" ROM converter for CPS2 Emulator ver." VERSION_STR "\n");
 	printf("-------------------------------------------\n\n");
-
-	if (_chdir("cache") != 0)
-	{
-		if (_mkdir("cache") != 0)
-		{
-			printf("Error: Could not create directory \"cache\".\n");
-			goto error;
-		}
-	}
-	else _chdir("..");
 
 	if (argc > 1)
 	{
 		for (i = 1; i < argc; i++)
 		{
-			if (!stricmp(argv[i], "-all") || !stricmp(argv[i], "/all"))
+			if (!stricmp(argv[i], "-all"))
 			{
 				all = 1;
 			}
-			else if (!stricmp(argv[i], "-zip") || !stricmp(argv[i], "/zip"))
+			else if (!stricmp(argv[i], "-zip"))
 			{
 				zip = 1;
 			}
-			else if (!stricmp(argv[i], "-batch") || !stricmp(argv[i], "/batch"))
+			else if (!stricmp(argv[i], "-batch"))
 			{
 				pause = 0;
 			}
-			else if (strchr(argv[i], ':') != NULL || strchr(argv[i], '\\') != NULL)
+#ifdef WIN32
+			else if (strchr(argv[i], ':') != NULL || strchr(argv[i], DELIMITER) != NULL)
+#else
+			else if (strchr(argv[i], DELIMITER) != NULL)
+#endif
 			{
 				path_found = i;
 			}
 		}
 	}
 
+#ifndef WIN32
+	if (!path_found)
+	{
+		printf("usage: romcnv_cps2 fullpath%cgamename.zip [-all] [-zip] [-batch]\n", DELIMITER);
+		return 0;
+	}
+#endif
+
+	if (chdir("cache") != 0)
+	{
+		if (mkdir("cache") != 0)
+		{
+			printf("Error: Could not create directory \"cache\".\n");
+			goto error;
+		}
+	}
+	else chdir("..");
+
+#ifdef WIN32
 	strcpy(launchDir, argv[0]);
-	p = strrchr(launchDir, '\\');
+	convert_delimiter(launchDir);
+
+	p = strrchr(launchDir, DELIMITER);
 	if (p)
 	{
 		*(p + 1) = '\0';
 	}
 	else
+#endif
 	{
-		_getcwd(launchDir, MAX_PATH);
-		strcat(launchDir, "\\");
+		getcwd(launchDir, MAX_PATH);
+#ifdef WIN32
+		convert_delimiter(launchDir);
+		if (is_win9x)
+			strcat(launchDir, "\\");
+		else
+#endif
+			strcat(launchDir, "/");
 	}
 
 	if (all)
 	{
+#ifdef WIN32
 		if (!folder_dialog(NULL, zip_dir)) goto error;
-
+		convert_delimiter(zip_dir);
+#endif
 		strcpy(game_dir, zip_dir);
-		strcat(game_dir, "\\");
+#ifdef WIN32
+		if (is_win9x)
+			strcat(game_dir, "\\");
+		else
+#endif
+			strcat(game_dir, "/");
 
 		for (i = 0; CPS2_cacheinfo[i].name; i++)
 		{
@@ -1342,8 +1494,8 @@ int main(int argc, char *argv[])
 				continue;
 			}
 
-			_chdir(launchDir);
-			if (!convert_rom(game_name))
+			chdir(launchDir);
+			if (!convert_rom(game_name, 0))
 			{
 				printf("ERROR: Convert failed. - Skip\n\n");
 			}
@@ -1367,6 +1519,7 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
+#ifdef WIN32
 		if (!path_found)
 		{
 			printf("Please select ROM file.\n");
@@ -1379,12 +1532,16 @@ int main(int argc, char *argv[])
 			strcpy(path, argv[path_found]);
 			strcpy(game_dir, strtok(path, "\""));
 		}
+		convert_delimiter(game_dir);
+#else
+		strcpy(game_dir, argv[path_found]);
+#endif
 
-		if ((p = strrchr(game_dir, '\\')) != NULL)
+		if ((p = strrchr(game_dir, delimiter)) != NULL)
 		{
 			strcpy(game_name, p + 1);
 			strcpy(zip_dir, game_dir);
-			*strrchr(zip_dir, '\\') = '\0';
+			*strrchr(zip_dir, delimiter) = '\0';
 		}
 		else
 		{
@@ -1410,12 +1567,12 @@ int main(int argc, char *argv[])
 		*p = '\0';
 
 		if (zip)
-			printf("cache name: cache\\%s_cache.zip\n", game_name);
+			printf("cache name: cache%c%s_cache.zip\n", delimiter, game_name);
 		else
-			printf("cache name: cache\\%s.cache\n", game_name);
+			printf("cache name: cache%c%s.cache\n", delimiter, game_name);
 
-		_chdir(launchDir);
-		if (!convert_rom(game_name))
+		chdir(launchDir);
+		if (!convert_rom(game_name, pause))
 		{
 			res = 0;
 		}
@@ -1429,7 +1586,7 @@ int main(int argc, char *argv[])
 		if (res && pause)
 		{
 			printf("complete.\n");
-			printf("Please copy \"cache\\%s.cache\" to directory \"/PSP/GAMES/cps2psp/cache\".\n", game_name);
+			printf("Please copy \"cache%c%s.cache\" to directory \"/PSP/GAMES/cps2psp/cache\".\n", delimiter, game_name);
 		}
 		free_memory();
 	}

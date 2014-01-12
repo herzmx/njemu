@@ -14,6 +14,8 @@
 
 #if (EMU_SYSTEM == MVS)
 #define TICKS_PER_FRAME		16896		// 1000000 / 15625 * RASTER_LINES
+#else
+#define TICKS_PER_FRAME		16682
 #endif
 
 /******************************************************************************
@@ -50,7 +52,11 @@ int machine_sound_type;
 u32 frames_displayed;
 int fatal_error;
 
-float video_fps;
+#ifdef ADHOC
+int adhoc_enable;
+int adhoc_server;
+char adhoc_matching[32];
+#endif
 
 
 /******************************************************************************
@@ -92,12 +98,60 @@ static const u8 skiptable[FRAMESKIP_LEVELS][FRAMESKIP_LEVELS] =
 
 
 /******************************************************************************
-	プロトタイプ
+	ローカル関数
 ******************************************************************************/
 
-static void show_fps(void);
-static void show_battery_warning(void);
+/*--------------------------------------------------------
+	FPS表示
+--------------------------------------------------------*/
 
+static void show_fps(void)
+{
+	int sx;
+	char buf[32];
+
+	sprintf(buf, "%s%2d %3d%% %2dfps",
+		option_autoframeskip ? "auto" : "fskp",
+		frameskip,
+		game_speed_percent,
+		frames_per_second);
+
+	sx = SCR_WIDTH - (strlen(buf) << 3);
+	small_font_print(sx, 0, buf, 1);
+}
+
+
+/*--------------------------------------------------------
+	バッテリー残量警告表示
+--------------------------------------------------------*/
+
+static void show_battery_warning(void)
+{
+	if (!scePowerIsBatteryCharging())
+	{
+		int bat = scePowerGetBatteryLifePercent();
+
+		if (bat < 10)
+		{
+			static u32 counter = 0;
+
+			counter++;
+			if ((counter % 120) < 80)
+			{
+				char warning[128];
+
+				boxfill_alpha(0, 254, SCR_WIDTH-1, SCR_HEIGHT-1, COLOR_BLACK, 12);
+				sprintf(warning, TEXT(WARNING_BATTERY_IS_LOW_PLEASE_CHARGE_BATTERY), bat);
+				uifont_print_center(256, UI_COLOR(UI_PAL_WARNING), warning);
+			}
+		}
+	}
+}
+
+
+/******************************************************************************
+	グローバル関数
+******************************************************************************/
 
 /*--------------------------------------------------------
 	エミュレーション開始
@@ -105,16 +159,73 @@ static void show_battery_warning(void);
 
 void emu_main(void)
 {
-#if (EMU_SYSTEM == MVS)
-	video_fps = FPS;
-#else
-	video_fps = (float)psp_refreshrate / 1000000;
+#if defined(ADHOC) && (EMU_SYSTEM == MVS)
+	int save_neogeo_bios = neogeo_bios;
 #endif
 
 	snap_no = -1;
+#ifdef ADHOC
+	if (adhoc_enable)
+	{
+#if (EMU_SYSTEM == MVS)
+		const char *bios[] =
+		{
+			"EURO2", "EURO1",
+			"USA2", "USA1",
+			"ASIA3",
+			"JPN3", "JPN2", "JPN1"
+		};
+
+		bios_select(2);
+		if (neogeo_bios == -1)
+		{
+			neogeo_bios = save_neogeo_bios;
+			adhoc_enable = 0;
+			return;
+		}
+
+		sprintf(adhoc_matching, "%s_%s_%s", PBPNAME_STR, game_name, bios[neogeo_bios]);
+#elif (EMU_SYSTEM == NCDZ)
+		const char *region[] = { "JPN", "USA", "EURO" };
+		u8 temp[0x200];
+
+		memory_region_cpu1 = temp;
+		if (!neogeo_check_game())
+		{
+			error_file("IPL.TXT");
+			adhoc_enable = 0;
+			return;
+		}
+		sprintf(adhoc_matching, "%s_%s_%s", PBPNAME_STR, game_name, region[neogeo_region]);
+#else
+		sprintf(adhoc_matching, "%s_%s", PBPNAME_STR, game_name);
+#endif
+
+		adhoc_server = -1;
+		if (adhocInit(adhoc_matching) == 0)
+		{
+			adhoc_server = adhocSelect();
+		}
+		if (adhoc_server < 0)
+			adhoc_enable = 0;
+		else
+			adhoc_input_init();
+
+		if (!adhoc_enable) return;
+	}
+#endif
+
 	sound_thread_init();
 	machine_main();
 	sound_thread_exit();
+
+#ifdef ADHOC
+#if (EMU_SYSTEM == MVS)
+	if (adhoc_enable)
+		neogeo_bios = save_neogeo_bios;
+#endif
+	adhoc_enable = 0;
+#endif
 }
 
 
@@ -126,17 +237,13 @@ void autoframeskip_reset(void)
 {
 	frameskip = option_autoframeskip ? 0 : option_frameskip;
 	frameskipadjust = 0;
-	frameskip_counter = FRAMESKIP_LEVELS - 1;
+	frameskip_counter = 0;
 
 	rendered_frames_since_last_fps = 0;
 	frames_since_last_fps = 0;
 
 	game_speed_percent = 100;
-#if (EMU_SYSTEM == MVS)
 	frames_per_second = FPS;
-#else
-	frames_per_second = 60;
-#endif
 
 	frames_displayed = 0;
 
@@ -172,21 +279,14 @@ void update_screen(void)
 
 	if (warming_up)
 	{
-		video_wait_vsync();
-#if (EMU_SYSTEM == MVS)
+		sceDisplayWaitVblankStart();
 		last_skipcount0_time = ticker() - FRAMESKIP_LEVELS * TICKS_PER_FRAME;
-#else
-		last_skipcount0_time = ticker() - (int)((float)FRAMESKIP_LEVELS * 1000000.0 / video_fps);
-#endif
+		while (sceDisplayIsVblank()) sceKernelDelayThread(100);
 		warming_up = 0;
 	}
 
 	if (frameskip_counter == 0)
-#if (EMU_SYSTEM == MVS)
 		this_frame_base = last_skipcount0_time + FRAMESKIP_LEVELS * TICKS_PER_FRAME;
-#else
-		this_frame_base = last_skipcount0_time + (int)((float)FRAMESKIP_LEVELS * 1000000.0 / video_fps);
-#endif
 
 	frames_displayed++;
 	frames_since_last_fps++;
@@ -197,19 +297,14 @@ void update_screen(void)
 
 		if (option_speedlimit)
 		{
-#if (EMU_SYSTEM == MVS)
 			TICKER target = this_frame_base + frameskip_counter * TICKS_PER_FRAME;
-#else
-			TICKER target = this_frame_base + (int)((float)frameskip_counter * 1000000.0 / video_fps);
+
+#if (EMU_SYSTEM != MVS)
+			sound_thread_locked = 1;
 #endif
-
-			if (option_vsync)
+			if (option_vsync && curr < target - 50)
 			{
-				if (curr < target)
-					video_flip_screen(1);
-				else
-					video_flip_screen(0);
-
+				video_flip_screen(1);
 				while (curr < target)
 				{
 					curr = ticker();
@@ -223,6 +318,9 @@ void update_screen(void)
 				}
 				video_flip_screen(0);
 			}
+#if (EMU_SYSTEM != MVS)
+			sound_thread_locked = 0;
+#endif
 		}
 		else
 			video_flip_screen(0);
@@ -234,7 +332,7 @@ void update_screen(void)
 			float seconds_elapsed = (float)(curr - last_skipcount0_time) * (1.0 / 1000000.0);
 			float frames_per_sec = (float)frames_since_last_fps / seconds_elapsed;
 
-			game_speed_percent = (int)(100.0 * frames_per_sec / video_fps + 0.5);
+			game_speed_percent = (int)(100.0 * frames_per_sec / FPS + 0.5);
 			frames_per_second = (int)((float)rendered_frames_since_last_fps / seconds_elapsed + 0.5);
 
 			last_skipcount0_time = curr;
@@ -283,54 +381,6 @@ void update_screen(void)
 
 
 /*--------------------------------------------------------
-	FPS表示
---------------------------------------------------------*/
-
-static void show_fps(void)
-{
-	int sx;
-	char buf[32];
-
-	sprintf(buf, "%s%2d %3d%% %2dfps",
-		option_autoframeskip ? "auto" : "fskp",
-		frameskip,
-		game_speed_percent,
-		frames_per_second);
-
-	sx = SCR_WIDTH - (strlen(buf) << 3);
-	small_font_print(sx, 0, buf, 1);
-}
-
-
-/*--------------------------------------------------------
-	バッテリー残量警告表示
---------------------------------------------------------*/
-
-static void show_battery_warning(void)
-{
-	if (!scePowerIsBatteryCharging())
-	{
-		int bat = scePowerGetBatteryLifePercent();
-
-		if (bat < 10)
-		{
-			static u32 counter = 0;
-
-			counter++;
-			if ((counter % 120) < 80)
-			{
-				char warning[128];
-
-				boxfill_alpha(0, 254, SCR_WIDTH-1, SCR_HEIGHT-1, COLOR_BLACK, 12);
-				sprintf(warning, "Warning: Battery is low (%d%%). Please charge battery!", bat);
-				uifont_print_center(256, UI_COLOR(UI_PAL_WARNING), warning);
-			}
-		}
-	}
-}
-
-
-/*--------------------------------------------------------
 	致命的エラーメッセージ
 --------------------------------------------------------*/
 
@@ -364,17 +414,19 @@ void show_fatal_error(void)
 		ex = sx + width;
 		ey = sy + (FONTSIZE - 1);
 
-		load_background();
+		video_set_mode(32);
+
+		load_background(WP_LOGO);
 
 		while (Loop != LOOP_EXIT)
 		{
 			if (update)
 			{
 				show_background();
-				small_icon(6, 3, UI_COLOR(UI_PAL_TITLE), ICON_SYSTEM);
-				uifont_print(32, 5, UI_COLOR(UI_PAL_TITLE), "Fatal error");
+				small_icon_shadow(6, 3, UI_COLOR(UI_PAL_TITLE), ICON_SYSTEM);
+				uifont_print_shadow(32, 5, UI_COLOR(UI_PAL_TITLE), TEXT(FATAL_ERROR));
 				draw_dialog(sx - FONTSIZE/2, sy - FONTSIZE/2, ex + FONTSIZE/2, ey + FONTSIZE/2);
-				uifont_print_center(sy, UI_COLOR(UI_PAL_SELECT), fatal_error_message);
+				uifont_print_shadow_center(sy, UI_COLOR(UI_PAL_SELECT), fatal_error_message);
 
 				update = draw_battery_status(1);
 				video_flip_screen(1);
@@ -407,6 +459,9 @@ void save_snapshot(void)
 	char path[MAX_PATH];
 
 	sound_mute(1);
+#if (EMU_SYSTEM == NCDZ)
+	mp3_pause(1);
+#endif
 #if USE_CACHE
 	cache_sleep(1);
 #endif
@@ -419,29 +474,22 @@ void save_snapshot(void)
 
 		while (1)
 		{
-#if (EMU_SYSTEM == CPS1)
 			sprintf(path, "%ssnap/%s_%02d.png", launchDir, game_name, snap_no);
-#else
-			sprintf(path, "%ssnap/%s_%02d.bmp", launchDir, game_name, snap_no);
-#endif
 			if ((fp = fopen(path, "rb")) == NULL) break;
 			fclose(fp);
 			snap_no++;
 		}
 	}
 
-#if (EMU_SYSTEM == CPS1)
 	sprintf(path, "%ssnap/%s_%02d.png", launchDir, game_name, snap_no);
-	save_png(path);
-	ui_popup("Snapshot saved as \"%s_%02d.png\".", game_name, snap_no++);
-#else
-	sprintf(path, "%ssnap/%s_%02d.bmp", launchDir, game_name, snap_no);
-	save_bmp(path);
-	ui_popup("Snapshot saved as \"%s_%02d.bmp\".", game_name, snap_no++);
-#endif
+	if (save_png(path))
+		ui_popup(TEXT(SNAPSHOT_SAVED_AS_x_PNG), game_name, snap_no++);
 
 #if USE_CACHE
 	cache_sleep(0);
+#endif
+#if (EMU_SYSTEM == NCDZ)
+	mp3_pause(0);
 #endif
 	sound_mute(0);
 }

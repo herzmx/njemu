@@ -32,7 +32,7 @@ void z80_init(void)
 	Cz80_Set_Fetch(&CZ80, 0x0000, 0xffff, (u32)memory_region_cpu2);
 	Cz80_Set_ReadB(&CZ80, &z80_read_memory_8);
 	Cz80_Set_WriteB(&CZ80, &z80_write_memory_8);
-#elif (EMU_SYSTEM == MVS)
+#elif (EMU_SYSTEM == MVS || EMU_SYSTEM == NCDZ)
 	Cz80_Set_Fetch(&CZ80, 0x0000, 0xffff, (u32)memory_region_cpu2);
 	Cz80_Set_ReadB(&CZ80, &z80_read_memory_8);
 	Cz80_Set_WriteB(&CZ80, &z80_write_memory_8);

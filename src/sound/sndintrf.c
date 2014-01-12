@@ -149,7 +149,7 @@ int sound_init(void)
 		YM2151_sh_start(machine_sound_type);
 #elif (EMU_SYSTEM == CPS2)
 	qsound_sh_start();
-#elif (EMU_SYSTEM == MVS)
+#elif (EMU_SYSTEM == MVS || EMU_SYSTEM == NCDZ)
 	YM2610_sh_start();
 #endif
 
@@ -177,7 +177,7 @@ void sound_exit(void)
 		YM2151_sh_stop();
 #elif (EMU_SYSTEM == CPS2)
 	qsound_sh_stop();
-#elif (EMU_SYSTEM == MVS)
+#elif (EMU_SYSTEM == MVS || EMU_SYSTEM == NCDZ)
 	YM2610_sh_stop();
 #endif
 
@@ -198,7 +198,7 @@ void sound_reset(void)
 		YM2151_sh_reset();
 #elif (EMU_SYSTEM == CPS2)
 	qsound_sh_reset();
-#elif (EMU_SYSTEM == MVS)
+#elif (EMU_SYSTEM == MVS || EMU_SYSTEM == NCDZ)
 	YM2610_sh_reset();
 #endif
 

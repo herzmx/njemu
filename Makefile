@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 #
-#               CPS1/CPS2/NEOGEO Emulator for PSP Makefile
+#            CPS1/CPS2/NEOGEO/NEOGEO CDZ Emulator for PSP Makefile
 #
 #------------------------------------------------------------------------------
 
@@ -11,43 +11,60 @@
 #BUILD_CPS1PSP = 1
 BUILD_CPS2PSP = 1
 #BUILD_MVSPSP = 1
+#BUILD_NCDZPSP = 1
 
 SAVE_STATE = 1
-#KERNEL_MODE = 1
+KERNEL_MODE = 1
+#ADHOC = 1
+#COMMAND_LIST = 1
+#JAPANESE_UI = 1
+#UI_32BPP = 1
 RELEASE = 1
-
 
 #------------------------------------------------------------------------------
 # Defines
 #------------------------------------------------------------------------------
 
-VERSION_MAJOR = 1
-VERSION_MINOR = 6
-VERSION_BUILD = 6
+OS = psp
+
+VERSION_MAJOR = 2
+VERSION_MINOR = 0
+VERSION_BUILD = 0
 
 ifdef BUILD_CPS1PSP
 BUILD_CPS2PSP=
 BUILD_MVSPSP=
+BUILD_NCDZPSP=
 TARGET = CPS1PSP
 endif
 
 ifdef BUILD_CPS2PSP
 BUILD_MVSPSP=
+BUILD_NCDZPSP=
 TARGET = CPS2PSP
 endif
 
 ifdef BUILD_MVSPSP
-VERSION_MAJOR = 1
-VERSION_MINOR = 6
-VERSION_BUILD = 3
+BUILD_NCDZPSP=
 TARGET = MVSPSP
 endif
 
+ifdef BUILD_NCDZPSP
+TARGET = NCDZPSP
+endif
+
+ifdef ADHOC
+KERNEL_MODE = 1
+endif
+
 PBPNAME_STR = $(TARGET)
-VERSION_STR = $(VERSION_MAJOR).$(VERSION_MINOR)$(VERSION_BUILD)
+ifeq ($(VERSION_BUILD), 0)
+VERSION_STR = $(VERSION_MAJOR).$(VERSION_MINOR)
+else
+VERSION_STR = $(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_BUILD)
+endif
 
 EXTRA_TARGETS = maketree EBOOT.PBP delelf
-
 
 #------------------------------------------------------------------------------
 # Utilities
@@ -69,7 +86,8 @@ endif
 INCDIR = \
 	src \
 	src/zip \
-	src/zlib
+	src/zlib \
+	src/libmad
 
 
 #------------------------------------------------------------------------------
@@ -83,9 +101,10 @@ OBJDIRS = \
 	$(OBJ)/sound \
 	$(OBJ)/zip \
 	$(OBJ)/zlib \
-	$(OBJ)/psp \
-	$(OBJ)/psp/font \
-	$(OBJ)/psp/icon
+	$(OBJ)/libmad \
+	$(OBJ)/$(OS) \
+	$(OBJ)/$(OS)/font \
+	$(OBJ)/$(OS)/icon
 
 
 #------------------------------------------------------------------------------
@@ -100,34 +119,50 @@ MAINOBJS = \
 	$(OBJ)/common/cache.o \
 	$(OBJ)/common/loadrom.o
 
+ifdef COMMAND_LIST
+MAINOBJS += $(OBJ)/common/cmdlist.o
+endif
+
 ifdef SAVE_STATE
 MAINOBJS += $(OBJ)/common/state.o
 endif
 
-
 FONTOBJS = \
-	$(OBJ)/psp/font/jpnfont.o \
-	$(OBJ)/psp/font/graphic.o \
-	$(OBJ)/psp/font/ascii_14p.o \
-	$(OBJ)/psp/font/font_s.o \
-	$(OBJ)/psp/font/bshadow.o
+	$(OBJ)/$(OS)/font/graphic.o \
+	$(OBJ)/$(OS)/font/ascii_14p.o \
+	$(OBJ)/$(OS)/font/font_s.o \
+	$(OBJ)/$(OS)/font/bshadow.o \
+	$(OBJ)/$(OS)/font/command.o \
+	$(OBJ)/$(OS)/font/ascii_14.o \
+	$(OBJ)/$(OS)/font/latin1_14.o \
+	$(OBJ)/$(OS)/font/jpn_h14.o \
+	$(OBJ)/$(OS)/font/jpn_h14p.o \
+	$(OBJ)/$(OS)/font/jpn_z14.o \
+	$(OBJ)/$(OS)/font/sjis_tbl.o \
+	$(OBJ)/$(OS)/font/jpnfont.o
 
-EXTOBJS = \
-	$(OBJ)/psp/psp.o \
-	$(OBJ)/psp/blend.o \
-	$(OBJ)/psp/config.o \
-	$(OBJ)/psp/filer.o \
-	$(OBJ)/psp/help.o \
-	$(OBJ)/psp/input.o \
-	$(OBJ)/psp/menu.o \
-	$(OBJ)/psp/mesbox.o \
-	$(OBJ)/psp/misc.o \
-	$(OBJ)/psp/ticker.o \
-	$(OBJ)/psp/usrintrf.o \
-	$(OBJ)/psp/video.o \
-	$(OBJ)/psp/sound.o
+OSOBJS = \
+	$(OBJ)/$(OS)/$(OS).o \
+	$(OBJ)/$(OS)/blend.o \
+	$(OBJ)/$(OS)/config.o \
+	$(OBJ)/$(OS)/filer.o \
+	$(OBJ)/$(OS)/input.o \
+	$(OBJ)/$(OS)/ticker.o \
+	$(OBJ)/$(OS)/ui.o \
+	$(OBJ)/$(OS)/ui_draw.o \
+	$(OBJ)/$(OS)/ui_menu.o \
+	$(OBJ)/$(OS)/ui_text.o \
+	$(OBJ)/$(OS)/video.o \
+	$(OBJ)/$(OS)/sound.o \
+	$(OBJ)/$(OS)/png.o
 
-EXTOBJS += $(FONTOBJS) $(ICONOBJS)
+ifdef ADHOC
+OSOBJS += $(OBJ)/$(OS)/adhoc.o
+endif
+
+ifdef UI_32BPP
+OSOBJS += $(OBJ)/$(OS)/wallpaper.o
+endif
 
 ZLIB = $(OBJ)/zlib.a
 
@@ -143,7 +178,8 @@ include src/makefiles/$(TARGET).mak
 # Compiler Flags
 #------------------------------------------------------------------------------
 
-CFLAGS = -O2 \
+CFLAGS = \
+	-O2 \
 	-fomit-frame-pointer \
 	-fstrict-aliasing \
 	-Wall \
@@ -151,9 +187,13 @@ CFLAGS = -O2 \
 	-Wpointer-arith  \
 	-Wbad-function-cast \
 	-Wwrite-strings \
-	-Wsign-compare \
 	-Wmissing-prototypes \
+	-Wsign-compare \
 	-Werror
+
+ifdef ADHOC
+CFLAGS += -G0
+endif
 
 #------------------------------------------------------------------------------
 # Compiler Defines
@@ -178,6 +218,26 @@ ifdef SAVE_STATE
 CDEFS += -DSAVE_STATE=1
 endif
 
+ifdef ADHOC
+CDEFS += -DADHOC=1
+endif
+
+ifdef JAPANESE_UI
+CDEFS += -DJAPANESE_UI=1
+else
+CDEFS += -DJAPANESE_UI=0
+endif
+
+ifdef COMMAND_LIST
+CFLAGS += -DCOMMAND_LIST=1
+endif
+
+ifdef UI_32BPP
+CFLAGS += -DPSP_VIDEO_32BPP=1
+else
+CFLAGS += -DPSP_VIDEO_32BPP=0
+endif
+
 ifdef RELEASE
 CDEFS += -DRELEASE=1
 else
@@ -200,18 +260,26 @@ USE_PSPSDK_LIBC = 1
 
 LIBS = -lm -lc -lpspaudio -lpspgu -lpsppower -lpsprtc
 
+ifdef ADHOC
+LIBS += -lpspwlan -lpspnet_adhoc -lpspnet_adhocctl -lpspnet_adhocmatching
+endif
+
+ifdef BUILD_NCDZPSP
+LIBS += src/libmad/libmad.a
+endif
 
 #------------------------------------------------------------------------------
 # Rules to make libraries
 #------------------------------------------------------------------------------
 
-OBJS = $(MAINOBJS) $(COREOBJS) $(EXTOBJS) $(ZLIB)
+OBJS = $(MAINOBJS) $(COREOBJS) $(OSOBJS) $(FONTOBJS) $(ICONOBJS) $(ZLIB)
 
 include src/makefiles/build.mak
 
 $(OBJ)/zlib.a:  \
 	$(OBJ)/zlib/adler32.o \
 	$(OBJ)/zlib/compress.o \
+	$(OBJ)/zlib/uncompr.o \
 	$(OBJ)/zlib/crc32.o \
 	$(OBJ)/zlib/deflate.o \
 	$(OBJ)/zlib/inflate.o \

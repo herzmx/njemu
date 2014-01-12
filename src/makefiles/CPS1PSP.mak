@@ -4,6 +4,9 @@
 #
 #------------------------------------------------------------------------------
 
+ifdef ADHOC
+VERSION_STR += [AdHoc]
+endif
 
 PSP_EBOOT_ICON = data/cps1.png
 PSP_EBOOT_TITLE = $(PBPNAME_STR) $(VERSION_STR)
@@ -47,8 +50,6 @@ MAINOBJS += \
 	$(OBJ)/cpu/z80/cz80.o \
 	$(OBJ)/common/coin.o
 
-EXTOBJS += $(OBJ)/psp/png.o
-
 
 #------------------------------------------------------------------------------
 # Object Files (CPS1PSP)
@@ -70,5 +71,5 @@ COREOBJS = \
 	$(OBJ)/sound/qsound.o
 
 ICONOBJS = \
-	$(OBJ)/psp/icon/cps_s.o \
-	$(OBJ)/psp/icon/cps_l.o
+	$(OBJ)/$(OS)/icon/cps_s.o \
+	$(OBJ)/$(OS)/icon/cps_l.o

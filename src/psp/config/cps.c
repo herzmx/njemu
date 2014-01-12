@@ -6,17 +6,15 @@
 
 ******************************************************************************/
 
-#if defined(INCLUDE_INIVERSION)
+#if defined(INCLUDE_INIFILENAME)
 
 /******************************************************************************
-	バージョン
+	iniファイル名
 ******************************************************************************/
 
 #if (EMU_SYSTEM == CPS1)
-#define INIVERSION	5
 static const char *inifile_name = "cps1psp.ini";
 #else
-#define INIVERSION	3
 static const char *inifile_name = "cps2psp.ini";
 #endif
 
@@ -25,7 +23,7 @@ static const char *inifile_name = "cps2psp.ini";
 #if (EMU_SYSTEM == CPS1)
 #define DEFAULT_SAMPLERATE	0	// 11025Hz
 #else
-#define DEFAULT_SAMPLERATE	1	// 22050Hz
+#define DEFAULT_SAMPLERATE	2	// 44100Hz
 #endif
 
 /******************************************************************************
@@ -35,11 +33,15 @@ static const char *inifile_name = "cps2psp.ini";
 static cfg_type gamecfg_2buttons[] =
 {
 	{ CFG_NONE,	"[Emulation Settings]", },
-	{ CFG_INT,	"RasterEnable",			&cps_raster_enable,		0,	1	},
+	{ CFG_INT,	"RasterEnable",			&cps_raster_enable,		1,	1	},
 
 	{ CFG_NONE,	"[Video Settings]", },
 	{ CFG_INT,	"StretchScreen",		&option_stretch,		2,	3	},
-	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	0	},
+#if (EMU_SYSTEM == CPS2)
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			1,	1	},
+#else
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	1	},
+#endif
 	{ CFG_BOOL,	"AutoFrameSkip",		&option_autoframeskip,	0,	1	},
 	{ CFG_INT,	"FrameSkipLevel",		&option_frameskip,		0,	11	},
 	{ CFG_BOOL,	"ShowFPS",				&option_showfps,		0,	1	},
@@ -87,12 +89,16 @@ static cfg_type gamecfg_2buttons[] =
 static cfg_type gamecfg_2buttons_rot[] =
 {
 	{ CFG_NONE,	"[Emulation Settings]", },
-	{ CFG_INT,	"RasterEnable",			&cps_raster_enable,		0,	1	},
+	{ CFG_INT,	"RasterEnable",			&cps_raster_enable,		1,	1	},
 
 	{ CFG_NONE,	"[Video Settings]", },
 	{ CFG_INT,	"RotateScreen",			&cps_rotate_screen,		1,	1	},
 	{ CFG_INT,	"StretchScreen",		&option_stretch,		2,	3	},
-	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	0	},
+#if (EMU_SYSTEM == CPS2)
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			1,	1	},
+#else
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	1	},
+#endif
 	{ CFG_BOOL,	"AutoFrameSkip",		&option_autoframeskip,	0,	1	},
 	{ CFG_INT,	"FrameSkipLevel",		&option_frameskip,		0,	11	},
 	{ CFG_BOOL,	"ShowFPS",				&option_showfps,		0,	1	},
@@ -140,11 +146,15 @@ static cfg_type gamecfg_2buttons_rot[] =
 static cfg_type gamecfg_3buttons[] =
 {
 	{ CFG_NONE,	"[Emulation Settings]", },
-	{ CFG_INT,	"RasterEnable",			&cps_raster_enable,		0,	1	},
+	{ CFG_INT,	"RasterEnable",			&cps_raster_enable,		1,	1	},
 
 	{ CFG_NONE,	"[Video Settings]", },
 	{ CFG_INT,	"StretchScreen",		&option_stretch,		2,	3	},
-	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	0	},
+#if (EMU_SYSTEM == CPS2)
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			1,	1	},
+#else
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	1	},
+#endif
 	{ CFG_BOOL,	"AutoFrameSkip",		&option_autoframeskip,	0,	1	},
 	{ CFG_INT,	"FrameSkipLevel",		&option_frameskip,		0,	11	},
 	{ CFG_BOOL,	"ShowFPS",				&option_showfps,		0,	1	},
@@ -195,12 +205,16 @@ static cfg_type gamecfg_3buttons[] =
 static cfg_type gamecfg_3buttons_rot[] =
 {
 	{ CFG_NONE,	"[Emulation Settings]", },
-	{ CFG_INT,	"RasterEnable",			&cps_raster_enable,		0,	1	},
+	{ CFG_INT,	"RasterEnable",			&cps_raster_enable,		1,	1	},
 
 	{ CFG_NONE,	"[Video Settings]", },
 	{ CFG_INT,	"RotateScreen",			&cps_rotate_screen,		1,	1	},
 	{ CFG_INT,	"StretchScreen",		&option_stretch,		2,	3	},
-	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	0	},
+#if (EMU_SYSTEM == CPS2)
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			1,	1	},
+#else
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	1	},
+#endif
 	{ CFG_BOOL,	"AutoFrameSkip",		&option_autoframeskip,	0,	1	},
 	{ CFG_INT,	"FrameSkipLevel",		&option_frameskip,		0,	11	},
 	{ CFG_BOOL,	"ShowFPS",				&option_showfps,		0,	1	},
@@ -244,11 +258,15 @@ static cfg_type gamecfg_3buttons_rot[] =
 static cfg_type gamecfg_4buttons[] =
 {
 	{ CFG_NONE,	"[Emulation Settings]", },
-	{ CFG_INT,	"RasterEnable",	&cps_raster_enable,		0,	1	},
+	{ CFG_INT,	"RasterEnable",			&cps_raster_enable,		1,	1	},
 
 	{ CFG_NONE,	"[Video Settings]", },
 	{ CFG_INT,	"StretchScreen",		&option_stretch,		2,	3	},
-	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	0	},
+#if (EMU_SYSTEM == CPS2)
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			1,	1	},
+#else
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	1	},
+#endif
 	{ CFG_BOOL,	"AutoFrameSkip",		&option_autoframeskip,	0,	1	},
 	{ CFG_INT,	"FrameSkipLevel",		&option_frameskip,		0,	11	},
 	{ CFG_BOOL,	"ShowFPS",				&option_showfps,		0,	1	},
@@ -295,11 +313,15 @@ static cfg_type gamecfg_4buttons[] =
 static cfg_type gamecfg_6buttons[] =
 {
 	{ CFG_NONE,	"[Emulation Settings]", },
-	{ CFG_INT,	"RasterEnable",	&cps_raster_enable,		0,	1	},
+	{ CFG_INT,	"RasterEnable",			&cps_raster_enable,		1,	1	},
 
 	{ CFG_NONE,	"[Video Settings]", },
 	{ CFG_INT,	"StretchScreen",		&option_stretch,		2,	3	},
-	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	0	},
+#if (EMU_SYSTEM == CPS2)
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			1,	1	},
+#else
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	1	},
+#endif
 	{ CFG_BOOL,	"AutoFrameSkip",		&option_autoframeskip,	0,	1	},
 	{ CFG_INT,	"FrameSkipLevel",		&option_frameskip,		0,	11	},
 	{ CFG_BOOL,	"ShowFPS",				&option_showfps,		0,	1	},
@@ -355,11 +377,15 @@ static cfg_type gamecfg_6buttons[] =
 static cfg_type gamecfg_quiz[] =
 {
 	{ CFG_NONE,	"[Emulation Settings]", },
-	{ CFG_INT,	"RasterEnable",			&cps_raster_enable,		0,	1	},
+	{ CFG_INT,	"RasterEnable",			&cps_raster_enable,		1,	1	},
 
 	{ CFG_NONE,	"[Video Settings]", },
 	{ CFG_INT,	"StretchScreen",		&option_stretch,		2,	3	},
-	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	0	},
+#if (EMU_SYSTEM == CPS2)
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			1,	1	},
+#else
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	1	},
+#endif
 	{ CFG_BOOL,	"AutoFrameSkip",		&option_autoframeskip,	0,	1	},
 	{ CFG_INT,	"FrameSkipLevel",		&option_frameskip,		0,	11	},
 	{ CFG_BOOL,	"ShowFPS",				&option_showfps,		0,	1	},
@@ -401,11 +427,11 @@ static cfg_type gamecfg_quiz[] =
 static cfg_type gamecfg_forgottn[] =
 {
 	{ CFG_NONE,	"[Emulation Settings]", },
-	{ CFG_INT,	"RasterEnable",			&cps_raster_enable,		0,	1	},
+	{ CFG_INT,	"RasterEnable",			&cps_raster_enable,		1,	1	},
 
 	{ CFG_NONE,	"[Video Settings]", },
 	{ CFG_INT,	"StretchScreen",		&option_stretch,		2,	3	},
-	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	0	},
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	1	},
 	{ CFG_BOOL,	"AutoFrameSkip",		&option_autoframeskip,	0,	1	},
 	{ CFG_INT,	"FrameSkipLevel",		&option_frameskip,		0,	11	},
 	{ CFG_BOOL,	"ShowFPS",				&option_showfps,		0,	1	},
@@ -454,11 +480,11 @@ static cfg_type gamecfg_forgottn[] =
 static cfg_type gamecfg_sfzch[] =
 {
 	{ CFG_NONE,	"[Emulation Settings]", },
-	{ CFG_INT,	"RasterEnable",			&cps_raster_enable,		0,	1	},
+	{ CFG_INT,	"RasterEnable",			&cps_raster_enable,		1,	1	},
 
 	{ CFG_NONE,	"[Video Settings]", },
 	{ CFG_INT,	"StretchScreen",		&option_stretch,		2,	3	},
-	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	0	},
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	1	},
 	{ CFG_BOOL,	"AutoFrameSkip",		&option_autoframeskip,	0,	1	},
 	{ CFG_INT,	"FrameSkipLevel",		&option_frameskip,		0,	11	},
 	{ CFG_BOOL,	"ShowFPS",				&option_showfps,		0,	1	},
@@ -512,11 +538,15 @@ static cfg_type gamecfg_sfzch[] =
 static cfg_type gamecfg_progear[] =
 {
 	{ CFG_NONE,	"[Emulation Settings]", },
-	{ CFG_INT,	"RasterEnable",			&cps_raster_enable,		0,	1	},
+	{ CFG_INT,	"RasterEnable",			&cps_raster_enable,		1,	1	},
 
 	{ CFG_NONE,	"[Video Settings]", },
 	{ CFG_INT,	"StretchScreen",		&option_stretch,		2,	3	},
-	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	0	},
+#if (EMU_SYSTEM == CPS2)
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			1,	1	},
+#else
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	1	},
+#endif
 	{ CFG_BOOL,	"AutoFrameSkip",		&option_autoframeskip,	0,	1	},
 	{ CFG_INT,	"FrameSkipLevel",		&option_frameskip,		0,	11	},
 	{ CFG_BOOL,	"ShowFPS",				&option_showfps,		0,	1	},
@@ -562,11 +592,15 @@ static cfg_type gamecfg_progear[] =
 static cfg_type gamecfg_puzloop2[] =
 {
 	{ CFG_NONE,	"[Emulation Settings]", },
-	{ CFG_INT,	"RasterEnable",			&cps_raster_enable,		0,	1	},
+	{ CFG_INT,	"RasterEnable",			&cps_raster_enable,		1,	1	},
 
 	{ CFG_NONE,	"[Video Settings]", },
 	{ CFG_INT,	"StretchScreen",		&option_stretch,		2,	3	},
-	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	0	},
+#if (EMU_SYSTEM == CPS2)
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			1,	1	},
+#else
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	1	},
+#endif
 	{ CFG_BOOL,	"AutoFrameSkip",		&option_autoframeskip,	0,	1	},
 	{ CFG_INT,	"FrameSkipLevel",		&option_frameskip,		0,	11	},
 	{ CFG_BOOL,	"ShowFPS",				&option_showfps,		0,	1	},
@@ -703,6 +737,15 @@ static cfg_type gamecfg_puzloop2[] =
 ******************************************************************************/
 
 #if (EMU_SYSTEM == CPS1)
+#ifdef ADHOC
+	if (adhoc_enable)
+	{
+		cps1_dipswitch[DIP_A] = 0xff;
+		cps1_dipswitch[DIP_B] = 0xff;
+		cps1_dipswitch[DIP_C] = 0xff;
+	}
+#endif
+
 	switch (machine_input_type)
 	{
 	case INPTYPE_forgottn:
@@ -808,6 +851,29 @@ static cfg_type gamecfg_puzloop2[] =
 		cps1_dipswitch[DIP_C] &= ~0x40;	// Allow Continue = On
 		break;
 	}
+
+#ifdef ADHOC
+	dip[0] = cps1_dipswitch[DIP_A];
+	dip[1] = cps1_dipswitch[DIP_B];
+	dip[2] = cps1_dipswitch[DIP_C];
+#endif
+#endif
+
+#elif defined(INCLUDE_SET_DIPSWITCH_DEFAULT_VALUE)
+
+/******************************************************************************
+	DIP switchを初期値に戻す (CPS1のみ/AdHoc用)
+******************************************************************************/
+
+#if (EMU_SYSTEM == CPS1)
+#ifdef ADHOC
+	if (adhoc_enable)
+	{
+		cps1_dipswitch[DIP_A] = dip[0];
+		cps1_dipswitch[DIP_B] = dip[1];
+		cps1_dipswitch[DIP_C] = dip[2];
+	}
+#endif
 #endif
 
 #endif

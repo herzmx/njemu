@@ -18,7 +18,7 @@
 
 static int serial_count;
 static u8  serial_buffer[SERIAL_BUFFER_LENGTH];
-static u8  eeprom_data[EEPROM_SIZE];
+static u8  ALIGN_PSPDATA eeprom_data[EEPROM_SIZE];
 static int eeprom_data_bits;
 static int eeprom_read_address;
 static int eeprom_clock_count;
@@ -290,3 +290,31 @@ STATE_LOAD( eeprom )
 }
 
 #endif /* SAVE_STATE */
+
+/*------------------------------------------------------
+	Adhocóp eepromëóéÛêM
+------------------------------------------------------*/
+
+#ifdef ADHOC
+
+int adhoc_send_eeprom(void)
+{
+	if (adhocSendRecvAck(eeprom_data, EEPROM_SIZE) <= 0)
+	{
+		msg_printf(TEXT(LOST_SYNC));
+		return 0;
+	}
+	return 1;
+}
+
+int adhoc_recv_eeprom(void)
+{
+	if (adhocRecvSendAck(eeprom_data, EEPROM_SIZE) <= 0)
+	{
+		msg_printf(TEXT(LOST_SYNC));
+		return 0;
+	}
+	return 1;
+}
+
+#endif /* ADHOC */

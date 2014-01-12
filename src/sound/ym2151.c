@@ -979,7 +979,7 @@ void YM2151WriteReg(int r, int v)
 			break;
 
 		case 0x18:	/* LFO frequency */
-			ym2151->lfo_overflow    = (1 << ((15 - (v >> 4)) + 3)) << LFO_SH;
+			ym2151->lfo_overflow    = (1 << ((15 - (v >> 4)) + 3)) * (1 << LFO_SH);
 			ym2151->lfo_counter_add = 0x10 + (v & 0x0f);
 			break;
 
@@ -1677,8 +1677,7 @@ void YM2151Init(int clock, int rate, FM_IRQHANDLER IRQHandler)
 		sound->callback = YM2151Update_mono;
 		break;
 
-	case SOUND_YM2151_TYPE1:
-	case SOUND_YM2151_TYPE2:
+	case SOUND_YM2151_CPS1:
 		sound->stereo = 0;
 		if (memory_region_sound1)
 		{
@@ -1754,7 +1753,7 @@ void YM2151Reset(void)
 	ym2151->noise_p   = 0;
 	ym2151->noise_f   = ym2151->noise_tab[0];
 
-	ym2151->csm_req	= 0;
+	ym2151->csm_req   = 0;
 	ym2151->status    = 0;
 
 	YM2151WriteReg(0x1b, 0);	/* only because of CT1, CT2 output pins */
@@ -1763,6 +1762,22 @@ void YM2151Reset(void)
 	{
 		YM2151WriteReg(i, 0);
 	}
+}
+
+
+void YM2151_set_samplerate(void)
+{
+	int samplerate = PSP_SAMPLERATE >> (2 - option_samplerate);
+
+	ym2151->sampfreq = samplerate;
+
+	init_chip_tables();
+
+	ym2151->lfo_timer_add = (1<<LFO_SH) * (ym2151->clock/64.0) / ym2151->sampfreq;
+	ym2151->eg_timer_add  = (1<<EG_SH)  * (ym2151->clock/64.0) / ym2151->sampfreq;
+
+	if (machine_sound_type == SOUND_YM2151_CPS1)
+		OKIM6295_set_samplerate();
 }
 
 
@@ -1865,8 +1880,6 @@ STATE_SAVE( ym2151 )
 
 	state_save_byte(ym2151->connect, 8);
 
-	state_save_long(&option_samplerate, 1);
-
 	state_save_okim6295();
 }
 
@@ -1962,8 +1975,6 @@ STATE_LOAD( ym2151 )
 	state_load_long(&ym2151->timer_B_index_old, 1);
 
 	state_load_byte(ym2151->connect, 8);
-
-	state_load_long(&option_samplerate, 1);
 
 	state_load_okim6295(fp);
 }

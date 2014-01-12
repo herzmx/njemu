@@ -31,7 +31,6 @@ int af_interval = 1;
 static u8 ALIGN_DATA input_flag[MAX_INPUTS];
 static int ALIGN_DATA af_map1[CPS2_BUTTON_MAX];
 static int ALIGN_DATA af_map2[CPS2_BUTTON_MAX];
-static int ALIGN_DATA af_flag[CPS2_BUTTON_MAX];
 static int ALIGN_DATA af_counter[CPS2_BUTTON_MAX];
 static int input_analog_value[2];
 static int input_ui_wait;
@@ -70,6 +69,22 @@ static u8 coin_chuter[COIN_MAX][4] =
 	{ 1, 2, 3, 4 }	// COIN_3P3C: 4P 4シューター
 };
 
+#ifdef ADHOC
+typedef struct
+{
+	u32 buttons;
+	int loop_flag;
+	u16 port_value[4];
+} ADHOC_DATA;
+
+static ADHOC_DATA ALIGN_PSPDATA send_data;
+static ADHOC_DATA ALIGN_PSPDATA recv_data;
+static SceUID adhoc_thread;
+static volatile int adhoc_active;
+static volatile int adhoc_update;
+static volatile u32 adhoc_paused;
+#endif
+
 
 /******************************************************************************
 	ローカル関数
@@ -92,7 +107,7 @@ static void check_eeprom_settings(int popup)
 		if (option_controller >= input_max_players)
 		{
 			option_controller = INPUT_PLAYER1;
-			if (popup) ui_popup("Controller: Player 1");
+			if (popup) ui_popup(TEXT(CONTROLLER_PLAYER1));
 		}
 	}
 }
@@ -114,23 +129,17 @@ static u32 update_autofire(u32 buttons)
 			{
 				buttons &= ~af_map1[i];
 
-				af_counter[i]++;
-
-				if (af_counter[i] >= af_interval)
-				{
-					af_counter[i] = 0;
-					af_flag[i] ^= 1;
-				}
-
-				if (af_flag[i])
-					buttons &= ~af_map2[i];
-				else
+				if (af_counter[i] == 0)
 					buttons |= af_map2[i];
+				else
+					buttons &= ~af_map2[i];
+
+				if (++af_counter[i] > af_interval)
+					af_counter[i] = 0;
 			}
 			else
 			{
 				af_counter[i] = 0;
-				af_flag[i] = 0;
 			}
 		}
 	}
@@ -243,7 +252,12 @@ static void update_inputport0(void)
 		break;
 	}
 
-	cps2_port_value[0] = value;
+#ifdef ADHOC
+	if (adhoc_enable)
+		send_data.port_value[0] = value;
+	else
+#endif
+		cps2_port_value[0] = value;
 }
 
 
@@ -278,8 +292,8 @@ static void update_inputport1(void)
 		}
 		else if (option_controller == INPUT_PLAYER2)
 		{
-			if (input_flag[P1_BUTTON4]) value &= ~0x0100;
-			if (input_flag[P1_BUTTON5]) value &= ~0x0200;
+			if (input_flag[P1_BUTTON4]) value &= ~0x0010;
+			if (input_flag[P1_BUTTON5]) value &= ~0x0020;
 		}
 		break;
 
@@ -343,7 +357,12 @@ static void update_inputport1(void)
 		break;
 	}
 
-	cps2_port_value[1] = value;
+#ifdef ADHOC
+	if (adhoc_enable)
+		send_data.port_value[1] = value;
+	else
+#endif
+		cps2_port_value[1] = value;
 }
 
 
@@ -424,7 +443,12 @@ static void update_inputport2(void)
 		break;
 	}
 
-	cps2_port_value[2] = value;
+#ifdef ADHOC
+	if (adhoc_enable)
+		send_data.port_value[2] = value;
+	else
+#endif
+		cps2_port_value[2] = value;
 }
 
 
@@ -456,7 +480,12 @@ static void update_inputport3(void)
 	}
 	input_analog_value[option_controller] = (input_analog_value[option_controller] + delta) & 0xff;
 
-	cps2_port_value[3] = input_analog_value[0] | (input_analog_value[1] << 8);
+#ifdef ADHOC
+	if (adhoc_enable)
+		send_data.port_value[0] = input_analog_value[0] | (input_analog_value[1] << 8);
+	else
+#endif
+		cps2_port_value[3] = input_analog_value[0] | (input_analog_value[1] << 8);
 }
 
 
@@ -532,9 +561,264 @@ static u32 adjust_input(u32 buttons)
 }
 
 
+#ifdef ADHOC
+/*------------------------------------------------------
+	入力ポートを更新
+------------------------------------------------------*/
+
+static int adhoc_update_inputport(SceSize args, void *argp)
+{
+	int i;
+	u32 buttons;
+
+	while (adhoc_active)
+	{
+		adhoc_update = 0;
+
+		do
+		{
+			sceKernelDelayThread(166);
+		} while (!adhoc_update && adhoc_active);
+
+		if (!adhoc_paused)
+		{
+			service_switch = 0;
+			p12_start_pressed = 0;
+
+			if (driver->inp_eeprom) check_eeprom_settings(0);
+
+			buttons = poll_gamepad();
+
+			if (buttons & PSP_CTRL_HOME)
+			{
+				buttons = 0;
+				adhoc_paused = adhoc_server + 1;
+			}
+			else if ((buttons & PSP_CTRL_LTRIGGER) && (buttons & PSP_CTRL_RTRIGGER))
+			{
+				if (buttons & PSP_CTRL_SELECT)
+				{
+					buttons &= ~(PSP_CTRL_SELECT | PSP_CTRL_LTRIGGER | PSP_CTRL_RTRIGGER);
+					service_switch = 1;
+				}
+				else if (buttons & PSP_CTRL_START)
+				{
+					buttons &= ~(PSP_CTRL_START | PSP_CTRL_LTRIGGER | PSP_CTRL_RTRIGGER);
+					p12_start_pressed = 1;
+				}
+			}
+
+			buttons = adjust_input(buttons);
+			buttons = update_autofire(buttons);
+
+			for (i = 0; i < MAX_INPUTS; i++)
+				input_flag[i] = (buttons & input_map[i]) != 0;
+
+			update_inputport0();
+			update_inputport1();
+			update_inputport2();
+			if (machine_input_type == INPTYPE_puzloop2) update_inputport3();
+
+			send_data.buttons = adhoc_paused;
+			send_data.loop_flag = Loop;
+
+			if (adhoc_server)
+			{
+				adhocSendBlocking(&send_data, sizeof(ADHOC_DATA));
+				if (frames_displayed <= 1)
+				{
+					if (adhocRecvBlocking(&recv_data, sizeof(ADHOC_DATA)) == 0)
+					{
+						ui_popup(TEXT(LOST_SYNC));
+						Loop = LOOP_BROWSER;
+					}
+				}
+				else
+				{
+					if (adhocRecvBlockingTimeout(&recv_data, sizeof(ADHOC_DATA), (1000000/60)*10) == 0)
+					{
+						adhocSendBlocking(&send_data, sizeof(ADHOC_DATA));
+						if (adhocRecvBlocking(&recv_data, sizeof(ADHOC_DATA)) == 0)
+						{
+							ui_popup(TEXT(LOST_SYNC));
+							Loop = LOOP_BROWSER;
+						}
+					}
+				}
+			}
+			else
+			{
+				if (adhocRecvBlocking(&recv_data, sizeof(ADHOC_DATA)) == 0)
+				{
+					ui_popup(TEXT(LOST_SYNC));
+					Loop = LOOP_BROWSER;
+				}
+				adhocSendBlocking(&send_data, sizeof(ADHOC_DATA));
+			}
+
+			if (Loop == LOOP_EXEC)
+				Loop = recv_data.loop_flag;
+
+			if (recv_data.buttons > adhoc_paused)
+				adhoc_paused = recv_data.buttons;
+		}
+		else
+		{
+			send_data.buttons = poll_gamepad();
+
+			if (adhoc_server)
+			{
+				adhocSendBlocking(&send_data, sizeof(ADHOC_DATA));
+				if (frames_displayed <= 1)
+				{
+					if (adhocRecvBlocking(&recv_data, sizeof(ADHOC_DATA)) == 0)
+					{
+						ui_popup(TEXT(LOST_SYNC));
+						Loop = LOOP_BROWSER;
+					}
+				}
+				else
+				{
+					if (adhocRecvBlockingTimeout(&recv_data, sizeof(ADHOC_DATA), (1000000/60)*10) == 0)
+					{
+						adhocSendBlocking(&send_data, sizeof(ADHOC_DATA));
+						if (adhocRecvBlocking(&recv_data, sizeof(ADHOC_DATA)) == 0)
+						{
+							ui_popup(TEXT(LOST_SYNC));
+							Loop = LOOP_BROWSER;
+						}
+					}
+				}
+			}
+			else
+			{
+				if (adhocRecvBlocking(&recv_data, sizeof(ADHOC_DATA)) == 0)
+				{
+					ui_popup(TEXT(LOST_SYNC));
+					Loop = LOOP_BROWSER;
+				}
+				adhocSendBlocking(&send_data, sizeof(ADHOC_DATA));
+			}
+		}
+	}
+
+	sceKernelExitThread(0);
+
+	return 0;
+}
+
+
+/*------------------------------------------------------
+	ポーズ
+------------------------------------------------------*/
+
+static void adhoc_pause(void)
+{
+	int control, sel = 0;
+	u32 buttons, frame = frames_displayed;
+	char buf[64];
+	RECT rect = { 140-8, 96-8, 340+8, 176+8 };
+
+	if ((adhoc_server && adhoc_paused == 2) || (!adhoc_server && adhoc_paused == 1))
+		control = 1;
+	else
+		control = 0;
+
+	sound_thread_enable(0);
+
+	video_copy_rect(show_frame, work_frame, &rect, &rect);
+
+	do
+	{
+		video_copy_rect(work_frame, draw_frame, &rect, &rect);
+
+		draw_dialog(140, 96, 340, 176);
+
+		sprintf(buf, TEXT(PAUSED_BY_x), (adhoc_paused == 2) ? TEXT(SERVER) : TEXT(CLIENT));
+		uifont_print_center(106, UI_COLOR(UI_PAL_INFO), buf);
+
+		if (sel == 0)
+		{
+			uifont_print_center(132, COLOR_WHITE, TEXT(RETURN_TO_GAME));
+			uifont_print_center(150, COLOR_GRAY, TEXT(DISCONNECT2));
+		}
+		else
+		{
+			uifont_print_center(132, COLOR_GRAY, TEXT(RETURN_TO_GAME));
+			uifont_print_center(150, COLOR_WHITE, TEXT(DISCONNECT2));
+		}
+
+		sceKernelDelayThread(1000000/60/2);
+		video_wait_vsync();
+		video_copy_rect(draw_frame, show_frame, &rect, &rect);
+		frame++;
+
+		if (frame & 1)
+		{
+			while (adhoc_update)
+			{
+				sceKernelDelayThread(50);
+			}
+
+			if (control)
+				buttons = send_data.buttons;
+			else
+				buttons = recv_data.buttons;
+			send_data.buttons = recv_data.buttons = 0;
+
+			adhoc_update = 1;
+
+			if (buttons & PSP_CTRL_UP)
+			{
+				sel = 0;
+			}
+			else if (buttons & PSP_CTRL_DOWN)
+			{
+				sel = 1;
+			}
+			else if (buttons & PSP_CTRL_CIRCLE)
+			{
+				adhoc_paused = 0;
+				if (sel == 1) Loop = LOOP_BROWSER;
+			}
+		}
+	} while (adhoc_paused);
+
+	autoframeskip_reset();
+	sound_thread_enable(1);
+}
+
+#endif
+
+
 /******************************************************************************
 	入力ポートインタフェース関数
 ******************************************************************************/
+
+/*------------------------------------------------------
+	入力ポートの初期化(AdHoc)
+------------------------------------------------------*/
+
+#ifdef ADHOC
+void adhoc_input_init(void)
+{
+	adhoc_thread = -1;
+	adhoc_update = 0;
+	adhoc_active = 0;
+	adhoc_paused = 0;
+
+	if (adhoc_enable)
+	{
+		adhoc_thread = sceKernelCreateThread("Input thread", adhoc_update_inputport, 0x11, 0x2000, 0, NULL);
+		if (adhoc_thread < 0)
+		{
+			adhocTerm();
+			adhoc_enable = 0;
+		}
+	}
+}
+#endif
+
 
 /*------------------------------------------------------
 	入力ポートの初期化
@@ -547,10 +831,7 @@ void input_init(void)
 	p12_start_pressed = 0;
 
 	memset(cps2_port_value, 0xff, sizeof(cps2_port_value));
-
-	memset(af_flag, 0, sizeof(af_flag));
 	memset(af_counter, 0, sizeof(af_counter));
-
 	memset(input_flag, 0, sizeof(input_flag));
 
 	input_analog_value[0] = 0;
@@ -606,6 +887,20 @@ void input_init(void)
 
 void input_shutdown(void)
 {
+#ifdef ADHOC
+	if (adhoc_enable)
+	{
+		if (adhoc_thread >= 0)
+		{
+			adhoc_active = 0;
+			sceKernelWaitThreadEnd(adhoc_thread, NULL);
+
+			sceKernelDeleteThread(adhoc_thread);
+			adhoc_thread = -1;
+		}
+		adhocTerm();
+	}
+#endif
 }
 
 
@@ -624,6 +919,23 @@ void input_reset(void)
 	setup_autofire();
 
 	if (driver->inp_eeprom) check_eeprom_settings(0);
+
+#ifdef ADHOC
+	if (adhoc_enable)
+	{
+		memset(send_data.port_value, 0xff, sizeof(send_data.port_value));
+		memset(recv_data.port_value, 0xff, sizeof(recv_data.port_value));
+
+		send_data.buttons = recv_data.buttons = 0;
+		send_data.loop_flag = recv_data.loop_flag = LOOP_EXEC;
+
+		if (!adhoc_active)
+		{
+			adhoc_active = 1;
+			sceKernelStartThread(adhoc_thread, 0, 0);
+		}
+	}
+#endif
 }
 
 
@@ -649,65 +961,90 @@ void setup_autofire(void)
 
 void update_inputport(void)
 {
-	int i;
-	u32 buttons;
-
-	service_switch = 0;
-	p12_start_pressed = 0;
-
-	if (driver->inp_eeprom) check_eeprom_settings(1);
-
-	buttons = poll_gamepad();
-
-	if ((buttons & PSP_CTRL_START) && (buttons & PSP_CTRL_SELECT))
+#ifdef ADHOC
+	if (adhoc_enable)
 	{
-		buttons &= ~(PSP_CTRL_START | PSP_CTRL_SELECT);
-
-		showmenu();
-		setup_autofire();
-	}
-
-	if ((buttons & PSP_CTRL_LTRIGGER) && (buttons & PSP_CTRL_RTRIGGER))
-	{
-		if (buttons & PSP_CTRL_SELECT)
+		if (frames_displayed & 1)
 		{
-			buttons &= ~(PSP_CTRL_SELECT | PSP_CTRL_LTRIGGER | PSP_CTRL_RTRIGGER);
-			service_switch = 1;
-		}
-		else if (buttons & PSP_CTRL_START)
-		{
-			buttons &= ~(PSP_CTRL_START | PSP_CTRL_LTRIGGER | PSP_CTRL_RTRIGGER);
-			p12_start_pressed = 1;
+			while (adhoc_update && Loop == LOOP_EXEC)
+			{
+				sceKernelDelayThread(50);
+			}
+			cps2_port_value[0] = send_data.port_value[0] & recv_data.port_value[0];
+			cps2_port_value[1] = send_data.port_value[1] & recv_data.port_value[1];
+			cps2_port_value[2] = send_data.port_value[2] & recv_data.port_value[2];
+			cps2_port_value[3] = send_data.port_value[3] & recv_data.port_value[3];
+			adhoc_update = 1;
+
+			if (adhoc_paused) adhoc_pause();
 		}
 	}
-
-	buttons = adjust_input(buttons);
-	buttons = update_autofire(buttons);
-
-	for (i = 0; i < MAX_INPUTS; i++)
-		input_flag[i] = (buttons & input_map[i]) != 0;
-
-	update_inputport0();
-	update_inputport1();
-	update_inputport2();
-	if (machine_input_type == INPTYPE_puzloop2) update_inputport3();
-
-	if (input_flag[SNAPSHOT])
+	else
+#endif
 	{
-		save_snapshot();
-	}
-	if (input_flag[SWPLAYER])
-	{
-		if (!input_ui_wait)
+		int i;
+		u32 buttons;
+
+		service_switch = 0;
+		p12_start_pressed = 0;
+
+		if (driver->inp_eeprom) check_eeprom_settings(1);
+
+		buttons = poll_gamepad();
+
+#ifdef KERNEL_MODE
+		if (buttons & PSP_CTRL_HOME)
+#else
+		if ((buttons & PSP_CTRL_START) && (buttons & PSP_CTRL_SELECT))
+#endif
 		{
-			option_controller++;
-			if (option_controller == input_max_players)
-				option_controller = INPUT_PLAYER1;
-			ui_popup("Controller: Player %d", option_controller + 1);
-			input_ui_wait = 30;
+			showmenu();
+			setup_autofire();
+			buttons = poll_gamepad();
 		}
+
+		if ((buttons & PSP_CTRL_LTRIGGER) && (buttons & PSP_CTRL_RTRIGGER))
+		{
+			if (buttons & PSP_CTRL_SELECT)
+			{
+				buttons &= ~(PSP_CTRL_SELECT | PSP_CTRL_LTRIGGER | PSP_CTRL_RTRIGGER);
+				service_switch = 1;
+			}
+			else if (buttons & PSP_CTRL_START)
+			{
+				buttons &= ~(PSP_CTRL_START | PSP_CTRL_LTRIGGER | PSP_CTRL_RTRIGGER);
+				p12_start_pressed = 1;
+			}
+		}
+
+		buttons = adjust_input(buttons);
+		buttons = update_autofire(buttons);
+
+		for (i = 0; i < MAX_INPUTS; i++)
+			input_flag[i] = (buttons & input_map[i]) != 0;
+
+		update_inputport0();
+		update_inputport1();
+		update_inputport2();
+		if (machine_input_type == INPTYPE_puzloop2) update_inputport3();
+
+		if (input_flag[SNAPSHOT])
+		{
+			save_snapshot();
+		}
+		if (input_flag[SWPLAYER])
+		{
+			if (!input_ui_wait)
+			{
+				option_controller++;
+				if (option_controller == input_max_players)
+					option_controller = INPUT_PLAYER1;
+				ui_popup(TEXT(CONTROLLER_PLAYERx), option_controller + 1);
+				input_ui_wait = 30;
+			}
+		}
+		if (input_ui_wait > 0) input_ui_wait--;
 	}
-	if (input_ui_wait > 0) input_ui_wait--;
 }
 
 

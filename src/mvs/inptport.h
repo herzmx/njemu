@@ -11,15 +11,13 @@
 
 #define MVS_PORT_MAX	6
 
-#define TEST_SWITCH_FLAGS	(PSP_CTRL_SELECT|PSP_CTRL_LTRIGGER|PSP_CTRL_RTRIGGER)
-
 enum
 {
-	NEOGEO_A = 4,
-	NEOGEO_B,
-	NEOGEO_C,
-	NEOGEO_D,
-	NEOGEO_BUTTON_MAX,
+	MVS_A = 0,
+	MVS_B,
+	MVS_C,
+	MVS_D,
+	MVS_BUTTON_MAX,
 };
 
 enum
@@ -61,6 +59,12 @@ enum
 
 enum
 {
+	INPUT_PLAYER1 = 0,
+	INPUT_PLAYER2
+};
+
+enum
+{
 	INPUT_AES = 0,
 	INPUT_MVS
 };
@@ -75,12 +79,16 @@ extern int analog_sensitivity;
 extern u8 neogeo_port_value[MVS_PORT_MAX];
 extern int input_analog_value[2];
 
+#ifdef ADHOC
+void adhoc_input_init(void);
+#endif
+
 void check_input_mode(void);
 
 void input_init(void);
 void input_shutdown(void);
 void input_reset(void);
-void update_autofire(void);
+void setup_autofire(void);
 void update_inputport(void);
 
 #ifdef SAVE_STATE

@@ -1701,6 +1701,12 @@
 		{&&op_rol_16_aw        , 0xffff, 0xe7f8},
 		{&&op_rol_16_al        , 0xffff, 0xe7f9},
 
+#ifdef BUILD_NCDZPSP
+		{&&op_FAC0             , 0xffff, 0xfac0},
+		{&&op_FAC1             , 0xffff, 0xfac1},
+		{&&op_FAC2             , 0xffff, 0xfac2},
+#endif /* BUILD_NCDZPSP */
+
 		{&&op_illegal          , 0x0000, 0x0000}
 	};
 

@@ -19,7 +19,13 @@
 
 static int cps1_init(void)
 {
-	cps1_driver_init();
+	if (!cps1_driver_init())
+		return 0;
+
+	msg_printf(TEXT(DONE2));
+
+	msg_screen_clear();
+	video_clear_screen();
 
 	return cps1_video_init();
 }
@@ -31,6 +37,9 @@ static int cps1_init(void)
 
 static void cps1_reset(void)
 {
+	video_set_mode(16);
+	video_clear_screen();
+
 	autoframeskip_reset();
 
 	cps1_driver_reset();
@@ -50,18 +59,30 @@ static void cps1_reset(void)
 
 static void cps1_exit(void)
 {
+	video_set_mode(32);
+	video_clear_screen();
+
 	ui_popup_reset(POPUP_MENU);
 
 	video_clear_screen();
-	msg_screen_init("Exit emulation");
+	msg_screen_init(WP_LOGO, ICON_SYSTEM, TEXT(EXIT_EMULATION2));
 
-	msg_printf("Please wait.\n");
+	msg_printf(TEXT(PLEASE_WAIT2));
 
 	cps1_video_exit();
 	cps1_driver_exit();
-	save_gamecfg(game_name);
 
-	msg_printf("Done.\n");
+#ifdef ADHOC
+	if (!adhoc_enable)
+#endif
+	{
+#ifdef COMMAND_LIST
+		free_commandlist();
+#endif
+		save_gamecfg(game_name);
+	}
+
+	msg_printf(TEXT(DONE2));
 
 	show_exit_screen();
 }
@@ -110,6 +131,8 @@ static void cps1_run(void)
 
 void cps1_main(void)
 {
+	video_set_mode(32);
+
 	Loop = LOOP_RESET;
 
 	while (Loop >= LOOP_RESTART)

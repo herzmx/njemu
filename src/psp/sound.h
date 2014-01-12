@@ -32,7 +32,7 @@ struct sound_t
 }
 
 extern struct sound_t *sound;
-extern int psp_samplerate;
+extern volatile int sound_thread_locked;
 
 void sound_thread_init(void);
 void sound_thread_exit(void);

@@ -47,6 +47,7 @@ static u32 irq2pos_value;
 static int vblank_int;
 static int scanline_int;
 static int scanline_read;
+static int raster_enable;
 
 static u32 frame_counter;
 
@@ -142,23 +143,38 @@ void neogeo_driver_init(void)
 
 void neogeo_driver_reset(void)
 {
-	pspTime today;
-	int y, m, d;
+#ifdef ADHOC
+	if (adhoc_enable)
+	{
+		pd4990a.seconds = 0;
+		pd4990a.minutes = 0;
+		pd4990a.hours   = 0;
+		pd4990a.days    = 0;
+		pd4990a.month   = 0;
+		pd4990a.year    = 0;
+		pd4990a.weekday = 0;
+	}
+	else
+#endif
+	{
+		pspTime today;
+		int y, m, d;
 
-	sceRtcGetCurrentClockLocalTime(&today);
+		sceRtcGetCurrentClockLocalTime(&today);
 
-	pd4990a.seconds = ((today.seconds / 10) << 4) + (today.seconds % 10);
-	pd4990a.minutes = ((today.minutes / 10) << 4) + (today.minutes % 10);
-	pd4990a.hours   = ((today.hour    / 10) << 4) + (today.hour    % 10);
-	pd4990a.days    = ((today.day     / 10) << 4) + (today.day     % 10);
-	pd4990a.month   = today.month;
-	pd4990a.year    = (((today.year % 100) / 10) << 4) + (today.year % 10);
+		pd4990a.seconds = ((today.seconds / 10) << 4) + (today.seconds % 10);
+		pd4990a.minutes = ((today.minutes / 10) << 4) + (today.minutes % 10);
+		pd4990a.hours   = ((today.hour    / 10) << 4) + (today.hour    % 10);
+		pd4990a.days    = ((today.day     / 10) << 4) + (today.day     % 10);
+		pd4990a.month   = today.month;
+		pd4990a.year    = (((today.year % 100) / 10) << 4) + (today.year % 10);
 
-	y = today.year;
-	m = today.month;
-	d = today.day;
-	if (m == 1 || m == 2) { y--; m += 12; }
-	pd4990a.weekday = (y + (y / 4) - (y / 100) + (y / 400) + ((13 * m + 8) / 5) + d) % 7;
+		y = today.year;
+		m = today.month;
+		d = today.day;
+		if (m == 1 || m == 2) { y--; m += 12; }
+		pd4990a.weekday = (y + (y / 4) - (y / 100) + (y / 400) + ((13 * m + 8) / 5) + d) % 7;
+	}
 
 	memset(neogeo_ram, 0, 0x10000);
 
@@ -189,7 +205,27 @@ void neogeo_driver_reset(void)
 	neogeo_rng = 0x2345;
 	neogeo_sram_unlocked = 0;
 
-	if (neogeo_raster_enable)
+	trackball_select = 0;
+
+	neogeo_reset_driver_type();
+
+	m68000_reset();
+	z80_reset();
+}
+
+
+/*------------------------------------------------------
+	Reset driver type
+------------------------------------------------------*/
+
+void neogeo_reset_driver_type(void)
+{
+	raster_enable = neogeo_raster_enable;
+
+	if (neogeo_bios >= UNI_V20 && neogeo_bios <= UNI_V22)
+		raster_enable = 1;
+
+	if (raster_enable)
 	{
 		if (neogeo_ngh == NGH_mosyougi)
 			neogeo_driver_type = BUSY;
@@ -205,11 +241,6 @@ void neogeo_driver_reset(void)
 	}
 
 	timer_set_update_handler();
-
-	trackball_select = 0;
-
-	m68000_reset();
-	z80_reset();
 }
 
 
@@ -262,7 +293,7 @@ void neogeo_interrupt(void)
 
 
 /*------------------------------------------------------
-	MC68000 scanline interrupt (IRQ1)
+	MC68000 scanline interrupt (IRQ2)
 ------------------------------------------------------*/
 
 void neogeo_raster_interrupt(int line, int busy)
@@ -282,7 +313,7 @@ void neogeo_raster_interrupt(int line, int busy)
 	{
 		if (scanline_read)
 		{
-			do_refresh = 1;
+			do_refresh = neogeo_raster_enable;
 			scanline_read = 0;
 		}
 	}
@@ -291,7 +322,7 @@ void neogeo_raster_interrupt(int line, int busy)
 	{
 		if (line == irq2start)
 		{
-			if (!busy) do_refresh = 1;
+			if (!busy) do_refresh = neogeo_raster_enable;
 
 			if (irq2control & IRQ2CTRL_AUTOLOAD_REPEAT)
 				irq2start += (irq2pos_value + 3) / 0x180;	/* ridhero gives 0x17d */
@@ -345,8 +376,7 @@ INLINE void neogeo_select_vectors(int vector)
 {
 	memcpy(memory_region_cpu1, neogeo_vectors[vector], 0x80);
 	neogeo_selected_vectors = vector;
-	blit_clear_fix_sprite();
-	blit_clear_spr_sprite();
+	blit_set_sprite_clear_flag();
 	autoframeskip_reset();
 }
 
@@ -362,8 +392,6 @@ INLINE void neogeo_setpalbank(u32 bank)
 		neogeo_palette_index = bank;
 		neogeo_paletteram16 = neogeo_palettebank16[bank];
 		video_palette = video_palettebank[bank];
-		blit_clear_fix_sprite();
-		blit_clear_spr_sprite();
 	}
 }
 
@@ -522,7 +550,12 @@ READ16_HANDLER( neogeo_controller2_16_r )
 
 READ16_HANDLER( neogeo_controller3_16_r )
 {
-	return (neogeo_port_value[2] << 8) & 0x8fff;
+#ifdef ADHOC
+	if (adhoc_enable)
+		return neogeo_port_value[2] << 8;
+	else
+#endif
+		return (neogeo_port_value[2] << 8) & 0x8fff;
 }
 
 
@@ -618,13 +651,13 @@ WRITE16_HANDLER( neogeo_syscontrol1_16_w )
 
 WRITE16_HANDLER( neogeo_syscontrol2_16_w )
 {
-	int flag = (offset & (0x10 >> 1)) != 0;
+	int flag = (offset >> 3) & 1;
 
 	switch (offset & 7)
 	{
 	case 1: neogeo_select_vectors(flag); break;
 	case 5:
-		fix_bank = flag;
+		fix_bank   = flag;
 		fix_usage  = gfx_pen_usage[flag];
 		fix_memory = (flag) ? memory_region_gfx2 : memory_region_gfx1;
 		break;
@@ -679,22 +712,13 @@ WRITE16_HANDLER( neogeo_video_16_w )
 
 WRITE16_HANDLER( neogeo_paletteram16_w )
 {
-	u16 newword, oldword;
+	u16 color;
 
 	offset &= 0xfff;
-
-	newword = oldword = neogeo_paletteram16[offset];
-	COMBINE_DATA(&newword);
-
-	if (newword == oldword) return;
-
-	neogeo_paletteram16[offset] = newword;
+	color = COMBINE_DATA(&neogeo_paletteram16[offset]);
 
 	if (offset & 0x0f)
-	{
-		video_palette[offset] = video_clut16[newword & 0x7fff];
-		blit_palette_mark_dirty(offset >> 4);
-	}
+		video_palette[offset] = video_clut16[color & 0x7fff];
 }
 
 
@@ -704,7 +728,12 @@ WRITE16_HANDLER( neogeo_paletteram16_w )
 
 READ16_HANDLER( neogeo_memcard16_r )
 {
-	return neogeo_memcard[offset & 0x7ff] | 0xff00;
+#ifdef ADHOC
+	if (adhoc_enable)
+		return ~0;
+	else
+#endif
+		return neogeo_memcard[offset & 0x7ff] | 0xff00;
 }
 
 
@@ -714,9 +743,14 @@ READ16_HANDLER( neogeo_memcard16_r )
 
 WRITE16_HANDLER( neogeo_memcard16_w )
 {
-	if (ACCESSING_LSB)
+#ifdef ADHOC
+	if (!adhoc_enable)
+#endif
 	{
-		neogeo_memcard[offset & 0x7ff] = data & 0xff;
+		if (ACCESSING_LSB)
+		{
+			neogeo_memcard[offset & 0x7ff] = data & 0xff;
+		}
 	}
 }
 
@@ -1375,6 +1409,7 @@ STATE_SAVE( driver )
 	state_save_long(&pending_command, 1);
 	state_save_long(&neogeo_frame_counter, 1);
 	state_save_long(&neogeo_frame_counter_speed, 1);
+	state_save_long(&raster_enable, 1);
 
 	state_save_long(&m68k_second_bank, 1);
 	state_save_long(z80_bank, 4);
@@ -1405,6 +1440,7 @@ STATE_LOAD( driver )
 	state_load_long(&pending_command, 1);
 	state_load_long(&neogeo_frame_counter, 1);
 	state_load_long(&neogeo_frame_counter_speed, 1);
+	state_load_long(&raster_enable, 1);
 
 	state_load_long(&_m68k_second_bank, 1);
 	state_load_long(_z80_bank, 4);

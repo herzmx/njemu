@@ -2,7 +2,7 @@
 
 	video.c
 
-	PSPビデオ制御関数 (16bitカラーのみ)
+	PSPビデオ制御関数
 
 ******************************************************************************/
 
@@ -46,13 +46,16 @@
 #define COLOR_DARKGRAY		 63, 63, 63
 
 #define GU_FRAME_ADDR(frame)		(u16 *)((u32)frame | 0x44000000)
-#define CNVCOL15TO32(c)				((GETB15(c) << 16) | (GETG15(c) << 8) | GETR15(c))
+#define CNVCOL15TO32(c)				(GETR15(c) | (GETG15(c) << 8) | (GETB15(c) << 16))
+#define CNVCOL32TO15(c)				(((GETR32(c) & 0xf8) >> 3) | ((GETG32(c) & 0xf8) << 2) | ((GETB32(src[x]) & 0xf8) << 7))
 
-#define SWIZZLED_UV(tex, u, v)		&tex[((((v) & ~7) << 9) | (((u) & ~7) << 3))]
 #define SWIZZLED_8x8(tex, idx)		&tex[(idx) << 6]
 #define SWIZZLED_16x16(tex, idx)	&tex[((idx & ~31) << 8) | ((idx & 31) << 7)]
 #define SWIZZLED_32x32(tex, idx)	&tex[((idx & ~15) << 10) | ((idx & 15) << 8)]
-#define SWIZZLED_GAP				((BUF_WIDTH << 3) - 8*8)
+
+#define SWIZZLED8_8x8(tex, idx)		&tex[((idx & ~1) << 6) | ((idx & 1) << 3)]
+#define SWIZZLED8_16x16(tex, idx)	&tex[((idx & ~31) << 8) | ((idx & 31) << 7)]
+#define SWIZZLED8_32x32(tex, idx)	&tex[((idx & ~15) << 10) | ((idx & 15) << 8)]
 
 
 struct Vertex
@@ -72,39 +75,55 @@ struct rectangle
 
 typedef struct rect_t
 {
-	int left;
-	int top;
-	int right;
-	int bottom;
+	s16 left;
+	s16 top;
+	s16 right;
+	s16 bottom;
 } RECT;
 
 
 extern u8 gulist[GULIST_SIZE];
+extern int video_mode;
 extern void *show_frame;
 extern void *draw_frame;
 extern void *work_frame;
 extern void *tex_frame;
 extern RECT full_rect;
-extern int psp_refreshrate;
 
-void video_wait_vsync(void);
-void video_flip_screen(int vsync);
+#if PSP_VIDEO_32BPP
+extern void video_set_mode(int mode);
+#else
+#define video_set_mode(mode)
+#endif
+extern void video_exit(int flag);
+extern void video_wait_vsync(void);
+extern void video_flip_screen(int vsync);
 
-void video_init(void);
-void video_exit(int flag);
-u16 *video_frame_addr(void *frame, int x, int y);
-void video_clear_screen(void);
-void video_clear_frame(void *frame);
-void video_clear_rect(void *frame, RECT *rect);
-void video_fill_frame(void *frame, u32 color);
-void video_fill_rect(void *frame, u32 color, RECT *rect);
-void video_clear_depth(void *frame);
+#if PSP_VIDEO_32BPP
+extern void (*video_init)(void);
+extern void *(*video_frame_addr)(void *frame, int x, int y);
+extern void (*video_clear_screen)(void);
+extern void (*video_clear_frame)(void *frame);
+extern void (*video_clear_rect)(void *frame, RECT *rect);
+extern void (*video_fill_frame)(void *frame, u32 color);
+extern void (*video_fill_rect)(void *frame, u32 color, RECT *rect);
+extern void (*video_copy_rect)(void *src, void *dst, RECT *src_rect, RECT *dst_rect);
+extern void (*video_copy_rect_flip)(void *src, void *dst, RECT *src_rect, RECT *dst_rect);
+extern void (*video_copy_rect_rotate)(void *src, void *dst, RECT *src_rect, RECT *dst_rect);
+#else
+extern void video_init(void);
+extern void *video_frame_addr(void *frame, int x, int y);
+extern void video_clear_screen(void);
+extern void video_clear_frame(void *frame);
+extern void video_clear_rect(void *frame, RECT *rect);
+extern void video_fill_frame(void *frame, u32 color);
+extern void video_fill_rect(void *frame, u32 color, RECT *rect);
+extern void video_copy_rect(void *src, void *dst, RECT *src_rect, RECT *dst_rect);
+extern void video_clear_depth(void *frame);
+extern void video_copy_rect_flip(void *src, void *dst, RECT *src_rect, RECT *dst_rect);
+extern void video_copy_rect_rotate(void *src, void *dst, RECT *src_rect, RECT *dst_rect);
+#endif
 
-void video_copy_rect(void *src, void *dst, RECT *src_rect, RECT *dst_rect);
-void video_copy_rect_flip(void *src, void *dst, RECT *src_rect, RECT *dst_rect);
-void video_copy_rect_alpha(void *src, void *dst, RECT *src_rect, RECT *dst_rect);
-void video_copy_rect_rotate(void *src, void *dst, RECT *src_rect, RECT *dst_rect);
-
-void video_calc_refreshrate(void);
+extern int sceDisplayIsVblank(void);
 
 #endif /* PSP_VIDE_H */

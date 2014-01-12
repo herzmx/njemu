@@ -117,11 +117,6 @@ struct driver_t
 	const struct tile_t scroll1;
 	const struct tile_t scroll2;
 	const struct tile_t scroll3;
-	const u16 object_tex_height;
-	const u16 scroll1_tex_height;
-	const u16 scroll2_tex_height;
-	const u16 scroll3_tex_height;
-	const u16 scrollh_tex_height;
 };
 
 extern struct driver_t CPS1_driver[];
@@ -146,6 +141,8 @@ WRITE16_HANDLER( forgottn_dial_1_reset_w );
 
 WRITE8_HANDLER( cps1_snd_bankswitch_w );
 
+WRITE8_HANDLER( cps1_oki_pin7_w );
+
 READ8_HANDLER( cps1_sound_fade_timer_r );
 WRITE16_HANDLER( cps1_sound_fade_timer_w );
 
@@ -169,7 +166,7 @@ void cps1_sound_interrupt(int state);
 
 void pang3_decode(void);
 
-void cps1_driver_init(void);
+int cps1_driver_init(void);
 void cps1_driver_reset(void);
 void cps1_driver_exit(void);
 

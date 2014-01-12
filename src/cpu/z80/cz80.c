@@ -44,6 +44,8 @@ cz80_struc ALIGN_DATA CZ80;
 	ƒ[ƒJƒ‹•Ï”
 ******************************************************************************/
 
+static u8 ALIGN_DATA cz80_bad_address[1 << CZ80_FETCH_SFT];
+
 static u8 ALIGN_DATA SZ[256];
 static u8 ALIGN_DATA SZP[256];
 static u8 ALIGN_DATA SZ_BIT[256];
@@ -86,6 +88,16 @@ void Cz80_Init(cz80_struc *CPU)
 #endif
 
 	memset(CPU, 0, sizeof(cz80_struc));
+
+	memset(cz80_bad_address, 0xff, sizeof(cz80_bad_address));
+
+	for (i = 0; i < CZ80_FETCH_BANK; i++)
+	{
+		CPU->Fetch[i] = (u32)cz80_bad_address;
+#if CZ80_ENCRYPTED_ROM
+		CPU->OPFetch[i] = 0;
+#endif
+	}
 
 	// flags tables initialisation
 	for (i = 0; i < 256; i++)

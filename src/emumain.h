@@ -16,8 +16,16 @@
 #include "zip/zfile.h"
 #include "common/loadrom.h"
 #include "common/state.h"
+#if USE_CACHE
 #include "common/cache.h"
-#if (EMU_SYSTEM != MVS)
+#endif
+#ifdef COMMAND_LIST
+#include "common/cmdlist.h"
+#endif
+#ifdef CHEAT
+#include "common/cheat.h"
+#endif
+#if (EMU_SYSTEM == CPS1 || EMU_SYSTEM == CPS2)
 #include "common/coin.h"
 #endif
 
@@ -27,6 +35,8 @@
 #include "cps2/cps2.h"
 #elif (EMU_SYSTEM == MVS)
 #include "mvs/mvs.h"
+#elif (EMU_SYSTEM == NCDZ)
+#include "ncdz/ncdz.h"
 #endif
 
 
@@ -59,8 +69,10 @@ extern int machine_sound_type;
 extern u32 frames_displayed;
 extern int fatal_error;
 
-extern float video_fps;
-
+#ifdef ADHOC
+extern int adhoc_enable;
+extern int adhoc_server;
+#endif
 
 void emu_main(void);
 

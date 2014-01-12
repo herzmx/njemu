@@ -17,6 +17,7 @@ PSP_MODULE_INFO(PBPNAME_STR, 0, VERSION_MAJOR, VERSION_MINOR);
 PSP_MAIN_THREAD_ATTR(THREAD_ATTR_USER);
 #endif
 
+
 /******************************************************************************
 	グローバル変数
 ******************************************************************************/
@@ -24,6 +25,26 @@ PSP_MAIN_THREAD_ATTR(THREAD_ATTR_USER);
 volatile int Loop;
 volatile int Sleep;
 char launchDir[MAX_PATH];
+int psp_cpuclock;
+
+
+/******************************************************************************
+	グローバル関数
+******************************************************************************/
+
+/*------------------------------------------------------
+	CPUクロック設定
+------------------------------------------------------*/
+
+void set_cpu_clock(int value)
+{
+	switch (value)
+	{
+	case PSPCLOCK_266: scePowerSetClockFrequency(266, 266, 133); break;
+	case PSPCLOCK_333: scePowerSetClockFrequency(333, 333, 166); break;
+	default: scePowerSetClockFrequency(222, 222, 111); break;
+	}
+}
 
 
 /******************************************************************************
@@ -34,11 +55,13 @@ char launchDir[MAX_PATH];
 	Exit Callback
 --------------------------------------------------------*/
 
+#ifndef KERNEL_MODE
 static SceKernelCallbackFunction ExitCallback(int arg1, int arg2, void *arg)
 {
 	Loop = LOOP_EXIT;
 	return 0;
 }
+#endif
 
 /*--------------------------------------------------------
 	Power Callback
@@ -72,8 +95,10 @@ static int CallbackThread(SceSize args, void *argp)
 {
 	int cbid;
 
+#ifndef KERNEL_MODE
 	cbid = sceKernelCreateCallback("Exit Callback", (void *)ExitCallback, NULL);
 	sceKernelRegisterExitCallback(cbid);
+#endif
 
 	cbid = sceKernelCreateCallback("Power Callback", (void *)PowerCallback, NULL);
 	scePowerRegisterCallback(0, cbid);
@@ -92,7 +117,7 @@ static int SetupCallbacks(void)
 {
 	SceUID thread_id = 0;
 
-	thread_id = sceKernelCreateThread("Update Thread", CallbackThread, 0x10, 0xFA0, 0, NULL);
+	thread_id = sceKernelCreateThread("Update Thread", CallbackThread, 0x12, 0xFA0, 0, NULL);
 	if (thread_id >= 0)
 	{
 		sceKernelStartThread(thread_id, 0, 0);
@@ -111,6 +136,27 @@ static int SetupCallbacks(void)
 
 #ifdef KERNEL_MODE
 
+static volatile int home_active;
+volatile u32 home_button;
+
+static int home_button_thread(SceSize args, void *argp)
+{
+	SceCtrlData paddata;
+
+	home_active = 1;
+
+	while (home_active)
+	{
+		sceCtrlPeekBufferPositive(&paddata, 1);
+		home_button = paddata.Buttons & PSP_CTRL_HOME;
+		sceKernelDelayThread(200);
+	}
+
+	sceKernelExitThread(0);
+
+	return 0;
+}
+
 static int user_main(SceSize args, void *argp)
 {
 	SetupCallbacks();
@@ -118,17 +164,21 @@ static int user_main(SceSize args, void *argp)
 	set_cpu_clock(PSPCLOCK_222);
 
 	pad_init();
+	video_set_mode(32);
 	video_init();
 	file_browser();
 	video_exit(1);
+
+	sceKernelExitThread(0);
 
 	return 0;
 }
 
 int main(int argc, char *argv[])
 {
-	char *p;
 	SceUID main_thread;
+	SceUID home_thread;
+	char *p;
 
 	memset(launchDir, 0, sizeof(launchDir));
 	strncpy(launchDir, argv[0], MAX_PATH - 1);
@@ -137,9 +187,16 @@ int main(int argc, char *argv[])
 		*(p + 1) = '\0';
 	}
 
-#ifdef MEDIA_ENGINE
-	me_init();
+#ifdef ADHOC
+	pspSdkLoadAdhocModules();
 #endif
+
+	home_thread = sceKernelCreateThread("Home Button Thread",
+								home_button_thread,
+								0x11,
+								0x200,
+								0,
+								NULL);
 
 	main_thread = sceKernelCreateThread("User Mode Thread",
 								user_main,
@@ -148,12 +205,13 @@ int main(int argc, char *argv[])
 								PSP_THREAD_ATTR_USER,
 								NULL);
 
+	sceKernelStartThread(home_thread, 0, 0);
+
 	sceKernelStartThread(main_thread, 0, 0);
 	sceKernelWaitThreadEnd(main_thread, NULL);
 
-#ifdef MEDIA_ENGINE
-	me_exit();
-#endif
+	home_active = 0;
+	sceKernelWaitThreadEnd(home_thread, NULL);
 
 	sceKernelExitGame();
 
@@ -178,6 +236,7 @@ int main(int argc, char *argv[])
 	set_cpu_clock(PSPCLOCK_222);
 
 	pad_init();
+	video_set_mode(32);
 	video_init();
 	file_browser();
 	video_exit(1);

@@ -27,13 +27,19 @@ struct rom_t
 	int skip;
 };
 
+#if (EMU_SYSTEM != NCDZ)
 int  file_open(const char *fname1, const char *fname2, const u32 crc, char *fname);
 void file_close(void);
 int  file_read(void *buf, size_t length);
 int  file_getc(void);
-#ifdef USE_CACHE
+#if USE_CACHE && (EMU_SYSTEM == MVS)
 int  cachefile_open(const char *fname);
 #endif
 int rom_load(struct rom_t *rom, u8 *mem, int idx, int max);
+#endif
+
+void error_memory(const char *mem_name);
+void error_crc(const char *rom_name);
+void error_file(const char *rom_name);
 
 #endif /* LOAD_ROM_H */

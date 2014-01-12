@@ -20,11 +20,7 @@ void YM2151_sh_start(int type)
 	samplerate >>= (2 - option_samplerate);
 
 	YM2151Init(3579545, samplerate, cps1_sound_interrupt);
-
-	if (type == SOUND_YM2151_TYPE2)
-		OKIM6295Init(6061, samplerate);
-	else
-		OKIM6295Init(7576, samplerate);
+	OKIM6295Init(1000000, samplerate, 1);
 }
 
 

@@ -10,6 +10,8 @@
 #include <sys/unistd.h>
 
 
+#if (EMU_SYSTEM != NCDZ)
+
 /******************************************************************************
 	ローカル変数
 ******************************************************************************/
@@ -18,7 +20,7 @@ static int rom_fd;
 
 
 /******************************************************************************
-	グローバル関数
+	ROMファイル読み込み
 ******************************************************************************/
 
 /*--------------------------------------------------------
@@ -168,69 +170,20 @@ int file_getc(void)
 	キャッシュファイルを開く
 --------------------------------------------------------*/
 
-#if USE_CACHE
+#if USE_CACHE && (EMU_SYSTEM == MVS)
 int cachefile_open(const char *fname)
 {
 	char path[MAX_PATH];
 
-#if (EMU_SYSTEM == MVS)
 	sprintf(path, "%s/%s_cache", cache_dir, game_name);
 	zip_open(path);
 	if ((rom_fd = zopen(fname)) != -1)
-	{
-		cache_type = CACHE_RAWFILE;
 		return rom_fd;
-	}
 
 	sprintf(path, "%s/%s_cache", cache_dir, cache_parent_name);
 	zip_open(path);
 	if ((rom_fd = zopen(fname)) != -1)
-	{
-		cache_type = CACHE_RAWFILE;
 		return rom_fd;
-	}
-#else
-	if (!fname)
-	{
-		sprintf(path, "%s/%s.cache", cache_dir, game_name);
-		if ((rom_fd = sceIoOpen(path, PSP_O_RDONLY, 0777)) >= 0)
-		{
-			cache_type = CACHE_RAWFILE;
-			return rom_fd;
-		}
-
-		sprintf(path, "%s/%s.cache", cache_dir, cache_parent_name);
-		if ((rom_fd = sceIoOpen(path, PSP_O_RDONLY, 0777)) >= 0)
-		{
-			cache_type = CACHE_RAWFILE;
-			return rom_fd;
-		}
-
-		return -1;
-	}
-#endif
-
-	sprintf(path, "%s/%s_cache.zip", cache_dir, game_name);
-	if (zip_open(path) != -1)
-	{
-		if ((rom_fd = zopen(fname)) != -1)
-		{
-			cache_type = CACHE_ZIPFILE;
-			return rom_fd;
-		}
-		zip_close();
-	}
-
-	sprintf(path, "%s/%s_cache.zip", cache_dir, cache_parent_name);
-	if (zip_open(path) != -1)
-	{
-		if ((rom_fd = zopen(fname)) != -1)
-		{
-			cache_type = CACHE_ZIPFILE;
-			return rom_fd;
-		}
-		zip_close();
-	}
 
 	return -1;
 }
@@ -298,4 +251,52 @@ _continue:
 	}
 
 	return idx;
+}
+
+#endif /* EMU_SYSTEM */
+
+
+/******************************************************************************
+	エラーメッセージ表示
+******************************************************************************/
+
+/*------------------------------------------------------
+	メモリ確保エラーメッセージ表示
+------------------------------------------------------*/
+
+void error_memory(const char *mem_name)
+{
+	zip_close();
+	msg_printf(TEXT(COULD_NOT_ALLOCATE_x_MEMORY), mem_name);
+	msg_printf(TEXT(PRESS_ANY_BUTTON2));
+	pad_wait_press(PAD_WAIT_INFINITY);
+	Loop = LOOP_BROWSER;
+}
+
+
+/*------------------------------------------------------
+	CRCエラーメッセージ表示
+------------------------------------------------------*/
+
+void error_crc(const char *rom_name)
+{
+	zip_close();
+	msg_printf(TEXT(CRC32_NOT_CORRECT_x), rom_name);
+	msg_printf(TEXT(PRESS_ANY_BUTTON2));
+	pad_wait_press(PAD_WAIT_INFINITY);
+	Loop = LOOP_BROWSER;
+}
+
+
+/*------------------------------------------------------
+	ROMファイルエラーメッセージ表示
+------------------------------------------------------*/
+
+void error_file(const char *rom_name)
+{
+	zip_close();
+	msg_printf(TEXT(FILE_NOT_FOUND_x), rom_name);
+	msg_printf(TEXT(PRESS_ANY_BUTTON2));
+	pad_wait_press(PAD_WAIT_INFINITY);
+	Loop = LOOP_BROWSER;
 }

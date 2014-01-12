@@ -94,38 +94,6 @@ static void cps1_qsound_writemem(u32 offset, u8 data);
 
 
 /******************************************************************************
-	エラーメッセージ表示
-******************************************************************************/
-
-/*------------------------------------------------------
-	メモリ確保エラーメッセージ表示
-------------------------------------------------------*/
-
-static void error_memory(const char *mem_name)
-{
-	zip_close();
-	msg_printf("ERROR: Could not allocate %s memory.\n", mem_name);
-	msg_printf("Press any button.");
-	pad_wait_press(-1);
-	Loop = LOOP_BROWSER;
-}
-
-
-/*------------------------------------------------------
-	ROMファイルエラーメッセージ表示
-------------------------------------------------------*/
-
-static void error_rom(const char *rom_name)
-{
-	zip_close();
-	msg_printf("ERROR: File not found or CRC32 not correct. \"%s\"\n", rom_name);
-	msg_printf("Press any button.\n");
-	pad_wait_press(-1);
-	Loop = LOOP_BROWSER;
-}
-
-
-/******************************************************************************
 	ROM読み込み
 ******************************************************************************/
 
@@ -151,11 +119,11 @@ static int load_rom_cpu1(void)
 	{
 		if (file_open(game_name, parent, cpu1rom[i].crc, fname) == -1)
 		{
-			error_rom("CPU1");
+			error_crc("CPU1");
 			return 0;
 		}
 
-		msg_printf("Loading \"%s\"\n", fname);
+		msg_printf(TEXT(LOADING), fname);
 
 		i = rom_load(cpu1rom, memory_region_cpu1, i, num_cpu1rom);
 
@@ -188,11 +156,11 @@ static int load_rom_cpu2(void)
 	{
 		if (file_open(game_name, parent, cpu2rom[i].crc, fname) == -1)
 		{
-			error_rom("CPU2");
+			error_crc("CPU2");
 			return 0;
 		}
 
-		msg_printf("Loading \"%s\"\n", fname);
+		msg_printf(TEXT(LOADING), fname);
 
 		i = rom_load(cpu2rom, memory_region_cpu2, i, num_cpu2rom);
 
@@ -225,11 +193,11 @@ static int load_rom_gfx1(void)
 	{
 		if (file_open(game_name, parent, gfx1rom[i].crc, fname) == -1)
 		{
-			error_rom("GFX1");
+			error_crc("GFX1");
 			return 0;
 		}
 
-		msg_printf("Loading \"%s\"\n", fname);
+		msg_printf(TEXT(LOADING), fname);
 
 		i = rom_load(gfx1rom, memory_region_gfx1, i, num_gfx1rom);
 
@@ -264,11 +232,11 @@ static int load_rom_sound1(void)
 	{
 		if (file_open(game_name, parent, snd1rom[i].crc, fname) == -1)
 		{
-			error_rom("SOUND1");
+			error_crc("SOUND1");
 			return 0;
 		}
 
-		msg_printf("Loading \"%s\"\n", fname);
+		msg_printf(TEXT(LOADING), fname);
 
 		i = rom_load(snd1rom, memory_region_sound1, i, num_snd1rom);
 
@@ -490,10 +458,6 @@ static int load_rom_info(const char *game_name)
 						num_cpu1rom++;
 						break;
 
-					case REGION_CPU2:
-						msg_printf("ERROR in REGION_CPU2: ROMX() not supported.\n");
-						break;
-
 					case REGION_GFX1:
 						sscanf(type, "%x", &gfx1rom[num_gfx1rom].type);
 						sscanf(offset, "%x", &gfx1rom[num_gfx1rom].offset);
@@ -502,10 +466,6 @@ static int load_rom_info(const char *game_name)
 						sscanf(group, "%x", &gfx1rom[num_gfx1rom].group);
 						sscanf(skip, "%x", &gfx1rom[num_gfx1rom].skip);
 						num_gfx1rom++;
-						break;
-
-					case REGION_SOUND1:
-						msg_printf("ERROR in REGION_SOUND1: ROMX() not supported.\n");
 						break;
 					}
 				}
@@ -546,20 +506,20 @@ int memory_init(void)
 
 	pad_wait_clear();
 	video_clear_screen();
-	msg_screen_init("Load ROM");
+	msg_screen_init(WP_LOGO, ICON_SYSTEM, TEXT(LOAD_ROM));
 
-	msg_printf("Checking ROM info...\n");
+	msg_printf(TEXT(CHECKING_ROM_INFO));
 
 	if ((res = load_rom_info(game_name)) != 0)
 	{
 		switch (res)
 		{
-		case 1: msg_printf("ERROR: This game not supported.\n"); break;
-		case 2: msg_printf("ERROR: ROM not found. (zip file name incorrect)\n"); break;
-		case 3: msg_printf("ERROR: rominfo.cps1 not found.\n"); break;
+		case 1: msg_printf(TEXT(THIS_GAME_NOT_SUPPORTED)); break;
+		case 2: msg_printf(TEXT(ROM_NOT_FOUND)); break;
+		case 3: msg_printf(TEXT(ROMINFO_NOT_FOUND)); break;
 		}
-		msg_printf("Press any button.\n");
-		pad_wait_press(-1);
+		msg_printf(TEXT(PRESS_ANY_BUTTON2));
+		pad_wait_press(PAD_WAIT_INFINITY);
 		Loop = LOOP_BROWSER;
 		return 0;
 	}
@@ -577,17 +537,45 @@ int memory_init(void)
 	}
 	if (!driver)
 	{
-		msg_printf("ERROR: Driver for \"%s\" not found.\n", game_name);
+		msg_printf(TEXT(DRIVER_FOR_x_NOT_FOUND), game_name);
 		Loop = LOOP_BROWSER;
 		return 0;
 	}
 
 	if (parent_name[0])
-		msg_printf("ROM set \"%s\" (parent: %s).\n", game_name, parent_name);
+		msg_printf(TEXT(ROMSET_x_PARENT_x), game_name, parent_name);
 	else
-		msg_printf("ROM set \"%s\".\n", game_name);
+		msg_printf(TEXT(ROMSET_x), game_name);
 
 	load_gamecfg(game_name);
+#ifdef ADHOC
+	if (adhoc_enable)
+	{
+		/* AdHoc通信時は一部オプションで固定の設定を使用 */
+		cps_raster_enable    = 1;
+		option_vsync         = 0;
+		option_autoframeskip = 0;
+		option_frameskip     = 0;
+		option_showfps       = 0;
+		option_speedlimit    = 1;
+		option_sound_enable  = 1;
+		option_samplerate    = 0;
+
+		if (adhoc_server)
+			option_controller = INPUT_PLAYER1;
+		else
+			option_controller = INPUT_PLAYER2;
+	}
+	else
+#endif
+	{
+#ifdef COMMAND_LIST
+		if (parent_name[0])
+			load_commandlist(game_name, parent_name);
+		else
+			load_commandlist(game_name, NULL);
+#endif
+	}
 
 	if (load_rom_cpu1() == 0) return 0;
 	if (load_rom_cpu2() == 0) return 0;
@@ -595,7 +583,7 @@ int memory_init(void)
 	if (load_rom_sound1() == 0) return 0;
 	if (load_rom_user1() == 0) return 0;
 
-	static_ram1 = (u8 *)cps1_ram    - 0xff0000;
+	static_ram1 = (u8 *)cps1_ram - 0xff0000;
 	static_ram2 = (u8 *)cps1_gfxram - 0x900000;
 
 	qsound_sharedram1 = &memory_region_cpu2[0xc000];
@@ -605,33 +593,24 @@ int memory_init(void)
 	memset(cps1_gfxram, 0, sizeof(cps1_gfxram));
 	memset(cps1_output, 0, sizeof(cps1_output));
 
-	switch (machine_driver_type)
+	if (machine_driver_type == MACHINE_qsound)
 	{
-	case MACHINE_qsound:
 		machine_sound_type = SOUND_QSOUND;
 		z80_read_memory_8 = cps1_qsound_readmem;
 		z80_write_memory_8 = cps1_qsound_writemem;
 		memory_length_user2 = 0x8000;
 		if ((memory_region_user2 = (u8 *)calloc(1, 0x8000)) == NULL)
 		{
-			fatalerror("Could not allocate memory. (0x8000 bytes)");
+			fatalerror(TEXT(COULD_NOT_ALLOCATE_MEMORY_0x8000BYTE));
 			return 0;
 		}
-		break;
-
-	case MACHINE_forgottn:
-		machine_sound_type = SOUND_YM2151_TYPE2;
+	}
+	else
+	{
+		machine_sound_type = SOUND_YM2151_CPS1;
 		z80_read_memory_8 = cps1_sound_readmem;
 		z80_write_memory_8 = cps1_sound_writemem;
 		memory_region_user2 = memory_region_cpu2;
-		break;
-
-	default:
-		machine_sound_type = SOUND_YM2151_TYPE1;
-		z80_read_memory_8 = cps1_sound_readmem;
-		z80_write_memory_8 = cps1_sound_writemem;
-		memory_region_user2 = memory_region_cpu2;
-		break;
 	}
 
 	switch (machine_init_type)
@@ -642,11 +621,6 @@ int memory_init(void)
 	case INIT_slammast: slammast_decode(); break;
 	case INIT_pang3:    pang3_decode();    break;
 	}
-
-	msg_printf("Done.\n");
-
-	msg_screen_clear();
-	video_clear_screen();
 
 	return 1;
 }
@@ -690,20 +664,20 @@ u8 m68000_read_memory_8(u32 offset)
 	shift = (~offset & 1) << 3;
 	mem_mask = ~(0xff << shift);
 
-	switch (offset & 0xff0000)
+	switch (offset >> 16)
 	{
-	case 0xff0000:
+	case 0xff:
 		return READ_BYTE(static_ram1, offset);
 
-	case 0x900000:
-	case 0x910000:
-	case 0x920000:
+	case 0x90:
+	case 0x91:
+	case 0x92:
 		return READ_BYTE(static_ram2, offset);
 
-	case 0xf00000:
+	case 0xf0:
 		return qsound_rom_r(offset >> 1, mem_mask) >> shift;
 
-	case 0x800000:
+	case 0x80:
 		switch (offset & 0xffe)
 		{
 		case 0x000: return cps1_inputport1_r(0, mem_mask) >> shift;
@@ -729,7 +703,7 @@ u8 m68000_read_memory_8(u32 offset)
 		}
 		break;
 
-	case 0xf10000:
+	case 0xf1:
 		switch (offset & 0xf000)
 		{
 		case 0x8000:
@@ -769,20 +743,20 @@ u16 m68000_read_memory_16(u32 offset)
 		return READ_WORD(memory_region_cpu1, offset);
 	}
 
-	switch (offset & 0xff0000)
+	switch (offset >> 16)
 	{
-	case 0xff0000:
+	case 0xff:
 		return READ_WORD(static_ram1, offset);
 
-	case 0x900000:
-	case 0x910000:
-	case 0x920000:
+	case 0x90:
+	case 0x91:
+	case 0x92:
 		return READ_WORD(static_ram2, offset);
 
-	case 0xf00000:
+	case 0xf0:
 		return qsound_rom_r(offset >> 1, 0);
 
-	case 0x800000:
+	case 0x80:
 		switch (offset & 0xffe)
 		{
 		case 0x000: return cps1_inputport1_r(0, 0);
@@ -808,7 +782,7 @@ u16 m68000_read_memory_16(u32 offset)
 		}
 		break;
 
-	case 0xf10000:
+	case 0xf1:
 		switch (offset & 0xf000)
 		{
 		case 0x8000:
@@ -846,19 +820,19 @@ void m68000_write_memory_8(u32 offset, u8 data)
 
 	offset &= M68K_AMASK;
 
-	switch (offset & 0xff0000)
+	switch (offset >> 16)
 	{
-	case 0xff0000:
+	case 0xff:
 		WRITE_BYTE(static_ram1, offset, data);
 		return;
 
-	case 0x900000:
-	case 0x910000:
-	case 0x920000:
+	case 0x90:
+	case 0x91:
+	case 0x92:
 		WRITE_BYTE(static_ram2, offset, data);
 		return;
 
-	case 0x800000:
+	case 0x80:
 		switch (offset & 0xffe)
 		{
 		case 0x030: cps1_coinctrl_w(offset >> 1, data << shift, mem_mask); return;
@@ -876,7 +850,7 @@ void m68000_write_memory_8(u32 offset, u8 data)
 		}
 		break;
 
-	case 0xf10000:
+	case 0xf1:
 		switch (offset & 0xf000)
 		{
 		case 0x8000:
@@ -910,19 +884,19 @@ void m68000_write_memory_16(u32 offset, u16 data)
 {
 	offset &= M68K_AMASK;
 
-	switch (offset & 0xff0000)
+	switch (offset >> 16)
 	{
-	case 0x900000:
-	case 0x910000:
-	case 0x920000:
+	case 0x90:
+	case 0x91:
+	case 0x92:
 		WRITE_WORD(static_ram2, offset, data);
 		return;
 
-	case 0xff0000:
+	case 0xff:
 		WRITE_WORD(static_ram1, offset, data);
 		return;
 
-	case 0x800000:
+	case 0x80:
 		switch (offset & 0xffe)
 		{
 		case 0x030: cps1_coinctrl_w(offset >> 1, data, 0); return;
@@ -940,7 +914,7 @@ void m68000_write_memory_16(u32 offset, u16 data)
 		}
 		break;
 
-	case 0xf10000:
+	case 0xf1:
 		switch (offset & 0xf000)
 		{
 		case 0x8000:
@@ -1013,6 +987,7 @@ static void cps1_sound_writemem(u32 offset, u8 data)
 	case 0xf001: YM2151_data_port_w(0, data); return;
 	case 0xf002: OKIM6295_data_w(0, data); return;
 	case 0xf004: cps1_snd_bankswitch_w(0, data); return;
+	case 0xf006: cps1_oki_pin7_w(0, data); return;
 	}
 }
 

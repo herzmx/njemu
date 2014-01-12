@@ -12,56 +12,48 @@
 	gamecfg \‘¢‘Ì
 -----------------------------------------------------------------------------*/
 
-static gamecfg_t gamecfg_normal[] =
+static gamecfg2_t gamecfg_normal[] =
 {
-	{ "Raster Effects", &cps_raster_enable,    CFG_CONTINUE, 0, 1,  {"Off","On"} },
+	{ RASTER_EFFECTS, &cps_raster_enable,    CFG_CONTINUE, 1,  { OFF, ON } },
 	MENU_BLANK,
-	{ "Stretch Screen", &option_stretch,       CFG_CONTINUE, 0, 3,  {"Off","Zoom (4:3)","Zoom (24:17)","Zoom (16:9)"} },
-	{ "Video sync",     &option_vsync,         CFG_CONTINUE, 0, 1,  {"Off","On" } },
-	{ "Auto frameskip", &option_autoframeskip, CFG_CONTINUE, 0, 1,  {"Disable","Enable" } },
-	{ "Frameskip",      &option_frameskip,     CFG_CONTINUE, 0, 11, {"0","1","2","3","4","5","6","7","8","9","10","11"} },
-	{ "Show FPS",       &option_showfps,       CFG_CONTINUE, 0, 1,  {"Off","On"} },
-	{ "60fps limit",    &option_speedlimit,    CFG_CONTINUE, 0, 1,  {"Off","On"} },
+	{ STRETCH_SCREEN, &option_stretch,       CFG_CONTINUE, 3,  { OFF, STRETCH1, STRETCH2, STRETCH3 } },
+	{ VIDEO_SYNC,     &option_vsync,         CFG_CONTINUE, 1,  { OFF, ON } },
+	{ AUTO_FRAMESKIP, &option_autoframeskip, CFG_CONTINUE, 1,  { DISABLE, ENABLE } },
+	{ FRAMESKIP,      &option_frameskip,     CFG_CONTINUE, 11, { OFF,SKIP1,SKIP2,SKIP3,SKIP4,SKIP5,SKIP6,SKIP7,SKIP8,SKIP9,SKIP10,SKIP11 } },
+	{ SHOW_FPS,       &option_showfps,       CFG_CONTINUE, 1,  { OFF, ON } },
+	{ FRAME_LIMIT,    &option_speedlimit,    CFG_CONTINUE, 1,  { OFF, ON } },
 	MENU_BLANK,
-	{ "Enable Sound",   &option_sound_enable,  CFG_RESTART,  0, 1,  {"No","Yes"} },
-#if (EMU_SYSTEM == CPS1)
-	{ "Sample Rate",    &option_samplerate,    CFG_RESTART,  0, 2,  {"11025Hz","22050Hz","44100Hz"} },
-#else
-	{ "Sample Rate",    &option_samplerate,    CFG_CONTINUE, 0, 2,  {"11025Hz","22050Hz","44100Hz"} },
-#endif
-	{ "Sound Volume",   &option_sound_volume,  CFG_CONTINUE, 0, 10, {"0%","10%","20%","30%","40%","50%","60%","70%","80%","90%","100%"} },
+	{ ENABLE_SOUND,   &option_sound_enable,  CFG_RESTART,  1,  { NO, YES } },
+	{ SAMPLE_RATE,    &option_samplerate,    CFG_CONTINUE, 2,  { RATE11KHz,RATE22KHz,RATE44KHz } },
+	{ SOUND_VOLUME,   &option_sound_volume,  CFG_CONTINUE, 10, { VOL0,VOL10,VOL20,VOL30,VOL40,VOL50,VOL60,VOL70,VOL80,VOL90,VOL100 } },
 	MENU_BLANK,
-	{ "Controller",     &option_controller,    CFG_CONTINUE, 0, 3,  {"Player 1","Player 2","Player 3","Player 4"} },
+	{ CONTROLLER,     &option_controller,    CFG_CONTINUE, 3,  { CONTROLLER1,CONTROLLER2,CONTROLLER3,CONTROLLER4 } },
 	MENU_BLANK,
-	{ "PSP clock",      &psp_cpuclock,         CFG_CONTINUE, 0, 2,  {"222MHz","266MHz","333MHz"} },
+	{ PSP_CLOCK,      &psp_cpuclock,         CFG_CONTINUE, 2,  { CLK222MHz,CLK266MHz,CLK333MHz } },
 	MENU_BLANK,
 	MENU_RETURN,
 	MENU_END
 };
 
-static gamecfg_t gamecfg_vertical[] =
+static gamecfg2_t gamecfg_vertical[] =
 {
-	{ "Raster Effects", &cps_raster_enable,    CFG_CONTINUE, 0, 1,  {"Off","On"} },
+	{ RASTER_EFFECTS, &cps_raster_enable,    CFG_CONTINUE, 1,  { OFF, ON } },
 	MENU_BLANK,
-	{ "Stretch Screen", &option_stretch,       CFG_CONTINUE, 0, 3,  {"Off","Zoom (4:3)","Zoom (24:17)","Zoom (16:9)"} },
-	{ "Rotate Screen",  &cps_rotate_screen,    CFG_CONTINUE, 0, 1,  {"No","Yes"} },
-	{ "Video sync",     &option_vsync,         CFG_CONTINUE, 0, 1,  {"Off","On" } },
-	{ "Auto frameskip", &option_autoframeskip, CFG_CONTINUE, 0, 1,  {"Disable","Enable" } },
-	{ "Frameskip",      &option_frameskip,     CFG_CONTINUE, 0, 11, {"0","1","2","3","4","5","6","7","8","9","10","11"} },
-	{ "Show FPS",       &option_showfps,       CFG_CONTINUE, 0, 1,  {"Off","On"} },
-	{ "60fps limit",    &option_speedlimit,    CFG_CONTINUE, 0, 1,  {"Off","On"} },
+	{ STRETCH_SCREEN, &option_stretch,       CFG_CONTINUE, 3,  { OFF, STRETCH1, STRETCH2, STRETCH3 } },
+	{ ROTATE_SCREEN,  &cps_rotate_screen,    CFG_CONTINUE, 1,  { NO, YES } },
+	{ VIDEO_SYNC,     &option_vsync,         CFG_CONTINUE, 1,  { OFF, ON } },
+	{ AUTO_FRAMESKIP, &option_autoframeskip, CFG_CONTINUE, 1,  { DISABLE, ENABLE } },
+	{ FRAMESKIP,      &option_frameskip,     CFG_CONTINUE, 11, { OFF,SKIP1,SKIP2,SKIP3,SKIP4,SKIP5,SKIP6,SKIP7,SKIP8,SKIP9,SKIP10,SKIP11 } },
+	{ SHOW_FPS,       &option_showfps,       CFG_CONTINUE, 1,  { OFF, ON } },
+	{ FRAME_LIMIT,    &option_speedlimit,    CFG_CONTINUE, 1,  { OFF, ON } },
 	MENU_BLANK,
-	{ "Enable Sound",   &option_sound_enable,  CFG_RESTART,  0, 1,  {"No","Yes"} },
-#if (EMU_SYSTEM == CPS1)
-	{ "Sample Rate",    &option_samplerate,    CFG_RESTART,  0, 2,  {"11025Hz","22050Hz","44100Hz"} },
-#else
-	{ "Sample Rate",    &option_samplerate,    CFG_CONTINUE, 0, 2,  {"11025Hz","22050Hz","44100Hz"} },
-#endif
-	{ "Sound Volume",   &option_sound_volume,  CFG_CONTINUE, 0, 10, {"0%","10%","20%","30%","40%","50%","60%","70%","80%","90%","100%"} },
+	{ ENABLE_SOUND,   &option_sound_enable,  CFG_RESTART,  1,  { NO, YES } },
+	{ SAMPLE_RATE,    &option_samplerate,    CFG_CONTINUE, 2,  { RATE11KHz,RATE22KHz,RATE44KHz } },
+	{ SOUND_VOLUME,   &option_sound_volume,  CFG_CONTINUE, 10, { VOL0,VOL10,VOL20,VOL30,VOL40,VOL50,VOL60,VOL70,VOL80,VOL90,VOL100 } },
 	MENU_BLANK,
-	{ "Controller",     &option_controller,    CFG_CONTINUE, 0, 2,  {"Player 1","Player 2"} },
+	{ CONTROLLER,     &option_controller,    CFG_CONTINUE, 1,  { CONTROLLER1,CONTROLLER2 } },
 	MENU_BLANK,
-	{ "PSP clock",      &psp_cpuclock,         CFG_CONTINUE, 0, 2,  {"222MHz","266MHz","333MHz"} },
+	{ PSP_CLOCK,      &psp_cpuclock,         CFG_CONTINUE, 2,  { CLK222MHz,CLK266MHz,CLK333MHz } },
 	MENU_BLANK,
 	MENU_RETURN,
 	MENU_END
@@ -75,12 +67,12 @@ static gamecfg_t gamecfg_vertical[] =
 
 	if (machine_screen_type)
 	{
-		gamecfg = gamecfg_vertical;
+		gamecfg2 = gamecfg_vertical;
 	}
 	else
 	{
-		gamecfg = gamecfg_normal;
-		gamecfg[13].value_max = input_max_players - 1;
+		gamecfg2 = gamecfg_normal;
+		gamecfg2[13].value_max = input_max_players - 1;
 	}
 
 	if (option_controller >= input_max_players)
@@ -92,250 +84,250 @@ static gamecfg_t gamecfg_vertical[] =
 	keycfg \‘¢‘Ì
 -----------------------------------------------------------------------------*/
 
-static keycfg_menu_t keycfg_2buttons[] =
+static keycfg2_t keycfg_2buttons[] =
 {
-	{ FONT_UPARROW,         KEYCFG_BUTTON, 0, P1_UP      },
-	{ FONT_DOWNARROW,       KEYCFG_BUTTON, 0, P1_DOWN    },
-	{ FONT_LEFTARROW,       KEYCFG_BUTTON, 0, P1_LEFT    },
-	{ FONT_RIGHTARROW,      KEYCFG_BUTTON, 0, P1_RIGHT   },
-	{ "Button 1",           KEYCFG_BUTTON, 0, P1_BUTTON1 },
-	{ "Button 2",           KEYCFG_BUTTON, 0, P1_BUTTON2 },
-	{ "Start",              KEYCFG_BUTTON, 0, P1_START   },
-	{ "Coin",               KEYCFG_BUTTON, 0, P1_COIN    },
+	{ INPUT_UP,         KEYCFG_BUTTON, P1_UP       },
+	{ INPUT_DOWN,       KEYCFG_BUTTON, P1_DOWN     },
+	{ INPUT_LEFT,       KEYCFG_BUTTON, P1_LEFT     },
+	{ INPUT_RIGHT,      KEYCFG_BUTTON, P1_RIGHT    },
+	{ INPUT_BUTTON1,    KEYCFG_BUTTON, P1_BUTTON1  },
+	{ INPUT_BUTTON2,    KEYCFG_BUTTON, P1_BUTTON2  },
+	{ INPUT_START,      KEYCFG_BUTTON, P1_START    },
+	{ INPUT_COIN,       KEYCFG_BUTTON, P1_COIN     },
 	MENU_BLANK,
-	{ "Service Coin",       KEYCFG_BUTTON, 0, SERV_COIN   },
-	{ "Service Switch",     KEYCFG_BUTTON, 0, SERV_SWITCH },
+	{ INPUT_SERVCOIN,   KEYCFG_BUTTON, SERV_COIN   },
+	{ INPUT_SERVSWITCH, KEYCFG_BUTTON, SERV_SWITCH },
 	MENU_BLANK,
-	{ "Autofire 1",         KEYCFG_BUTTON, 0, P1_AF_1    },
-	{ "Autofire 2",         KEYCFG_BUTTON, 0, P1_AF_2    },
-	{ "Autofire Interval",  KEYCFG_NUMBER, 0, 0          },
+	{ AUTOFIRE1,        KEYCFG_BUTTON, P1_AF_1     },
+	{ AUTOFIRE2,        KEYCFG_BUTTON, P1_AF_2     },
+	{ AUTOFIRE_INV,     KEYCFG_NUMBER, 0           },
 	MENU_BLANK,
-	{ "Save snapshot",      KEYCFG_BUTTON, 0, SNAPSHOT   },
-	{ "Switch player",      KEYCFG_BUTTON, 0, SWPLAYER   },
+	{ SAVE_SCREENSHOT,  KEYCFG_BUTTON, SNAPSHOT    },
+	{ SWITCH_PLAYER,    KEYCFG_BUTTON, SWPLAYER    },
 	MENU_BLANK,
 	MENU_RETURN,
 	MENU_END
 };
 
-static keycfg_menu_t keycfg_3buttons[] =
+static keycfg2_t keycfg_3buttons[] =
 {
-	{ FONT_UPARROW,         KEYCFG_BUTTON, 0, P1_UP      },
-	{ FONT_DOWNARROW,       KEYCFG_BUTTON, 0, P1_DOWN    },
-	{ FONT_LEFTARROW,       KEYCFG_BUTTON, 0, P1_LEFT    },
-	{ FONT_RIGHTARROW,      KEYCFG_BUTTON, 0, P1_RIGHT   },
-	{ "Button 1",           KEYCFG_BUTTON, 0, P1_BUTTON1 },
-	{ "Button 2",           KEYCFG_BUTTON, 0, P1_BUTTON2 },
-	{ "Button 3",           KEYCFG_BUTTON, 0, P1_BUTTON3 },
-	{ "Start",              KEYCFG_BUTTON, 0, P1_START   },
-	{ "Coin",               KEYCFG_BUTTON, 0, P1_COIN    },
+	{ INPUT_UP,         KEYCFG_BUTTON, P1_UP       },
+	{ INPUT_DOWN,       KEYCFG_BUTTON, P1_DOWN     },
+	{ INPUT_LEFT,       KEYCFG_BUTTON, P1_LEFT     },
+	{ INPUT_RIGHT,      KEYCFG_BUTTON, P1_RIGHT    },
+	{ INPUT_BUTTON1,    KEYCFG_BUTTON, P1_BUTTON1  },
+	{ INPUT_BUTTON2,    KEYCFG_BUTTON, P1_BUTTON2  },
+	{ INPUT_BUTTON3,    KEYCFG_BUTTON, P1_BUTTON3  },
+	{ INPUT_START,      KEYCFG_BUTTON, P1_START    },
+	{ INPUT_COIN,       KEYCFG_BUTTON, P1_COIN     },
 	MENU_BLANK,
-	{ "Service Coin",       KEYCFG_BUTTON, 0, SERV_COIN   },
-	{ "Service Switch",     KEYCFG_BUTTON, 0, SERV_SWITCH },
+	{ INPUT_SERVCOIN,   KEYCFG_BUTTON, SERV_COIN   },
+	{ INPUT_SERVSWITCH, KEYCFG_BUTTON, SERV_SWITCH },
 	MENU_BLANK,
-	{ "Autofire 1",         KEYCFG_BUTTON, 0, P1_AF_1    },
-	{ "Autofire 2",         KEYCFG_BUTTON, 0, P1_AF_2    },
-	{ "Autofire 3",         KEYCFG_BUTTON, 0, P1_AF_3    },
-	{ "Autofire Interval",  KEYCFG_NUMBER, 0, 0          },
+	{ AUTOFIRE1,        KEYCFG_BUTTON, P1_AF_1     },
+	{ AUTOFIRE2,        KEYCFG_BUTTON, P1_AF_2     },
+	{ AUTOFIRE3,        KEYCFG_BUTTON, P1_AF_3     },
+	{ AUTOFIRE_INV,     KEYCFG_NUMBER, 0           },
 	MENU_BLANK,
-	{ "Save snapshot",      KEYCFG_BUTTON, 0, SNAPSHOT   },
-	{ "Switch player",      KEYCFG_BUTTON, 0, SWPLAYER   },
+	{ SAVE_SCREENSHOT,  KEYCFG_BUTTON, SNAPSHOT    },
+	{ SWITCH_PLAYER,    KEYCFG_BUTTON, SWPLAYER    },
 	MENU_BLANK,
 	MENU_RETURN,
 	MENU_END
 };
 
 #if (EMU_SYSTEM == CPS2)
-static keycfg_menu_t keycfg_4buttons[] =
+static keycfg2_t keycfg_4buttons[] =
 {
-	{ FONT_UPARROW,         KEYCFG_BUTTON, 0, P1_UP      },
-	{ FONT_DOWNARROW,       KEYCFG_BUTTON, 0, P1_DOWN    },
-	{ FONT_LEFTARROW,       KEYCFG_BUTTON, 0, P1_LEFT    },
-	{ FONT_RIGHTARROW,      KEYCFG_BUTTON, 0, P1_RIGHT   },
-	{ "Button 1",           KEYCFG_BUTTON, 0, P1_BUTTON1 },
-	{ "Button 2",           KEYCFG_BUTTON, 0, P1_BUTTON2 },
-	{ "Button 3",           KEYCFG_BUTTON, 0, P1_BUTTON3 },
-	{ "Button 4",           KEYCFG_BUTTON, 0, P1_BUTTON4 },
-	{ "Start",              KEYCFG_BUTTON, 0, P1_START   },
-	{ "Coin",               KEYCFG_BUTTON, 0, P1_COIN    },
+	{ INPUT_UP,         KEYCFG_BUTTON, P1_UP       },
+	{ INPUT_DOWN,       KEYCFG_BUTTON, P1_DOWN     },
+	{ INPUT_LEFT,       KEYCFG_BUTTON, P1_LEFT     },
+	{ INPUT_RIGHT,      KEYCFG_BUTTON, P1_RIGHT    },
+	{ INPUT_BUTTON1,    KEYCFG_BUTTON, P1_BUTTON1  },
+	{ INPUT_BUTTON2,    KEYCFG_BUTTON, P1_BUTTON2  },
+	{ INPUT_BUTTON3,    KEYCFG_BUTTON, P1_BUTTON3  },
+	{ INPUT_BUTTON4,    KEYCFG_BUTTON, P1_BUTTON4  },
+	{ INPUT_START,      KEYCFG_BUTTON, P1_START    },
+	{ INPUT_COIN,       KEYCFG_BUTTON, P1_COIN     },
 	MENU_BLANK,
-	{ "Service Coin",       KEYCFG_BUTTON, 0, SERV_COIN   },
-	{ "Service Switch",     KEYCFG_BUTTON, 0, SERV_SWITCH },
+	{ INPUT_SERVCOIN,   KEYCFG_BUTTON, SERV_COIN   },
+	{ INPUT_SERVSWITCH, KEYCFG_BUTTON, SERV_SWITCH },
 	MENU_BLANK,
-	{ "Autofire 1",         KEYCFG_BUTTON, 0, P1_AF_1    },
-	{ "Autofire 2",         KEYCFG_BUTTON, 0, P1_AF_2    },
-	{ "Autofire 3",         KEYCFG_BUTTON, 0, P1_AF_3    },
-	{ "Autofire 4",         KEYCFG_BUTTON, 0, P1_AF_4    },
-	{ "Autofire Interval",  KEYCFG_NUMBER, 0, 0          },
+	{ AUTOFIRE1,        KEYCFG_BUTTON, P1_AF_1     },
+	{ AUTOFIRE2,        KEYCFG_BUTTON, P1_AF_2     },
+	{ AUTOFIRE3,        KEYCFG_BUTTON, P1_AF_3     },
+	{ AUTOFIRE4,        KEYCFG_BUTTON, P1_AF_4     },
+	{ AUTOFIRE_INV,     KEYCFG_NUMBER, 0           },
 	MENU_BLANK,
-	{ "Save snapshot",      KEYCFG_BUTTON, 0, SNAPSHOT   },
-	{ "Switch player",      KEYCFG_BUTTON, 0, SWPLAYER   },
+	{ SAVE_SCREENSHOT,  KEYCFG_BUTTON, SNAPSHOT    },
+	{ SWITCH_PLAYER,    KEYCFG_BUTTON, SWPLAYER    },
 	MENU_BLANK,
 	MENU_RETURN,
 	MENU_END
 };
 #endif
 
-static keycfg_menu_t keycfg_6buttons[] =
+static keycfg2_t keycfg_6buttons[] =
 {
-	{ FONT_UPARROW,         KEYCFG_BUTTON, 0, P1_UP      },
-	{ FONT_DOWNARROW,       KEYCFG_BUTTON, 0, P1_DOWN    },
-	{ FONT_LEFTARROW,       KEYCFG_BUTTON, 0, P1_LEFT    },
-	{ FONT_RIGHTARROW,      KEYCFG_BUTTON, 0, P1_RIGHT   },
-	{ "Button 1",           KEYCFG_BUTTON, 0, P1_BUTTON1 },
-	{ "Button 2",           KEYCFG_BUTTON, 0, P1_BUTTON2 },
-	{ "Button 3",           KEYCFG_BUTTON, 0, P1_BUTTON3 },
-	{ "Button 4",           KEYCFG_BUTTON, 0, P1_BUTTON4 },
-	{ "Button 5",           KEYCFG_BUTTON, 0, P1_BUTTON5 },
-	{ "Button 6",           KEYCFG_BUTTON, 0, P1_BUTTON6 },
-	{ "Start",              KEYCFG_BUTTON, 0, P1_START   },
-	{ "Coin",               KEYCFG_BUTTON, 0, P1_COIN    },
+	{ INPUT_UP,         KEYCFG_BUTTON, P1_UP       },
+	{ INPUT_DOWN,       KEYCFG_BUTTON, P1_DOWN     },
+	{ INPUT_LEFT,       KEYCFG_BUTTON, P1_LEFT     },
+	{ INPUT_RIGHT,      KEYCFG_BUTTON, P1_RIGHT    },
+	{ INPUT_BUTTON1,    KEYCFG_BUTTON, P1_BUTTON1  },
+	{ INPUT_BUTTON2,    KEYCFG_BUTTON, P1_BUTTON2  },
+	{ INPUT_BUTTON3,    KEYCFG_BUTTON, P1_BUTTON3  },
+	{ INPUT_BUTTON4,    KEYCFG_BUTTON, P1_BUTTON4  },
+	{ INPUT_BUTTON5,    KEYCFG_BUTTON, P1_BUTTON5  },
+	{ INPUT_BUTTON6,    KEYCFG_BUTTON, P1_BUTTON6  },
+	{ INPUT_START,      KEYCFG_BUTTON, P1_START    },
+	{ INPUT_COIN,       KEYCFG_BUTTON, P1_COIN     },
 	MENU_BLANK,
-	{ "Service Coin",       KEYCFG_BUTTON, 0, SERV_COIN   },
-	{ "Service Switch",     KEYCFG_BUTTON, 0, SERV_SWITCH },
+	{ INPUT_SERVCOIN,   KEYCFG_BUTTON, SERV_COIN   },
+	{ INPUT_SERVSWITCH, KEYCFG_BUTTON, SERV_SWITCH },
 	MENU_BLANK,
-	{ "Autofire 1",         KEYCFG_BUTTON, 0, P1_AF_1    },
-	{ "Autofire 2",         KEYCFG_BUTTON, 0, P1_AF_2    },
-	{ "Autofire 3",         KEYCFG_BUTTON, 0, P1_AF_3    },
-	{ "Autofire 4",         KEYCFG_BUTTON, 0, P1_AF_4    },
-	{ "Autofire 5",         KEYCFG_BUTTON, 0, P1_AF_5    },
-	{ "Autofire 6",         KEYCFG_BUTTON, 0, P1_AF_6    },
-	{ "Autofire Interval",  KEYCFG_NUMBER, 0, 0          },
+	{ AUTOFIRE1,        KEYCFG_BUTTON, P1_AF_1     },
+	{ AUTOFIRE2,        KEYCFG_BUTTON, P1_AF_2     },
+	{ AUTOFIRE3,        KEYCFG_BUTTON, P1_AF_3     },
+	{ AUTOFIRE4,        KEYCFG_BUTTON, P1_AF_4     },
+	{ AUTOFIRE5,        KEYCFG_BUTTON, P1_AF_5     },
+	{ AUTOFIRE6,        KEYCFG_BUTTON, P1_AF_6     },
+	{ AUTOFIRE_INV,     KEYCFG_NUMBER, 0           },
 	MENU_BLANK,
-	{ "Save snapshot",      KEYCFG_BUTTON, 0, SNAPSHOT   },
-	{ "Switch player",      KEYCFG_BUTTON, 0, SWPLAYER   },
+	{ SAVE_SCREENSHOT,  KEYCFG_BUTTON, SNAPSHOT    },
+	{ SWITCH_PLAYER,    KEYCFG_BUTTON, SWPLAYER    },
 	MENU_BLANK,
 	MENU_RETURN,
 	MENU_END
 };
 
-static keycfg_menu_t keycfg_quiz[] =
+static keycfg2_t keycfg_quiz[] =
 {
-	{ "Button 1",           KEYCFG_BUTTON, 0, P1_BUTTON1 },
-	{ "Button 2",           KEYCFG_BUTTON, 0, P1_BUTTON2 },
-	{ "Button 3",           KEYCFG_BUTTON, 0, P1_BUTTON3 },
-	{ "Button 4",           KEYCFG_BUTTON, 0, P1_BUTTON4 },
-	{ "Start",              KEYCFG_BUTTON, 0, P1_START   },
-	{ "Coin",               KEYCFG_BUTTON, 0, P1_COIN    },
+	{ INPUT_BUTTON1,    KEYCFG_BUTTON, P1_BUTTON1  },
+	{ INPUT_BUTTON2,    KEYCFG_BUTTON, P1_BUTTON2  },
+	{ INPUT_BUTTON3,    KEYCFG_BUTTON, P1_BUTTON3  },
+	{ INPUT_BUTTON4,    KEYCFG_BUTTON, P1_BUTTON4  },
+	{ INPUT_START,      KEYCFG_BUTTON, P1_START    },
+	{ INPUT_COIN,       KEYCFG_BUTTON, P1_COIN     },
 	MENU_BLANK,
-	{ "Service Coin",       KEYCFG_BUTTON, 0, SERV_COIN   },
-	{ "Service Switch",     KEYCFG_BUTTON, 0, SERV_SWITCH },
+	{ INPUT_SERVCOIN,   KEYCFG_BUTTON, SERV_COIN   },
+	{ INPUT_SERVSWITCH, KEYCFG_BUTTON, SERV_SWITCH },
 	MENU_BLANK,
-	{ "Save snapshot",      KEYCFG_BUTTON, 0, SNAPSHOT   },
-	{ "Switch player",      KEYCFG_BUTTON, 0, SWPLAYER   },
+	{ SAVE_SCREENSHOT,  KEYCFG_BUTTON, SNAPSHOT    },
+	{ SWITCH_PLAYER,    KEYCFG_BUTTON, SWPLAYER    },
 	MENU_BLANK,
 	MENU_RETURN,
 	MENU_END
 };
 
 #if (EMU_SYSTEM == CPS1)
-static keycfg_menu_t keycfg_sfzch[] =
+static keycfg2_t keycfg_sfzch[] =
 {
-	{ FONT_UPARROW,         KEYCFG_BUTTON, 0, P1_UP      },
-	{ FONT_DOWNARROW,       KEYCFG_BUTTON, 0, P1_DOWN    },
-	{ FONT_LEFTARROW,       KEYCFG_BUTTON, 0, P1_LEFT    },
-	{ FONT_RIGHTARROW,      KEYCFG_BUTTON, 0, P1_RIGHT   },
-	{ "Button 1",           KEYCFG_BUTTON, 0, P1_BUTTON1 },
-	{ "Button 2",           KEYCFG_BUTTON, 0, P1_BUTTON2 },
-	{ "Button 3",           KEYCFG_BUTTON, 0, P1_BUTTON3 },
-	{ "Button 4",           KEYCFG_BUTTON, 0, P1_BUTTON4 },
-	{ "Button 5",           KEYCFG_BUTTON, 0, P1_BUTTON5 },
-	{ "Button 6",           KEYCFG_BUTTON, 0, P1_BUTTON6 },
-	{ "Start",              KEYCFG_BUTTON, 0, P1_START   },
-	{ "Pause",              KEYCFG_BUTTON, 0, P1_COIN    },
+	{ INPUT_UP,         KEYCFG_BUTTON, P1_UP       },
+	{ INPUT_DOWN,       KEYCFG_BUTTON, P1_DOWN     },
+	{ INPUT_LEFT,       KEYCFG_BUTTON, P1_LEFT     },
+	{ INPUT_RIGHT,      KEYCFG_BUTTON, P1_RIGHT    },
+	{ INPUT_BUTTON1,    KEYCFG_BUTTON, P1_BUTTON1  },
+	{ INPUT_BUTTON2,    KEYCFG_BUTTON, P1_BUTTON2  },
+	{ INPUT_BUTTON3,    KEYCFG_BUTTON, P1_BUTTON3  },
+	{ INPUT_BUTTON4,    KEYCFG_BUTTON, P1_BUTTON4  },
+	{ INPUT_BUTTON5,    KEYCFG_BUTTON, P1_BUTTON5  },
+	{ INPUT_BUTTON6,    KEYCFG_BUTTON, P1_BUTTON6  },
+	{ INPUT_START,      KEYCFG_BUTTON, P1_START    },
+	{ INPUT_PAUSE,      KEYCFG_BUTTON, P1_COIN     },
 	MENU_BLANK,
-	{ "Service Coin",       KEYCFG_BUTTON, 0, SERV_COIN   },
-	{ "Service Switch",     KEYCFG_BUTTON, 0, SERV_SWITCH },
+	{ INPUT_SERVCOIN,   KEYCFG_BUTTON, SERV_COIN   },
+	{ INPUT_SERVSWITCH, KEYCFG_BUTTON, SERV_SWITCH },
 	MENU_BLANK,
-	{ "Autofire 1",         KEYCFG_BUTTON, 0, P1_AF_1    },
-	{ "Autofire 2",         KEYCFG_BUTTON, 0, P1_AF_2    },
-	{ "Autofire 3",         KEYCFG_BUTTON, 0, P1_AF_3    },
-	{ "Autofire 4",         KEYCFG_BUTTON, 0, P1_AF_4    },
-	{ "Autofire 5",         KEYCFG_BUTTON, 0, P1_AF_5    },
-	{ "Autofire 6",         KEYCFG_BUTTON, 0, P1_AF_6    },
-	{ "Autofire Interval",  KEYCFG_NUMBER, 0, 0          },
+	{ AUTOFIRE1,        KEYCFG_BUTTON, P1_AF_1     },
+	{ AUTOFIRE2,        KEYCFG_BUTTON, P1_AF_2     },
+	{ AUTOFIRE3,        KEYCFG_BUTTON, P1_AF_3     },
+	{ AUTOFIRE4,        KEYCFG_BUTTON, P1_AF_4     },
+	{ AUTOFIRE5,        KEYCFG_BUTTON, P1_AF_5     },
+	{ AUTOFIRE6,        KEYCFG_BUTTON, P1_AF_6     },
+	{ AUTOFIRE_INV,     KEYCFG_NUMBER, 0           },
 	MENU_BLANK,
-	{ "Save snapshot",      KEYCFG_BUTTON, 0, SNAPSHOT   },
-	{ "Switch player",      KEYCFG_BUTTON, 0, SWPLAYER   },
+	{ SAVE_SCREENSHOT,  KEYCFG_BUTTON, SNAPSHOT    },
+	{ SWITCH_PLAYER,    KEYCFG_BUTTON, SWPLAYER    },
 	MENU_BLANK,
 	MENU_RETURN,
 	MENU_END
 };
 
-static keycfg_menu_t keycfg_forgottn[] =
+static keycfg2_t keycfg_forgottn[] =
 {
-	{ FONT_UPARROW,         KEYCFG_BUTTON, 0, P1_UP      },
-	{ FONT_DOWNARROW,       KEYCFG_BUTTON, 0, P1_DOWN    },
-	{ FONT_LEFTARROW,       KEYCFG_BUTTON, 0, P1_LEFT    },
-	{ FONT_RIGHTARROW,      KEYCFG_BUTTON, 0, P1_RIGHT   },
-	{ "Button 1",           KEYCFG_BUTTON, 0, P1_BUTTON1 },
-	{ "Start",              KEYCFG_BUTTON, 0, P1_START   },
-	{ "Coin",               KEYCFG_BUTTON, 0, P1_COIN    },
+	{ INPUT_UP,         KEYCFG_BUTTON, P1_UP       },
+	{ INPUT_DOWN,       KEYCFG_BUTTON, P1_DOWN     },
+	{ INPUT_LEFT,       KEYCFG_BUTTON, P1_LEFT     },
+	{ INPUT_RIGHT,      KEYCFG_BUTTON, P1_RIGHT    },
+	{ INPUT_BUTTON1,    KEYCFG_BUTTON, P1_BUTTON1  },
+	{ INPUT_START,      KEYCFG_BUTTON, P1_START    },
+	{ INPUT_COIN,       KEYCFG_BUTTON, P1_COIN     },
 	MENU_BLANK,
-	{ "Dial (Left)",        KEYCFG_BUTTON, 0, P1_DIAL_L  },
-	{ "Dial (Right)",       KEYCFG_BUTTON, 0, P1_DIAL_R  },
-	{ "Analog Sensitivity", KEYCFG_ANALOG, 0, 0          },
+	{ DIAL_LEFT,        KEYCFG_BUTTON, P1_DIAL_L   },
+	{ DIAL_RIGHT,       KEYCFG_BUTTON, P1_DIAL_R   },
+	{ ANALOG_SENS,      KEYCFG_ANALOG, 0           },
 	MENU_BLANK,
-	{ "Service Coin",       KEYCFG_BUTTON, 0, SERV_COIN   },
-	{ "Service Switch",     KEYCFG_BUTTON, 0, SERV_SWITCH },
+	{ INPUT_SERVCOIN,   KEYCFG_BUTTON, SERV_COIN   },
+	{ INPUT_SERVSWITCH, KEYCFG_BUTTON, SERV_SWITCH },
 	MENU_BLANK,
-	{ "Autofire 1",         KEYCFG_BUTTON, 0, P1_AF_1    },
-	{ "Autofire Interval",  KEYCFG_NUMBER, 0, 0          },
+	{ AUTOFIRE1,        KEYCFG_BUTTON, P1_AF_1     },
+	{ AUTOFIRE_INV,     KEYCFG_NUMBER, 0           },
 	MENU_BLANK,
-	{ "Save snapshot",      KEYCFG_BUTTON, 0, SNAPSHOT   },
-	{ "Switch player",      KEYCFG_BUTTON, 0, SWPLAYER   },
+	{ SAVE_SCREENSHOT,  KEYCFG_BUTTON, SNAPSHOT    },
+	{ SWITCH_PLAYER,    KEYCFG_BUTTON, SWPLAYER    },
 	MENU_BLANK,
 	MENU_RETURN,
 	MENU_END
 };
 #else
-static keycfg_menu_t keycfg_progear[] =
+static keycfg2_t keycfg_progear[] =
 {
-	{ FONT_UPARROW,         KEYCFG_BUTTON, 0, P1_UP      },
-	{ FONT_DOWNARROW,       KEYCFG_BUTTON, 0, P1_DOWN    },
-	{ FONT_LEFTARROW,       KEYCFG_BUTTON, 0, P1_LEFT    },
-	{ FONT_RIGHTARROW,      KEYCFG_BUTTON, 0, P1_RIGHT   },
-	{ "Button 1",           KEYCFG_BUTTON, 0, P1_BUTTON1 },
-	{ "Button 2",           KEYCFG_BUTTON, 0, P1_BUTTON2 },
-	{ "Button 3",           KEYCFG_BUTTON, 0, P1_BUTTON3 },
-	{ "Start",              KEYCFG_BUTTON, 0, P1_START   },
-	{ "Coin",               KEYCFG_BUTTON, 0, P1_COIN    },
+	{ INPUT_UP,         KEYCFG_BUTTON, P1_UP       },
+	{ INPUT_DOWN,       KEYCFG_BUTTON, P1_DOWN     },
+	{ INPUT_LEFT,       KEYCFG_BUTTON, P1_LEFT     },
+	{ INPUT_RIGHT,      KEYCFG_BUTTON, P1_RIGHT    },
+	{ INPUT_BUTTON1,    KEYCFG_BUTTON, P1_BUTTON1  },
+	{ INPUT_BUTTON2,    KEYCFG_BUTTON, P1_BUTTON2  },
+	{ INPUT_BUTTON3,    KEYCFG_BUTTON, P1_BUTTON3  },
+	{ INPUT_START,      KEYCFG_BUTTON, P1_START    },
+	{ INPUT_COIN,       KEYCFG_BUTTON, P1_COIN     },
 	MENU_BLANK,
-	{ "P2 Start",           KEYCFG_BUTTON, 0, P2_START   },
+	{ PLAYER2_START,    KEYCFG_BUTTON, P2_START    },
 	MENU_BLANK,
-	{ "Service Coin",       KEYCFG_BUTTON, 0, SERV_COIN   },
-	{ "Service Switch",     KEYCFG_BUTTON, 0, SERV_SWITCH },
+	{ INPUT_SERVCOIN,   KEYCFG_BUTTON, SERV_COIN   },
+	{ INPUT_SERVSWITCH, KEYCFG_BUTTON, SERV_SWITCH },
 	MENU_BLANK,
-	{ "Autofire 1",         KEYCFG_BUTTON, 0, P1_AF_1    },
-	{ "Autofire 2",         KEYCFG_BUTTON, 0, P1_AF_2    },
-	{ "Autofire 3",         KEYCFG_BUTTON, 0, P1_AF_3    },
-	{ "Autofire Interval",  KEYCFG_NUMBER, 0, 0          },
+	{ AUTOFIRE1,        KEYCFG_BUTTON, P1_AF_1     },
+	{ AUTOFIRE2,        KEYCFG_BUTTON, P1_AF_2     },
+	{ AUTOFIRE3,        KEYCFG_BUTTON, P1_AF_3     },
+	{ AUTOFIRE_INV,     KEYCFG_NUMBER, 0           },
 	MENU_BLANK,
-	{ "Save snapshot",      KEYCFG_BUTTON, 0, SNAPSHOT   },
-	{ "Switch player",      KEYCFG_BUTTON, 0, SWPLAYER   },
+	{ SAVE_SCREENSHOT,  KEYCFG_BUTTON, SNAPSHOT    },
+	{ SWITCH_PLAYER,    KEYCFG_BUTTON, SWPLAYER    },
 	MENU_BLANK,
 	MENU_RETURN,
 	MENU_END
 };
 
-static keycfg_menu_t keycfg_puzloop2[] =
+static keycfg2_t keycfg_puzloop2[] =
 {
-	{ FONT_UPARROW,         KEYCFG_BUTTON, 0, P1_UP      },
-	{ FONT_DOWNARROW,       KEYCFG_BUTTON, 0, P1_DOWN    },
-	{ FONT_LEFTARROW,       KEYCFG_BUTTON, 0, P1_LEFT    },
-	{ FONT_RIGHTARROW,      KEYCFG_BUTTON, 0, P1_RIGHT   },
-	{ "Button 1",           KEYCFG_BUTTON, 0, P1_BUTTON1 },
-	{ "Start",              KEYCFG_BUTTON, 0, P1_START   },
-	{ "Coin",               KEYCFG_BUTTON, 0, P1_COIN    },
+	{ INPUT_UP,         KEYCFG_BUTTON, P1_UP       },
+	{ INPUT_DOWN,       KEYCFG_BUTTON, P1_DOWN     },
+	{ INPUT_LEFT,       KEYCFG_BUTTON, P1_LEFT     },
+	{ INPUT_RIGHT,      KEYCFG_BUTTON, P1_RIGHT    },
+	{ INPUT_BUTTON1,    KEYCFG_BUTTON, P1_BUTTON1  },
+	{ INPUT_START,      KEYCFG_BUTTON, P1_START    },
+	{ INPUT_COIN,       KEYCFG_BUTTON, P1_COIN     },
 	MENU_BLANK,
-	{ "Paddle (Left)",      KEYCFG_BUTTON, 0, P1_DIAL_L  },
-	{ "Paddle (Right)",     KEYCFG_BUTTON, 0, P1_DIAL_R  },
-	{ "Analog Sensitivity", KEYCFG_ANALOG, 0, 0          },
+	{ PADDLE_LEFT,      KEYCFG_BUTTON, P1_DIAL_L   },
+	{ PADDLE_RIGHT,     KEYCFG_BUTTON, P1_DIAL_R   },
+	{ ANALOG_SENS,      KEYCFG_ANALOG, 0           },
 	MENU_BLANK,
-	{ "Service Coin",       KEYCFG_BUTTON, 0, SERV_COIN   },
-	{ "Service Switch",     KEYCFG_BUTTON, 0, SERV_SWITCH },
+	{ INPUT_SERVCOIN,   KEYCFG_BUTTON, SERV_COIN   },
+	{ INPUT_SERVSWITCH, KEYCFG_BUTTON, SERV_SWITCH },
 	MENU_BLANK,
-	{ "Save snapshot",      KEYCFG_BUTTON, 0, SNAPSHOT   },
-	{ "Switch player",      KEYCFG_BUTTON, 0, SWPLAYER   },
+	{ SAVE_SCREENSHOT,  KEYCFG_BUTTON, SNAPSHOT    },
+	{ SWITCH_PLAYER,    KEYCFG_BUTTON, SWPLAYER    },
 	MENU_BLANK,
 	MENU_RETURN,
 	MENU_END
@@ -352,7 +344,7 @@ static keycfg_menu_t keycfg_puzloop2[] =
 	switch (machine_input_type)
 	{
 	case INPTYPE_forgottn:
-		keycfg = keycfg_forgottn;
+		keycfg2 =  keycfg_forgottn;
 		break;
 
 	case INPTYPE_dynwar:
@@ -364,27 +356,27 @@ static keycfg_menu_t keycfg_puzloop2[] =
 	case INPTYPE_megaman:
 	case INPTYPE_rockmanj:
 	case INPTYPE_slammast:
-		keycfg = keycfg_3buttons;
+		keycfg2 =  keycfg_3buttons;
 		break;
 
 	case INPTYPE_sf2:
 	case INPTYPE_sf2j:
-		keycfg = keycfg_6buttons;
+		keycfg2 =  keycfg_6buttons;
 		break;
 
 	case INPTYPE_sfzch:
-		keycfg = keycfg_sfzch;
+		keycfg2 =  keycfg_sfzch;
 		break;
 
 	case INPTYPE_cworld2j:
 	case INPTYPE_qad:
 	case INPTYPE_qadj:
 	case INPTYPE_qtono2:
-		keycfg = keycfg_quiz;
+		keycfg2 =  keycfg_quiz;
 		break;
 
 	default:
-		keycfg = keycfg_2buttons;
+		keycfg2 =  keycfg_2buttons;
 		break;
 	}
 #else
@@ -392,34 +384,34 @@ static keycfg_menu_t keycfg_puzloop2[] =
 	{
 	case INPTYPE_19xx:
 	case INPTYPE_batcir:
-		keycfg = keycfg_2buttons;
+		keycfg2 =  keycfg_2buttons;
 		break;
 
 	case INPTYPE_cybots:
 	case INPTYPE_ddtod:
-		keycfg = keycfg_4buttons;
+		keycfg2 =  keycfg_4buttons;
 		break;
 
 	case INPTYPE_cps2:
 	case INPTYPE_ssf2:
-		keycfg = keycfg_6buttons;
+		keycfg2 =  keycfg_6buttons;
 		break;
 
 	case INPTYPE_qndream:
-		keycfg = keycfg_quiz;
+		keycfg2 =  keycfg_quiz;
 		break;
 
 	case INPTYPE_puzloop2:
-		keycfg = keycfg_puzloop2;
+		keycfg2 =  keycfg_puzloop2;
 		break;
 
 	default:
-		keycfg = keycfg_3buttons;
+		keycfg2 =  keycfg_3buttons;
 		break;
 	}
 
 	if (!strcmp(driver->name, "progear"))
-		keycfg = keycfg_progear;
+		keycfg2 =  keycfg_progear;
 #endif
 
 #elif defined(INCLUDE_LOAD_DIPSWITCH)
@@ -433,7 +425,7 @@ static keycfg_menu_t keycfg_puzloop2[] =
 
 	if ((dipswitch = load_dipswitch(&sx)) == NULL)
 	{
-		ui_popup("This game has no DIP switches.");
+		ui_popup(TEXT(THIS_GAME_HAS_NO_DIP_SWITCHES));
 		return 0;
 	}
 

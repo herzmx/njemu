@@ -2,17 +2,16 @@
 
 	config/mvs.c
 
-	アプリケーション設定ファイル管理 (NEOGEO)
+	アプリケーション設定ファイル管理 (MVS)
 
 ******************************************************************************/
 
-#if defined(INCLUDE_INIVERSION)
+#if defined(INCLUDE_INIFILENAME)
 
 /******************************************************************************
-	バージョン
+	iniファイル名
 ******************************************************************************/
 
-#define INIVERSION	7
 static const char *inifile_name = "mvspsp.ini";
 
 #elif defined(INCLUDE_CONFIG_STRUCT)

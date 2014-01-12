@@ -4,8 +4,9 @@
 #
 #------------------------------------------------------------------------------
 
-
-VERSION_STR += [Final]
+ifdef ADHOC
+VERSION_STR += [AdHoc]
+endif
 
 PSP_EBOOT_ICON = data/mvs.png
 PSP_EBOOT_TITLE = $(PBPNAME_STR) $(VERSION_STR)
@@ -48,8 +49,6 @@ MAINOBJS += \
 	$(OBJ)/cpu/z80/z80.o \
 	$(OBJ)/cpu/z80/cz80.o
 
-EXTOBJS += $(OBJ)/psp/bmp.o
-
 
 #------------------------------------------------------------------------------
 # Object Files
@@ -70,5 +69,5 @@ COREOBJS = \
 	$(OBJ)/sound/ym2610.o
 
 ICONOBJS = \
-	$(OBJ)/psp/icon/mvs_s.o \
-	$(OBJ)/psp/icon/mvs_l.o
+	$(OBJ)/$(OS)/icon/mvs_s.o \
+	$(OBJ)/$(OS)/icon/mvs_l.o

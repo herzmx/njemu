@@ -26,7 +26,6 @@ const char *bios_name[BIOS_MAX] =
 
 	"Asia AES",
 
-#if !RELEASE
 	"Unibios MVS (Hack, Ver. 1.0)",
 	"Unibios MVS (Hack, Ver. 1.1)",
 	"Unibios MVS (Hack, Ver. 1.2 (old))",
@@ -36,7 +35,6 @@ const char *bios_name[BIOS_MAX] =
 	"Unibios MVS (Hack, Ver. 2.1)",
 	"Unibios MVS (Hack, Ver. 2.2)",
 	"Debug MVS (Hack?)"
-#endif
 };
 
 const u32 bios_crc[BIOS_MAX] =
@@ -52,7 +50,6 @@ const u32 bios_crc[BIOS_MAX] =
 
 	0xd27a71f1,	// Asia AES
 
-#if !RELEASE
 	0x0ce453a0,	// Unibios V1.0
 	0x5dda0d84,	// Unibios V1.1
 	0xe19d3ce9,	// UniBIOS V1.2 (old)
@@ -62,7 +59,6 @@ const u32 bios_crc[BIOS_MAX] =
 	0x8dabf76b,	// Unibios V2.1
 	0x2d50996a,	// Unibios V2.2
 	0x698ebb7d	// Debug BIOS
-#endif
 };
 
 const u32 bios_patch_address[BIOS_MAX] =
@@ -78,7 +74,6 @@ const u32 bios_patch_address[BIOS_MAX] =
 
 	0x000000,	// Asia AES
 
-#if !RELEASE
 	0x000000,	// Unibios V1.0
 	0x000000,	// Unibios V1.1
 	0x000000,	// UniBIOS V1.2 (old)
@@ -88,7 +83,6 @@ const u32 bios_patch_address[BIOS_MAX] =
 	0x000000,	// Unibios V2.1
 	0x000000,	// Unibios V2.2
 	0x000000	// Debug BIOS
-#endif
 };
 
 
@@ -121,14 +115,35 @@ static int bios_check(int flag)
 	video_copy_rect(show_frame, draw_frame, &full_rect, &full_rect);
 	video_flip_screen(1);
 
-	for (i = 0; i < BIOS_MAX; i++)
+#ifdef ADHOC
+	if (flag == 2)
 	{
-		bios_exist[i] = 0;
+		neogeo_bios = -1;
 
-		if (file_open("neogeo", NULL, bios_crc[i], NULL) != -1)
+		for (i = 0; i < BIOS_MAX; i++)
+			bios_exist[i] = 0;
+
+		for (i = 0; i < ASIA_AES; i++)
 		{
-			bios_exist[i] = 1;
-			file_close();
+			if (file_open("neogeo", NULL, bios_crc[i], NULL) != -1)
+			{
+				bios_exist[i] = 1;
+				file_close();
+			}
+		}
+	}
+	else
+#endif
+	{
+		for (i = 0; i < BIOS_MAX; i++)
+		{
+			bios_exist[i] = 0;
+
+			if (file_open("neogeo", NULL, bios_crc[i], NULL) != -1)
+			{
+				bios_exist[i] = 1;
+				file_close();
+			}
 		}
 	}
 
@@ -140,9 +155,9 @@ static int bios_check(int flag)
 	if (count == 0)
 	{
 		if (!flag)
-			ui_popup("BIOS not found.");
+			ui_popup(TEXT(BIOS_NOT_FOUND));
 		else
-			fatalerror("BIOS not found.");
+			fatalerror(TEXT(BIOS_NOT_FOUND));
 		return 0;
 	}
 
@@ -155,9 +170,9 @@ static int bios_check(int flag)
 	{
 		sfix_exist = 0;
 		if (!flag)
-			ui_popup("\"sfix.sfx\" not found.");
+			ui_popup(TEXT(SFIX_NOT_FOUND));
 		else
-			fatalerror("\"sfix.sfx\" not found.");
+			fatalerror(TEXT(SFIX_NOT_FOUND));
 		return 0;
 	}
 
@@ -200,21 +215,20 @@ void bios_select(int flag)
 	if (sel < top) top = sel;
 
 	pad_wait_clear();
-	load_background();
+	load_background(BG_DEFAULT);
 	ui_popup_reset(POPUP_MENU);
 
 	while (1)
 	{
 		if (update)
 		{
-			const char *mes = "Select BIOS and press " FONT_CIRCLE " button.";
-			int width = uifont_get_string_width(mes);
+			int width = uifont_get_string_width(TEXT(SELECT_BIOS_AND_PRESS_CIRCLE_BUTTON));
 
 			show_background();
 
 			small_icon(8, 3, UI_COLOR(UI_PAL_TITLE), ICON_SYSTEM);
-			uifont_print(36, 5, UI_COLOR(UI_PAL_TITLE), "BIOS select menu");
-			uifont_print(477 - width, 271 - 16, UI_COLOR(UI_PAL_SELECT), mes);
+			uifont_print(36, 5, UI_COLOR(UI_PAL_TITLE), TEXT(BIOS_SELECT_MENU));
+			uifont_print(477 - width, 271 - 16, UI_COLOR(UI_PAL_SELECT), TEXT(SELECT_BIOS_AND_PRESS_CIRCLE_BUTTON));
 
 #if !RELEASE
 			if (sel != 0)
@@ -313,11 +327,19 @@ void bios_select(int flag)
 
 	pad_wait_clear();
 	ui_popup_reset(POPUP_MENU);
-	load_background();
+	if (flag)
+		load_background(WP_LOGO);
+	else
+		load_background(WP_FILER);
 
-	if (old_bios != neogeo_bios)
+#ifdef ADHOC
+	if (flag != 2)
+#endif
 	{
-		if (!flag) ui_popup("All NVRAM files are removed.");
-		delete_files("nvram", ".nv");
+		if (old_bios != neogeo_bios)
+		{
+			if (!flag) ui_popup(TEXT(ALL_NVRAM_FILES_ARE_REMOVED));
+			delete_files("nvram", ".nv");
+		}
 	}
 }

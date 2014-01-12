@@ -6,14 +6,21 @@
 
 ******************************************************************************/
 
-#include "psp.h"
-#include "font/jpnfont.h"
 #include "emumain.h"
+#include "zlib/zlib.h"
 
 #define MAX_ENTRY 1024
 
-#define GAME_NOT_WORK	1
-#define GAME_BOOTLEG	2
+#define GAME_NOT_WORK	0x01
+#define GAME_BOOTLEG	0x02
+#define GAME_BADROM		0x04
+#define GAME_HAS_TITLE	0x08
+#define GAME_IS_NEOCD	0x10
+
+#define FTYPE_UPPERDIR	0
+#define FTYPE_DIR		1
+#define FTYPE_ZIP		2
+#define FTYPE_FILE		3
 
 
 /******************************************************************************
@@ -29,16 +36,26 @@ char startupDir[MAX_PATH];
 
 struct dirent
 {
-	u32 type;
-	int icon;
-	int bad;
+	int type;
 	int flag;
-	char *title;
 	char name[128];
+	char title[128];
 };
 
-static struct dirent files[MAX_ENTRY];
+static struct dirent *files[MAX_ENTRY];
 static SceIoDirent dir;
+
+static char curr_dir[MAX_PATH];
+static int nfiles;
+
+#if (EMU_SYSTEM == NCDZ)
+
+static int neocddir;
+static int has_mp3;
+static int bios_error;
+static char zipped_rom[MAX_PATH];
+
+#else
 
 static struct zipname_t
 {
@@ -49,17 +66,197 @@ static struct zipname_t
 
 static int zipname_num;
 
+#endif
+
+
+#if (EMU_SYSTEM == NCDZ)
 
 /******************************************************************************
-	ローカル変数
+	ローカル関数 (NCDZPSP)
 ******************************************************************************/
 
-static char curr_dir[MAX_PATH];
-static int nfiles;
+/*--------------------------------------------------------
+	title_x.sysをイメージバッファに描画
+--------------------------------------------------------*/
 
+#if PSP_VIDEO_32BPP
+static void title_draw_spr(int sx, int sy, u8 *spr, u32 *palette, int tileno)
+#else
+static void title_draw_spr(int sx, int sy, u8 *spr, u16 *palette, int tileno)
+#endif
+{
+	u32 tile, lines = 16;
+	u32 *src = (u32 *)(spr + tileno * 128);
+#if PSP_VIDEO_32BPP
+	u32 *dst = (u32 *)video_frame_addr(tex_frame, sx, sy);
+	u32 *pal = &palette[tileno << 4];
+#else
+	u16 *dst = (u16 *)video_frame_addr(tex_frame, sx, sy);
+	u32 *pal = &palette[tileno << 4];
+#endif
+
+	while (lines--)
+	{
+		tile = src[0];
+		dst[ 0] = pal[tile & 0x0f]; tile >>= 4;
+		dst[ 4] = pal[tile & 0x0f]; tile >>= 4;
+		dst[ 1] = pal[tile & 0x0f]; tile >>= 4;
+		dst[ 5] = pal[tile & 0x0f]; tile >>= 4;
+		dst[ 2] = pal[tile & 0x0f]; tile >>= 4;
+		dst[ 6] = pal[tile & 0x0f]; tile >>= 4;
+		dst[ 3] = pal[tile & 0x0f]; tile >>= 4;
+		dst[ 7] = pal[tile & 0x0f];
+		tile = src[1];
+		dst[ 8] = pal[tile & 0x0f]; tile >>= 4;
+		dst[12] = pal[tile & 0x0f]; tile >>= 4;
+		dst[ 9] = pal[tile & 0x0f]; tile >>= 4;
+		dst[13] = pal[tile & 0x0f]; tile >>= 4;
+		dst[10] = pal[tile & 0x0f]; tile >>= 4;
+		dst[14] = pal[tile & 0x0f]; tile >>= 4;
+		dst[11] = pal[tile & 0x0f]; tile >>= 4;
+		dst[15] = pal[tile & 0x0f];
+		src += 2;
+		dst += BUF_WIDTH;
+	}
+}
+
+
+/*--------------------------------------------------------
+	title_x.sysを読み込む
+--------------------------------------------------------*/
+
+static int load_title(const char *path, int number)
+{
+	int i, fd, region, tileno, x, y, found = 0;
+	u8  title_spr[0x1680];
+	u16 palette[0x5a0 >> 1];
+#if PSP_VIDEO_32BPP
+	u32 palette32[0x5a0 >> 1];
+#endif
+	char title_path[MAX_PATH], region_chr[3] = {'j','u','e'};
+
+	zip_open(path);
+
+	fd = -1;
+	for (region = neogeo_region & 0x03; region >= 0; region--)
+	{
+		sprintf(title_path, "title_%c.sys", region_chr[region]);
+
+		if ((fd = zopen(title_path)) != -1)
+		{
+			found = 1;
+			break;
+		}
+	}
+
+	if (!found)
+	{
+		zip_close();
+		return 0;
+	}
+
+	zread(fd, palette, 0x5a0);
+	zread(fd, title_spr, 0x1680);
+	zclose(fd);
+
+	zip_close();
+
+	swab((u8 *)palette, (u8 *)palette, 0x5a0);
+
+	for (i = 0; i < 0x5a0 >> 1; i++)
+	{
+#if PSP_VIDEO_32BPP
+		int r = ((palette[i] >> 7) & 0x1e) | ((palette[i] >> 14) & 0x01);
+		int g = ((palette[i] >> 3) & 0x1e) | ((palette[i] >> 13) & 0x01);
+		int b = ((palette[i] << 1) & 0x1e) | ((palette[i] >> 12) & 0x01);
+
+		r = (r << 3) | (r >> 2);
+		g = (g << 3) | (g >> 2);
+		b = (b << 3) | (b >> 2);
+
+		palette32[i] = MAKECOL32(r, g, b);
+#else
+		int r = ((palette[i] >> 7) & 0x1e) | ((palette[i] >> 14) & 0x01);
+		int g = ((palette[i] >> 3) & 0x1e) | ((palette[i] >> 13) & 0x01);
+		int b = ((palette[i] << 1) & 0x1e) | ((palette[i] >> 12) & 0x01);
+
+		palette[i] = MAKECOL15(r, g, b);
+#endif
+	}
+
+	neogeo_decode_spr(title_spr, 0, 0x1680);
+
+	tileno = 0;
+
+	for (y = 0; y < 80; y += 16)
+	{
+		for (x = 0; x < 144; x += 16)
+		{
+#if PSP_VIDEO_32BPP
+			title_draw_spr(x, y, title_spr, palette32, tileno);
+#else
+			title_draw_spr(x, y, title_spr, palette, tileno);
+#endif
+			tileno++;
+		}
+	}
+
+	return 1;
+}
+
+
+/*--------------------------------------------------------
+	title_x.sysを表示
+--------------------------------------------------------*/
+
+static void show_title(int sx, int sy)
+{
+	RECT clip1 = { 0, 0, 144, 80 };
+	RECT clip2 = { sx, sy, sx + 144, sy + 80 };
+
+	draw_box_shadow(sx, sy, sx + 144, sy + 80);
+	video_copy_rect(tex_frame, draw_frame, &clip1, &clip2);
+}
+
+
+/*--------------------------------------------------------
+	NEOGEO CDZのBIOSをチェック
+--------------------------------------------------------*/
+
+static void check_neocd_bios(void)
+{
+	FILE *fp;
+	char path[MAX_PATH];
+	u8 *temp_mem;
+
+	bios_error = 0;
+
+	if ((temp_mem = (u8 *)malloc(0x80000)) == NULL)
+	{
+		bios_error = 1;
+		return;
+	}
+
+	sprintf(path, "%s%s", launchDir, "neocd.bin");
+
+	if ((fp = fopen(path, "rb")) != NULL)
+	{
+		fread(temp_mem, 1, 0x80000, fp);
+		fclose(fp);
+
+		if (crc32(0, temp_mem, 0x80000) != 0xdf9de490)
+			bios_error = 2;
+	}
+	else bios_error = 1;
+
+	free(temp_mem);
+}
+
+
+#else
 
 /******************************************************************************
-	ローカル関数
+	ローカル関数 (NCDZPSP以外)
 ******************************************************************************/
 
 /*--------------------------------------------------------
@@ -84,11 +281,15 @@ static int load_zipname(void)
 	if ((fp = fopen(path, "rb")) != NULL)
 	{
 		fclose(fp);
-		if (load_jpnfont())
+#if !JAPANESE_UI
+		if (load_jpnfont(0))
 		{
 			fp = fopen(path, "rb");
 			found = 1;
 		}
+#else
+		found = 1;
+#endif
 	}
 	if (!found)
 	{
@@ -145,7 +346,9 @@ static int load_zipname(void)
 
 static void free_zipname(void)
 {
+#if !JAPANESE_UI
 	free_jpnfont();
+#endif
 	zipname_num = 0;
 }
 
@@ -180,6 +383,12 @@ static char *get_zipname(const char *name, int *flag)
 	return NULL;
 }
 
+#endif
+
+
+/******************************************************************************
+	ローカル関数 (共通)
+******************************************************************************/
 
 /*--------------------------------------------------------
 	ディレクトリの存在チェック
@@ -215,13 +424,33 @@ static void checkDir(const char *name)
 
 
 /*--------------------------------------------------------
-	起動ディレクトリのチェック
+	ディレクトリの作成と起動ディレクトリのチェック
 --------------------------------------------------------*/
 
 static void checkStartupDir(void)
 {
-	int fd = sceIoDopen(startupDir);
+	int fd;
 
+#if USE_CACHE
+	checkDir("cache");
+#endif
+	checkDir("roms");
+	checkDir("config");
+	checkDir("snap");
+#ifdef SAVE_STATE
+	checkDir("state");
+#endif
+#if PSP_VIDEO_32BPP
+	checkDir("data");
+#endif
+#if (EMU_SYSTEM == MVS)
+	checkDir("memcard");
+#endif
+#if (EMU_SYSTEM != NCDZ)
+	checkDir("nvram");
+#endif
+
+	fd = sceIoDopen(startupDir);
 	if (fd >= 0)
 	{
 		strcpy(curr_dir, startupDir);
@@ -230,8 +459,72 @@ static void checkStartupDir(void)
 	else
 	{
 		strcpy(startupDir, launchDir);
-		strcat(startupDir, "roms/");
+		strcat(startupDir, "roms");
 	}
+}
+
+
+/*--------------------------------------------------------
+	ファイルのフラグを設定
+--------------------------------------------------------*/
+
+static int set_file_flags(const char *path, int number)
+{
+#if (EMU_SYSTEM == NCDZ)
+	if (files[number]->type == FTYPE_ZIP)
+	{
+		int fd;
+		char zipname[MAX_PATH];
+
+		sprintf(zipname, "%s/%s", path, files[number]->name);
+		zip_open(zipname);
+
+		if ((fd = zopen("ipl.txt")) != -1)
+		{
+			zclose(fd);
+			strcpy(zipped_rom, files[number]->name);
+			neocddir = 2;
+		}
+		zip_close();
+		return 0;
+	}
+	else
+	{
+		files[number]->flag = GAME_HAS_TITLE;
+
+		strcpy(files[number]->title, files[number]->name);
+		strcat(files[nfiles]->title, "/");
+	}
+#else
+	if (files[number]->type == FTYPE_ZIP)
+	{
+		char *title;
+
+		if ((title = get_zipname(dir.d_name, &files[number]->flag)) == NULL)
+		{
+			files[number]->flag = GAME_BADROM;
+			strcpy(files[number]->title, files[number]->name);
+		}
+		else
+		{
+			strcpy(files[number]->title, title);
+		}
+#if RELEASE
+		if (files[nfiles]->flag & GAME_BOOTLEG)
+		{
+			return 0;
+		}
+#endif
+	}
+	else
+	{
+		files[number]->flag = 0;
+		strcpy(files[number]->title, files[number]->name);
+		strcat(files[nfiles]->title, "/");
+	}
+#endif
+
+	return 1;
 }
 
 
@@ -241,20 +534,22 @@ static void checkStartupDir(void)
 
 static void getDir(const char *path)
 {
-	static int fd;
-	int i, j;
+	int i, j, type, fd;
 
 	memset(&dir, 0, sizeof(dir));
-	memset(files, 0, sizeof(files));
 
 	nfiles = 0;
+#if (EMU_SYSTEM == NCDZ)
+	neocddir = 0;
+	has_mp3 = 0;
+#endif
 
 	if (strcmp(path, "ms0:/") != 0)
 	{
-		strcpy(files[nfiles].name, "..");
-		files[nfiles].type = 0;
-		files[nfiles].icon = ICON_UPPERDIR;
-		files[nfiles].title = files[nfiles].name;
+		strcpy(files[nfiles]->name, "..");
+		strcpy(files[nfiles]->title, "..");
+		files[nfiles]->type = FTYPE_UPPERDIR;
+		files[nfiles]->flag = 0;
 		nfiles++;
 	}
 
@@ -264,104 +559,137 @@ static void getDir(const char *path)
 	{
 		char *ext;
 
-		if (sceIoDread(fd, &dir) <= 0) break;
-
-		if (dir.d_name[0] == '.') continue;
+		if (sceIoDread(fd, &dir) <= 0)
+		{
+			break;
+		}
+		if (dir.d_name[0] == '.')
+		{
+			continue;
+		}
 #if (EMU_SYSTEM == MVS)
-		if (stricmp(dir.d_name, "neogeo.zip") == 0) continue;
+		if (stricmp(dir.d_name, "neogeo.zip") == 0)
+		{
+			continue;
+		}
+#elif (EMU_SYSTEM == NCDZ)
+		if (stricmp(dir.d_name, "ipl.txt") == 0)
+		{
+			neocddir = 1;
+			continue;
+		}
 #endif
-
 		if ((ext = strrchr(dir.d_name, '.')) != NULL)
 		{
-			if (stricmp(ext, ".zip") == 0)
+#ifdef COMMAND_LIST
+			if (stricmp(dir.d_name, "command.dat") == 0)
 			{
-				strcpy(files[nfiles].name, dir.d_name);
-				if ((files[nfiles].title = get_zipname(dir.d_name, &files[nfiles].flag)) == NULL)
-					files[nfiles].title = files[nfiles].name;
-#if RELEASE
-				if (files[nfiles].flag & GAME_BOOTLEG) continue;
-#endif
-				files[nfiles].type = 2;
-				files[nfiles].icon = ICON_ZIPFILE;
+				strcpy(files[nfiles]->name, dir.d_name);
+				strcpy(files[nfiles]->title, dir.d_name);
+				files[nfiles]->type = FTYPE_FILE;
+				files[nfiles]->flag = 0;
 				nfiles++;
 				continue;
 			}
+#endif
+			if (stricmp(ext, ".zip") == 0)
+			{
+				strcpy(files[nfiles]->name, dir.d_name);
+				files[nfiles]->type = FTYPE_ZIP;
+				if (set_file_flags(path, nfiles))
+				{
+					nfiles++;
+				}
+				continue;
+			}
 		}
-
 		if (dir.d_stat.st_attr == FIO_SO_IFDIR)
 		{
-#if (EMU_SYSTEM == MVS)
-			if (stricmp(dir.d_name, "memcard") == 0) continue;
-#endif
+#if USE_CACHE
 			if (stricmp(dir.d_name, "cache") == 0) continue;
+#endif
 			if (stricmp(dir.d_name, "config") == 0) continue;
 			if (stricmp(dir.d_name, "snap") == 0) continue;
+#if (EMU_SYSTEM != NCDZ)
 			if (stricmp(dir.d_name, "nvram") == 0) continue;
-			if (stricmp(dir.d_name, "font") == 0) continue;
+#endif
+#ifdef SAVE_STATE
 			if (stricmp(dir.d_name, "state") == 0) continue;
-			strcpy(files[nfiles].name, dir.d_name);
-			strcat(files[nfiles].name, "/");
-			files[nfiles].type = 1;
-			files[nfiles].icon = ICON_FOLDER;
-			files[nfiles].title = files[nfiles].name;
+#endif
+#if PSP_VIDEO_32BPP
+			if (stricmp(dir.d_name, "data") == 0) continue;
+			if (stricmp(dir.d_name, "font") == 0) continue;
+#endif
+#if (EMU_SYSTEM == MVS)
+			if (stricmp(dir.d_name, "memcard") == 0) continue;
+#elif (EMU_SYSTEM == NCDZ)
+			if (stricmp(dir.d_name, "mp3") == 0)
+			{
+				has_mp3 = 1;
+				continue;
+			}
+#endif
+			strcpy(files[nfiles]->name, dir.d_name);
+			files[nfiles]->type = FTYPE_DIR;
+			set_file_flags(path, nfiles);
 			nfiles++;
 		}
 	}
 
 	sceIoDclose(fd);
 
-	// ソートするアイテム数は数十個程度なので、バブルソートの方が速いと思う。
 	for (i = 0; i < nfiles - 1; i++)
 	{
 		for (j = i + 1; j < nfiles; j++)
 		{
-			if (files[i].type > files[j].type)
+			if (files[i]->type > files[j]->type)
 			{
 				struct dirent tmp;
 
-				tmp = files[i];
-				files[i] = files[j];
-				files[j] = tmp;
+				tmp = *files[i];
+				*files[i] = *files[j];
+				*files[j] = tmp;
 			}
 		}
 	}
 
-	for (i = 0; i < nfiles - 1; i++)
+	for (type = 1; type < 4; type++)
 	{
-		for (j = i + 1; j < nfiles; j++)
+		int start = nfiles, end = 0;
+
+		for (i = 0; i < nfiles; i++)
 		{
-			if (files[i].type != files[j].type) break;
-
-			if (strcmp(files[i].title, files[j].title) > 0)
+			if (files[i]->type == type)
 			{
-				struct dirent tmp;
-
-				tmp = files[i];
-				files[i] = files[j];
-				files[j] = tmp;
+				start = i;
+				break;
 			}
 		}
-	}
-
-	for (i = 0; i < nfiles; i++)
-	{
-		if (files[i].icon == ICON_ZIPFILE)
+		for (; i < nfiles; i++)
 		{
-			if ((files[i].title = get_zipname(files[i].name, &files[i].flag)) != NULL)
+			if (files[i]->type != type)
 			{
-				files[i].bad = 0;
-			}
-			else
-			{
-				files[i].title = files[i].name;
-				files[i].bad = 1;
+				end = i;
+				break;
 			}
 		}
-		else
+
+		if (start == nfiles) continue;
+		if (end == 0) end = nfiles;
+
+		for (i = start; i < end - 1; i++)
 		{
-			files[i].title = files[i].name;
-			files[i].flag = 0;
-			files[i].bad = 0;
+			for (j = i + 1; j < end; j++)
+			{
+				if (strcmp(files[i]->title, files[j]->title) > 0)
+				{
+					struct dirent tmp;
+
+					tmp = *files[i];
+					*files[i] = *files[j];
+					*files[j] = tmp;
+				}
+			}
 		}
 	}
 }
@@ -373,12 +701,15 @@ static void getDir(const char *path)
 
 static void modify_display_path(char *path, char *org_path, int max_width)
 {
-	if (uifont_get_string_width(org_path) > max_width)
+	strcpy(path, org_path);
+	strcat(path, "/");
+
+	if (uifont_get_string_width(path) > max_width)
 	{
 		int i, j, num_dir = 0;
 		char temp[MAX_PATH], *dir[256];
 
-		strcpy(temp, org_path);
+		strcpy(temp, path);
 
 		dir[num_dir++] = strtok(temp, "/");
 
@@ -405,7 +736,6 @@ static void modify_display_path(char *path, char *org_path, int max_width)
 
 		} while (uifont_get_string_width(path) > max_width);
 	}
-	else strcpy(path, org_path);
 }
 
 
@@ -419,14 +749,51 @@ static void modify_display_path(char *path, char *org_path, int max_width)
 
 int file_exist(const char *path)
 {
-	int found;
-	FILE *fp;
+	SceUID fd;
 
-	fp = fopen(path, "rb");
-	found = (fp) ? 1 : 0;
-	fclose(fp);
+	fd = sceIoOpen(path, PSP_O_RDONLY, 0777);
+	sceIoClose(fd);
 
-	return found;
+	return ((fd >= 0) ? 1 : 0);
+}
+
+
+/*--------------------------------------------------------
+	指定したパターンと一致するファイルを検索
+--------------------------------------------------------*/
+
+char *find_file(char *pattern, char *path)
+{
+	static struct dirent file;
+	int fd, i, found, len1, len2;
+
+	memset(&dir, 0, sizeof(dir));
+
+	fd = sceIoDopen(path);
+	found = 0;
+
+	len1 = strlen(pattern);
+
+	while (!found)
+	{
+		if (sceIoDread(fd, &dir) <= 0) break;
+
+		len2 = strlen(dir.d_name);
+
+		for (i = 0; i < len2; i++)
+		{
+			if (strnicmp(&dir.d_name[i], pattern, len1) == 0)
+			{
+				strcpy(file.name, dir.d_name);
+				found = 1;
+				break;
+			}
+		}
+	}
+
+	sceIoDclose(fd);
+
+	return found ? file.name : NULL;
 }
 
 
@@ -441,7 +808,7 @@ void delete_files(const char *dirname, const char *pattern)
 
 	memset(&dir, 0, sizeof(dir));
 
-	sprintf(path, "%s%s/", launchDir, dirname);
+	sprintf(path, "%s%s", launchDir, dirname);
 
 	fd = sceIoDopen(path);
 	len1 = strlen(pattern);
@@ -458,7 +825,7 @@ void delete_files(const char *dirname, const char *pattern)
 			{
 				char path2[MAX_PATH];
 
-				sprintf(path2, "%s%s", path, dir.d_name);
+				sprintf(path2, "%s/%s", path, dir.d_name);
 				sceIoRemove(path2);
 			}
 		}
@@ -512,9 +879,10 @@ void show_exit_screen(void)
 {
 	if (Loop == LOOP_EXIT)
 	{
+		video_set_mode(32);
 		video_clear_screen();
 		boxfill(0, 0, SCR_WIDTH - 1, SCR_HEIGHT - 1, COLOR_DARKGRAY);
-		uifont_print_center(129, COLOR_WHITE, "Please wait...");
+		uifont_print_shadow_center(129, COLOR_WHITE, TEXT(PLEASE_WAIT));
 		video_flip_screen(1);
 	}
 }
@@ -529,102 +897,152 @@ void file_browser(void)
 	int i, sel = 0, rows = 11, top = 0;
 	int run_emulation = 0, update = 1, prev_sel = 0;
 	char *p;
+#if (EMU_SYSTEM == NCDZ)
+	int title_counter = 60, title_image = -1;
+#endif
 
 	Loop = LOOP_BROWSER;
 
-	ui_popup_reset(POPUP_MENU);
+#if (PSP_VIDEO_32BPP && USE_CACHE)
+	GFX_MEMORY = NULL;
+#endif
 
-	memset(files, 0, sizeof(files));
+	for (i = 0; i < MAX_ENTRY; i++)
+		files[i] = (struct dirent *)malloc(sizeof(struct dirent));
+
+#if (EMU_SYSTEM != NCDZ)
 	memset(zipname, 0, sizeof(zipname));
 	zipname_num = 0;
+#endif
 
 	strcpy(curr_dir, launchDir);
-	strcat(curr_dir, "roms/");
+	strcat(curr_dir, "roms");
 	strcpy(startupDir, curr_dir);
 	load_settings();
 
+#if PSP_VIDEO_32BPP
+	load_wallpaper();
+	load_background(WP_LOGO);
+	show_background();
+	small_icon_shadow(6, 3, UI_COLOR(UI_PAL_TITLE), ICON_SYSTEM);
+	logo(32, 5, UI_COLOR(UI_PAL_TITLE));
+#else
 	ui_fill_frame(draw_frame, UI_PAL_BG2);
-	draw_dialog(240-164, 136-40, 240+164, 136+40);
-	uifont_print_center(136-20, 255,255,120, APPNAME_STR " " VERSION_STR "  by NJ");
-	uifont_print_center(136+10, 220,220,220, "http://neocdz.hp.infoseek.co.jp/psp/");
+#endif
+	draw_dialog(240-176, 136-40, 240+176, 136+40);
+	uifont_print_shadow_center(136-20, 255,255,120, APPNAME_STR " " VERSION_STR "  by NJ");
+	uifont_print_shadow_center(136+10, 220,220,220, "http://nj-emu.hp.infoseek.co.jp");
 	video_flip_screen(1);
 
-#if USE_CACHE
-	checkDir("cache");
-#endif
-	checkDir("roms");
-	checkDir("config");
-	checkDir("nvram");
-	checkDir("snap");
-#if (EMU_SYSTEM == MVS)
-	checkDir("memcard");
-#endif
-#ifdef SAVE_STATE
-	checkDir("state");
-#endif
-
+#if (EMU_SYSTEM != NCDZ)
 	if (!load_zipname())
 	{
-		fatalerror("Could not open zipname." EXT);
+		fatalerror(TEXT(COULD_NOT_OPEN_ZIPNAME_DAT), EXT);
 		show_fatal_error();
 		show_exit_screen();
 		goto error;
 	}
- 	checkStartupDir();
+#endif
+	checkStartupDir();
 	getDir(curr_dir);
 
-	video_calc_refreshrate();
+#if (EMU_SYSTEM == NCDZ)
+	check_neocd_bios();
+#endif
 
 	pad_wait_press(3000);
 
-	load_background();
+#if (EMU_SYSTEM == NCDZ)
+	if (bios_error)
+	{
+#if PSP_VIDEO_32BPP
+		show_background();
+		small_icon_shadow(6, 3, UI_COLOR(UI_PAL_TITLE), ICON_SYSTEM);
+		logo(32, 5, UI_COLOR(UI_PAL_TITLE));
+#else
+		ui_fill_frame(draw_frame, UI_PAL_BG2);
+#endif
+		video_flip_screen(1);
+
+		switch (bios_error)
+		{
+		case 1: messagebox(MB_BIOSNOTFOUND); break;
+		case 2: messagebox(MB_BIOSINVALID); break;
+		}
+	}
+#endif
+
+	ui_popup_reset(POPUP_MENU);
+	load_background(WP_FILER);
 
 	while (Loop)
 	{
+		int icon[4] = { ICON_UPPERDIR, ICON_FOLDER, ICON_ZIPFILE, ICON_COMMANDDAT };
+
 		if (run_emulation)
 		{
-			int len;
-
 			run_emulation = 0;
+			Loop = LOOP_EXEC;
 
+#if (EMU_SYSTEM != NCDZ)
 			strcpy(game_dir, curr_dir);
-			strcpy(game_name, files[sel].name);
-			*strchr(game_name, '.') = '\0';
-			len = strlen(game_name);
-			for (i = 0; i < len; i++)
-				game_name[i] = tolower(game_name[i]);
-
-			*strrchr(game_dir, '/') = '\0';
 #if USE_CACHE
-			strcpy(cache_dir, launchDir);
-			strcat(cache_dir, "cache");
+			sprintf(cache_dir, "%scache", launchDir);
+#endif
+			strcpy(game_name, files[sel]->name);
+			*strchr(game_name, '.') = '\0';
+			i = 0;
+			while (game_name[i])
+			{
+				game_name[i] = tolower(game_name[i]);
+				i++;
+			}
+			free_zipname();
 #endif
 
-			free_zipname();
+			for (i = 0; i < MAX_ENTRY; i++)
+			{
+				free(files[i]);
+				files[i] = NULL;
+			}
 
+			video_set_mode(16);
 			set_cpu_clock(psp_cpuclock);
 			emu_main();
 			set_cpu_clock(PSPCLOCK_222);
+			video_set_mode(32);
 
 			if (Loop)
 			{
+				for (i = 0; i < MAX_ENTRY; i++)
+					files[i] = (struct dirent *)malloc(sizeof(struct dirent));
+
+#if (EMU_SYSTEM == NCDZ)
+				title_counter = 60;
+				title_image = -1;
+#else
 				load_zipname();
-				load_background();
+#endif
+				load_background(WP_FILER);
 				getDir(curr_dir);
 				update = 1;
 			}
 			else break;
 		}
 
+#if PSP_VIDEO_32BPP
+		if (update & 1)
+#else
 		if (update)
+#endif
 		{
 			char path[MAX_PATH];
 
 			modify_display_path(path, curr_dir, 368);
 
 			show_background();
-			small_icon(6, 3, UI_COLOR(UI_PAL_TITLE), ICON_MEMSTICK);
-			uifont_print(32, 5, UI_COLOR(UI_PAL_TITLE), path);
+			small_icon_shadow(6, 3, UI_COLOR(UI_PAL_TITLE), ICON_MEMSTICK);
+			uifont_print_shadow(32, 5, UI_COLOR(UI_PAL_TITLE), path);
 
 			for (i = 0; i < rows; i++)
 			{
@@ -632,28 +1050,83 @@ void file_browser(void)
 
 				if (top + i == sel)
 				{
-					boxfill_alpha(4, 37 + i * 20, 464, 56 + i * 20, UI_COLOR(UI_PAL_FILESEL), 8);
-					small_icon(6, 38 + i * 20, UI_COLOR(UI_PAL_SELECT), files[sel].icon);
-					if (files[sel].bad)
-						uifont_print(36, 40 + i * 20, COLOR_RED, files[sel].title);
-					else if (files[sel].flag & GAME_NOT_WORK)
-						uifont_print(36, 40 + i * 20, COLOR_GRAY, files[sel].title);
-					else if (files[sel].flag & GAME_BOOTLEG)
-						uifont_print(36, 40 + i * 20, COLOR_YELLOW, files[sel].title);
+					boxfill_gradation(4, 37 + i * 20, 464, 56 + i * 20, UI_COLOR(UI_PAL_FILESEL1), UI_COLOR(UI_PAL_FILESEL2), 8, 0);
+					small_icon_light(6, 38 + i * 20, UI_COLOR(UI_PAL_SELECT), icon[files[sel]->type]);
+
+					if (files[sel]->flag & GAME_BADROM)
+						uifont_print_shadow(36, 40 + i * 20, COLOR_RED, files[sel]->title);
+					else if (files[sel]->flag & GAME_NOT_WORK)
+						uifont_print_shadow(36, 40 + i * 20, COLOR_GRAY, files[sel]->title);
+					else if (files[sel]->flag & GAME_BOOTLEG)
+						uifont_print_shadow(36, 40 + i * 20, COLOR_YELLOW, files[sel]->title);
 					else
-						uifont_print(36, 40 + i * 20, UI_COLOR(UI_PAL_SELECT), files[sel].title);
+						uifont_print_shadow(36, 40 + i * 20, UI_COLOR(UI_PAL_SELECT), files[sel]->title);
+
+#if (EMU_SYSTEM == NCDZ)
+					if (!title_counter && title_image == -1)
+					{
+						if (files[sel]->flag & GAME_HAS_TITLE)
+						{
+							int flag;
+							char name[MAX_PATH];
+
+							sprintf(path, "%s/%s", curr_dir, files[sel]->name);
+
+							getDir(path);
+
+							flag = neocddir;
+							if (flag == 2)
+								strcpy(name, zipped_rom);
+							else
+								name[0] = '\0';
+
+							getDir(curr_dir);
+
+							if (flag)
+							{
+								if (flag == 2)
+									sprintf(path, "%s/%s/%s", curr_dir, files[sel]->name, name);
+								else
+									sprintf(path, "%s/%s", curr_dir, files[sel]->name);
+
+								if (!load_title(path, sel))
+								{
+									files[sel]->flag &= ~GAME_HAS_TITLE;
+									title_image = -1;
+								}
+								else
+								{
+									title_image = sel;
+								}
+							}
+							else
+							{
+								files[sel]->flag &= ~GAME_HAS_TITLE;
+								title_image = -1;
+							}
+						}
+					}
+					if (title_image != -1)
+					{
+						if (sel < top + rows / 2)
+							show_title(315, 169);
+						else
+							show_title(315, 50);
+					}
+#endif
 				}
 				else
 				{
-					small_icon(6, 38 + i * 20, UI_COLOR(UI_PAL_NORMAL), files[top + i].icon);
-					if (files[top + i].bad)
-						uifont_print(36, 40 + i * 20, COLOR_DARKRED, files[top + i].title);
-					else if (files[top + i].flag & GAME_NOT_WORK)
-						uifont_print(36, 40 + i * 20, COLOR_DARKGRAY, files[top + i].title);
-					else if (files[top + i].flag & GAME_BOOTLEG)
-						uifont_print(36, 40 + i * 20, COLOR_DARKYELLOW, files[top + i].title);
+					small_icon(6, 38 + i * 20, UI_COLOR(UI_PAL_NORMAL), icon[files[top + i]->type]);
+
+					if (files[top + i]->flag & GAME_BADROM)
+						uifont_print(36, 40 + i * 20, COLOR_DARKRED, files[top + i]->title);
+					else if (files[top + i]->flag & GAME_NOT_WORK)
+						uifont_print(36, 40 + i * 20, COLOR_DARKGRAY, files[top + i]->title);
+					else if (files[top + i]->flag & GAME_BOOTLEG)
+						uifont_print(36, 40 + i * 20, COLOR_DARKYELLOW, files[top + i]->title);
 					else
-						uifont_print(36, 40 + i * 20, UI_COLOR(UI_PAL_NORMAL), files[top + i].title);
+						uifont_print(36, 40 + i * 20, UI_COLOR(UI_PAL_NORMAL), files[top + i]->title);
 				}
 			}
 
@@ -663,13 +1136,54 @@ void file_browser(void)
 			update |= ui_show_popup(1);
 			video_flip_screen(1);
 		}
+#if PSP_VIDEO_32BPP
+		else if (update & 2)
+		{
+			int x, y, w, h;
+			RECT clip1, clip2;
+
+			show_background();
+
+			for (i = 0; i < rows; i++)
+				if (top + i == sel) break;
+
+			boxfill_gradation(4, 37 + i * 20, 464, 56 + i * 20, UI_COLOR(UI_PAL_FILESEL1), UI_COLOR(UI_PAL_FILESEL2), 8, 0);
+			small_icon_light(6, 38 + i * 20, UI_COLOR(UI_PAL_SELECT), icon[files[sel]->type]);
+
+			x = 4;
+			y = 38 + i * 20;
+			w = 24 + 8;
+			h = 18 + 8;
+
+			clip1.left   = x - 4;
+			clip1.top    = y - 4;
+			clip1.right  = clip1.left + w;
+			clip1.bottom = clip1.top  + h;
+
+			clip2.left   = 0;
+			clip2.top    = 112;
+			clip2.right  = clip2.left + w;
+			clip2.bottom = clip2.top  + h;
+
+			video_copy_rect(draw_frame, tex_frame, &clip1, &clip2);
+			video_copy_rect(show_frame, draw_frame, &full_rect, &full_rect);
+			video_copy_rect(tex_frame, draw_frame, &clip2, &clip1);
+
+			update = draw_battery_status(0);
+			update |= ui_show_popup(0);
+			video_flip_screen(1);
+		}
+#endif
 		else
 		{
-			update  = draw_battery_status(0);
+			update = draw_battery_status(0);
 			update |= ui_show_popup(0);
 			video_wait_vsync();
 		}
 
+#if PSP_VIDEO_32BPP
+		update |= ui_light_update();
+#endif
 		prev_sel = sel;
 
 		if (pad_pressed(PSP_CTRL_UP))
@@ -690,19 +1204,21 @@ void file_browser(void)
 			sel += rows;
 			if (sel >= nfiles) sel = nfiles - 1;
 		}
+#ifdef ADHOC
+		else if (pad_pressed(PSP_CTRL_CIRCLE) || (adhoc_enable = pad_pressed(PSP_CTRL_SQUARE)))
+#else
 		else if (pad_pressed(PSP_CTRL_CIRCLE))
+#endif
 		{
-			switch (files[sel].icon)
+			switch (files[sel]->type)
 			{
-			case ICON_UPPERDIR:
-				if (strcmp(curr_dir, "ms0:/") != 0)
+			case FTYPE_UPPERDIR:
+				if (strcmp(curr_dir, "ms0:") != 0)
 				{
 					char old_dir[MAX_PATH];
 
-					*strrchr(curr_dir, '/') = '\0';
-					p = strrchr(curr_dir, '/') + 1;
-					strcpy(old_dir, p);
-					strcat(old_dir,  "/");
+					p = strrchr(curr_dir, '/');
+					strcpy(old_dir, p + 1);
 					*p = '\0';
 
 					getDir(curr_dir);
@@ -711,7 +1227,7 @@ void file_browser(void)
 
 					for (i = 0; i < nfiles; i++)
 					{
-						if (!strcmp(old_dir, files[i].name))
+						if (!strcmp(old_dir, files[i]->name))
 						{
 							sel = i;
 							top = sel - 3;
@@ -721,56 +1237,140 @@ void file_browser(void)
 				}
 				break;
 
-			case ICON_FOLDER:
-				strcat(curr_dir, files[sel].name);
+			case FTYPE_DIR:
+				strcat(curr_dir, "/");
+				strcat(curr_dir, files[sel]->name);
 				getDir(curr_dir);
-				sel = 0;
-				prev_sel = -1;
-				pad_wait_clear();
+#if (EMU_SYSTEM == NCDZ)
+				if (neocddir && !bios_error)
+				{
+					int launch;
+
+#ifdef ADHOC
+					if (adhoc_enable)
+					{
+						if (has_mp3)
+							launch = messagebox(MB_STARTEMULATION_ADHOC);
+						else
+							launch = messagebox(MB_STARTEMULATION_ADHOC_NOMP3);
+					}
+					else
+#endif
+					{
+						if (has_mp3)
+							launch = messagebox(MB_STARTEMULATION);
+						else
+							launch = messagebox(MB_STARTEMULATION_NOMP3);
+					}
+
+					if (launch)
+					{
+						if (neocddir == 1)
+						{
+							strcpy(game_dir, curr_dir);
+						}
+						else
+						{
+							sprintf(game_dir, "%s/%s", curr_dir, zipped_rom);
+						}
+
+						sprintf(mp3_dir, "%s/mp3", curr_dir);
+
+						run_emulation = 1;
+						neogeo_boot_bios = 0;
+					}
+
+					*strrchr(curr_dir, '/') = '\0';
+					neocddir = 0;
+				}
+				if (!run_emulation)
+#endif
+				{
+					sel = 0;
+					prev_sel = -1;
+					pad_wait_clear();
+				}
 				break;
 
-			case ICON_ZIPFILE:
-				if (!files[sel].bad)
+#ifdef COMMAND_LIST
+			case FTYPE_FILE:
+				update = commandlist_size_reduction();
+				break;
+#endif
+
+#if (EMU_SYSTEM != NCDZ)
+			case FTYPE_ZIP:
+				if (!(files[sel]->flag & GAME_BADROM))
 				{
-					if (files[sel].flag & GAME_NOT_WORK)
+					if (files[sel]->flag & GAME_NOT_WORK)
 					{
 						messagebox(MB_GAMENOTWORK);
 					}
-					else if (messagebox(MB_LAUNCHZIPFILE))
+#ifdef ADHOC
+					else if (adhoc_enable)
+					{
+						if (messagebox(MB_STARTEMULATION_ADHOC))
+							run_emulation = 1;
+					}
+#endif
+					else if (messagebox(MB_STARTEMULATION))
 					{
 						run_emulation = 1;
 					}
-					update = 1;
 				}
+				update = 1;
 				break;
+#endif
 			}
-
 			pad_wait_clear();
 		}
 		else if (pad_pressed(PSP_CTRL_TRIANGLE))
 		{
-			if (messagebox(MB_EXITEMULATOR))
+			if (messagebox(MB_EXITEMULATION))
 			{
 				Loop = LOOP_EXIT;
 				show_exit_screen();
 				break;
 			}
 			update = 1;
-		}
-		else if (pad_pressed(PSP_CTRL_SELECT))
-		{
-			if (files[sel].icon == ICON_FOLDER)
-			{
-				if (messagebox(MB_SETSTARTUPDIR))
-					sprintf(startupDir, "%s%s", curr_dir, files[sel].name);
-			}
+			pad_wait_clear();
 		}
 #if (EMU_SYSTEM == MVS)
-		else if (pad_pressed(PSP_CTRL_LTRIGGER))
+		else if (pad_pressed(PSP_CTRL_START))
 		{
 			strcpy(game_dir, curr_dir);
-			*strrchr(game_dir, '/') = '\0';
 			bios_select(0);
+			update = 1;
+		}
+#elif (EMU_SYSTEM == NCDZ)
+		else if (pad_pressed(PSP_CTRL_START))
+		{
+			if (!bios_error)
+			{
+				if (messagebox(MB_BOOTBIOS))
+				{
+					strcpy(game_dir, curr_dir);
+					sprintf(mp3_dir, "%s/mp3", curr_dir);
+					run_emulation = 1;
+					neogeo_boot_bios = 1;
+				}
+				update = 1;
+			}
+			pad_wait_clear();
+		}
+#endif
+		else if (pad_pressed(PSP_CTRL_SELECT))
+		{
+			if (files[sel]->type == FTYPE_DIR)
+			{
+				if (messagebox(MB_SETSTARTUPDIR))
+					sprintf(startupDir, "%s/%s", curr_dir, files[sel]->name);
+			}
+		}
+#if PSP_VIDEO_32BPP
+		else if (pad_pressed(PSP_CTRL_LTRIGGER))
+		{
+			show_color_menu();
 			update = 1;
 		}
 #endif
@@ -787,12 +1387,37 @@ void file_browser(void)
 		if (sel >= top + rows) top = sel - rows + 1;
 		if (sel < top) top = sel;
 
-		if (prev_sel != sel) update = 1;
+		if (prev_sel != sel)
+		{
+#if (EMU_SYSTEM == NCDZ)
+			title_counter = 60;
+			title_image = -1;
+#endif
+			update = 1;
+		}
+#if (EMU_SYSTEM == NCDZ)
+		else if (title_counter)
+		{
+			title_counter--;
+			if (!title_counter)
+				update = 1;
+		}
+#endif
 
 		pad_update();
 	}
 
 	save_settings();
+#if (EMU_SYSTEM != NCDZ)
 error:
 	free_zipname();
+
+	for (i = 0; i < MAX_ENTRY; i++)
+	{
+		if (files[i]) free(files[i]);
+	}
+#endif
+#if PSP_VIDEO_32BPP
+	free_wallpaper();
+#endif
 }

@@ -13,14 +13,15 @@
 	グローバル変数
 ******************************************************************************/
 
-int input_map[MAX_INPUTS];
-int af_interval = 1;
 int option_controller;
+u8 ALIGN_DATA neogeo_port_value[MVS_PORT_MAX];
+
+int input_map[MAX_INPUTS];
+int analog_sensitivity;
+int af_interval = 1;
+
 int neogeo_dipswitch;
 int neogeo_input_mode;
-int analog_sensitivity;
-
-u8 ALIGN_DATA neogeo_port_value[MVS_PORT_MAX];
 int input_analog_value[2];
 
 
@@ -47,24 +48,37 @@ static const u8 hotkey_mask[11] =
 	0x0f	// A+B+C+D
 };
 
-static const u8 autofire_mask[4] =
-{
-	0x10,	// A
-	0x20,	// B
-	0x40,	// C
-	0x80,	// D
-};
-
 static u8 ALIGN_DATA input_flag[MAX_INPUTS];
-static int ALIGN_DATA af_flag[NEOGEO_BUTTON_MAX];
-static int ALIGN_DATA af_counter[NEOGEO_BUTTON_MAX];
+static int ALIGN_DATA af_map1[MVS_BUTTON_MAX];
+static int ALIGN_DATA af_map2[MVS_BUTTON_MAX];
+static int ALIGN_DATA af_counter[MVS_BUTTON_MAX];
 static int input_ui_wait;
 static int service_switch;
 
+#ifdef ADHOC
+typedef struct
+{
+	u32 buttons;
+	int loop_flag;
+	u16 port_value[5];
+} ADHOC_DATA;
+
+static ADHOC_DATA ALIGN_PSPDATA send_data;
+static ADHOC_DATA ALIGN_PSPDATA recv_data;
+static SceUID adhoc_thread;
+static volatile int adhoc_active;
+static volatile int adhoc_update;
+static volatile u32 adhoc_paused;
+#endif
+
+
+/******************************************************************************
+	ローカル関数
+******************************************************************************/
 
 /*------------------------------------------------------
 	入力ポートタイプのチェック
- -----------------------------------------------------*/
+------------------------------------------------------*/
 
 void check_input_mode(void)
 {
@@ -109,110 +123,48 @@ void check_input_mode(void)
 
 
 /*------------------------------------------------------
-	入力ポートの初期化
- -----------------------------------------------------*/
-
-void input_init(void)
-{
-	input_ui_wait = 0;
-	service_switch = 0;
-
-	memset(af_counter, 0, sizeof(af_counter));
-	memset(af_flag, 0, sizeof(af_flag));
-	memset(input_flag, 0, sizeof(input_flag));
-
-	neogeo_dipswitch = 0xff;
-
-	input_analog_value[0] = 0x7f;
-	input_analog_value[1] = 0x7f;
-}
-
-
-/*------------------------------------------------------
-	入力ポートの終了
- -----------------------------------------------------*/
-
-void input_shutdown(void)
-{
-}
-
-
-/*------------------------------------------------------
-	入力ポートをリセット
- -----------------------------------------------------*/
-
-void input_reset(void)
-{
-	service_switch = 0;
-
-	memset(neogeo_port_value, 0, sizeof(neogeo_port_value));
-
-	check_input_mode();
-
-	if (neogeo_input_mode)
-		neogeo_port_value[3] = neogeo_dipswitch & 0xff;
-
-	input_analog_value[0] = 0x7f;
-	input_analog_value[1] = 0x7f;
-}
-
-
-/*------------------------------------------------------
 	連射フラグを更新
- -----------------------------------------------------*/
+------------------------------------------------------*/
 
-void update_autofire(void)
+static u32 update_autofire(u32 buttons)
 {
-	int i, button;
+	int i;
 
-	button = P1_AF_A;
-
-	for (i = 0; i < 4; i++)
+	for (i = 0; i < MVS_BUTTON_MAX; i++)
 	{
-		if (input_flag[button])
+		if (af_map1[i])
 		{
-			af_counter[i]++;
+			if (buttons & af_map1[i])
+			{
+				buttons &= ~af_map1[i];
 
-			if (af_counter[i] >= af_interval)
+				if (af_counter[i] == 0)
+					buttons |= af_map2[i];
+				else
+					buttons &= ~af_map2[i];
+
+				if (++af_counter[i] > af_interval)
+					af_counter[i] = 0;
+			}
+			else
 			{
 				af_counter[i] = 0;
-				af_flag[i] ^= 1;
 			}
 		}
-		else
-		{
-			af_counter[i] = 0;
-			af_flag[i] = 1;
-		}
-
-		button++;
 	}
+
+	return buttons;
 }
 
 
 /*------------------------------------------------------
 	ホットキーフラグを反映
- -----------------------------------------------------*/
+------------------------------------------------------*/
 
 static u8 apply_hotkey(u8 value)
 {
 	int i, button;
 
-	// autofire
-	button = P1_AF_A;
-	for (i= 0; i < 4; i++)
-	{
-		if (input_flag[button])
-		{
-			if (af_flag[i])
-				value &= ~autofire_mask[i];
-			else
-				value |= autofire_mask[i];
-		}
-		button++;
-	}
-
-	// hotkey
 	button = P1_AB;
 	for (i= 0; i < 11; i++)
 	{
@@ -225,8 +177,8 @@ static u8 apply_hotkey(u8 value)
 
 
 /*------------------------------------------------------
-	NEOGEO コントローラ1
- -----------------------------------------------------*/
+	MVS コントローラ1
+------------------------------------------------------*/
 
 static void update_inputport0(void)
 {
@@ -237,36 +189,45 @@ static void update_inputport0(void)
 	case NGH_popbounc:
 		if (!option_controller)
 		{
-			int button;
-			u8 mask = 0x01;
-
-			for (button = P1_UP; button <= P1_BUTTONC; button++, mask <<= 1)
-				if (input_flag[button]) value &= ~mask;
-			if (input_flag[P1_BUTTONA]) value &= ~0x80;
+			if (input_flag[P1_UP])      value &= ~0x01;
+			if (input_flag[P1_DOWN])    value &= ~0x02;
+			if (input_flag[P1_LEFT])    value &= ~0x04;
+			if (input_flag[P1_RIGHT])   value &= ~0x08;
+			if (input_flag[P1_BUTTONA]) value &= ~(0x10|0x80);
+			if (input_flag[P1_BUTTONB]) value &= ~0x20;
+			if (input_flag[P1_BUTTONC]) value &= ~0x40;
 		}
 		break;
 
 	default:
 		if (!option_controller)
 		{
-			int button;
-			u8 mask = 0x01;
-
-			for (button = P1_UP; button <= P1_BUTTOND; button++, mask <<= 1)
-				if (input_flag[button]) value &= ~mask;
+			if (input_flag[P1_UP])      value &= ~0x01;
+			if (input_flag[P1_DOWN])    value &= ~0x02;
+			if (input_flag[P1_LEFT])    value &= ~0x04;
+			if (input_flag[P1_RIGHT])   value &= ~0x08;
+			if (input_flag[P1_BUTTONA]) value &= ~0x10;
+			if (input_flag[P1_BUTTONB]) value &= ~0x20;
+			if (input_flag[P1_BUTTONC]) value &= ~0x40;
+			if (input_flag[P1_BUTTOND]) value &= ~0x80;
 
 			value = apply_hotkey(value);
 		}
 		break;
 	}
 
-	neogeo_port_value[0] = value;
+#ifdef ADHOC
+	if (adhoc_enable)
+		send_data.port_value[0] = value;
+	else
+#endif
+		neogeo_port_value[0] = value;
 }
 
 
 /*------------------------------------------------------
-	NEOGEO コントローラ2
- -----------------------------------------------------*/
+	MVS コントローラ2
+------------------------------------------------------*/
 
 static void update_inputport1(void)
 {
@@ -276,47 +237,57 @@ static void update_inputport1(void)
 	{
 	case NGH_irrmaze:
 		{
-			int button;
-			u8 mask = 0x10;
-
-			for (button = P1_BUTTONA; button <= P1_BUTTONB; button++, mask <<= 1)
-				if (input_flag[button]) value &= ~mask;
+			if (input_flag[P1_UP])      value &= ~0x01;
+			if (input_flag[P1_DOWN])    value &= ~0x02;
+			if (input_flag[P1_LEFT])    value &= ~0x04;
+			if (input_flag[P1_RIGHT])   value &= ~0x08;
+			if (input_flag[P1_BUTTONA]) value &= ~0x10;
+			if (input_flag[P1_BUTTONB]) value &= ~0x20;
 		}
 		break;
 
 	case NGH_popbounc:
 		if (option_controller)
 		{
-			int button;
-			u8 mask = 0x01;
-
-			for (button = P1_UP; button <= P1_BUTTONC; button++, mask <<= 1)
-				if (input_flag[button]) value &= ~mask;
-			if (input_flag[P1_BUTTONA]) value &= ~0x80;
+			if (input_flag[P1_UP])      value &= ~0x01;
+			if (input_flag[P1_DOWN])    value &= ~0x02;
+			if (input_flag[P1_LEFT])    value &= ~0x04;
+			if (input_flag[P1_RIGHT])   value &= ~0x08;
+			if (input_flag[P1_BUTTONA]) value &= ~(0x10|0x80);
+			if (input_flag[P1_BUTTONB]) value &= ~0x20;
+			if (input_flag[P1_BUTTONC]) value &= ~0x40;
 		}
 		break;
 
 	default:
 		if (option_controller)
 		{
-			int button;
-			u8 mask = 0x01;
-
-			for (button = P1_UP; button <= P1_BUTTOND; button++, mask <<= 1)
-				if (input_flag[button]) value &= ~mask;
+			if (input_flag[P1_UP])      value &= ~0x01;
+			if (input_flag[P1_DOWN])    value &= ~0x02;
+			if (input_flag[P1_LEFT])    value &= ~0x04;
+			if (input_flag[P1_RIGHT])   value &= ~0x08;
+			if (input_flag[P1_BUTTONA]) value &= ~0x10;
+			if (input_flag[P1_BUTTONB]) value &= ~0x20;
+			if (input_flag[P1_BUTTONC]) value &= ~0x40;
+			if (input_flag[P1_BUTTOND]) value &= ~0x80;
 
 			value = apply_hotkey(value);
 		}
 		break;
 	}
 
-	neogeo_port_value[1] = value;
+#ifdef ADHOC
+	if (adhoc_enable)
+		send_data.port_value[1] = value;
+	else
+#endif
+		neogeo_port_value[1] = value;
 }
 
 
 /*------------------------------------------------------
-	NEOGEO スタートボタン
- -----------------------------------------------------*/
+	MVS スタートボタン
+------------------------------------------------------*/
 
 static void update_inputport2(void)
 {
@@ -332,24 +303,37 @@ static void update_inputport2(void)
 		break;
 
 	default:
+		if (option_controller)
 		{
-			u8 mask = option_controller ? 0x04 : 0x01;
-			if (input_flag[P1_START]) value &= ~mask;
+			if (input_flag[P1_START]) value &= ~0x04;
 			if (!neogeo_input_mode)
 			{
-				if (input_flag[P1_COIN]) value &= ~(mask << 1);
+				if (input_flag[P1_COIN]) value &= ~0x08;
+			}
+		}
+		else
+		{
+			if (input_flag[P1_START]) value &= ~0x01;
+			if (!neogeo_input_mode)
+			{
+				if (input_flag[P1_COIN]) value &= ~0x02;
 			}
 		}
 		break;
 	}
 
-	neogeo_port_value[2] = value;
+#ifdef ADHOC
+	if (adhoc_enable)
+		send_data.port_value[2] = value;
+	else
+#endif
+		neogeo_port_value[2] = value;
 }
 
 
 /*------------------------------------------------------
-	NEOGEO コイン/サービススイッチ
- -----------------------------------------------------*/
+	MVS コイン/サービススイッチ
+------------------------------------------------------*/
 
 static void update_inputport4(void)
 {
@@ -386,21 +370,31 @@ static void update_inputport4(void)
 		value = 0x3f;
 		if (neogeo_input_mode)
 		{
-			u8 mask = option_controller ? 0x02 : 0x01;
-
-			if (input_flag[P1_COIN]) value &= ~mask;
-			if (input_flag[SERV_COIN]) value &= ~0x04;
+			if (option_controller)
+			{
+				if (input_flag[P1_COIN]) value &= ~0x02;
+			}
+			else
+			{
+				if (input_flag[P1_COIN]) value &= ~0x01;
+				if (input_flag[SERV_COIN]) value &= ~0x04;
+			}
 		}
 		break;
 	}
 
-	neogeo_port_value[4] = value;
+#ifdef ADHOC
+	if (adhoc_enable)
+		send_data.port_value[4] = value;
+	else
+#endif
+		neogeo_port_value[4] = value;
 }
 
 
 /*------------------------------------------------------
-	NEOGEO テストスイッチ
- -----------------------------------------------------*/
+	MVS テストスイッチ
+------------------------------------------------------*/
 
 static void update_inputport5(void)
 {
@@ -408,16 +402,21 @@ static void update_inputport5(void)
 
 	if (neogeo_input_mode)
 	{
-		if (input_flag[TEST_SWITCH]) value &= ~0x80;
+		if (input_flag[TEST_SWITCH] || service_switch) value &= ~0x80;
 	}
 
-	neogeo_port_value[5] = value;
+#ifdef ADHOC
+	if (adhoc_enable)
+		send_data.port_value[5] = value;
+	else
+#endif
+		neogeo_port_value[5] = value;
 }
 
 
 /*------------------------------------------------------
 	irrmaze アナログ入力ポート
- -----------------------------------------------------*/
+------------------------------------------------------*/
 
 static void irrmaze_update_analog_port(u16 value)
 {
@@ -501,7 +500,7 @@ static void irrmaze_update_analog_port(u16 value)
 
 /*------------------------------------------------------
 	popbounc アナログ入力ポート
- -----------------------------------------------------*/
+------------------------------------------------------*/
 
 static void popbounc_update_analog_port(u16 value)
 {
@@ -572,74 +571,451 @@ static void popbounc_update_analog_port(u16 value)
 }
 
 
+#ifdef ADHOC
 /*------------------------------------------------------
 	入力ポートを更新
- -----------------------------------------------------*/
+------------------------------------------------------*/
 
-void update_inputport(void)
+static int adhoc_update_inputport(SceSize args, void *argp)
 {
 	int i;
 	u32 buttons;
 
-	update_autofire();
-
-	if (neogeo_ngh == NGH_irrmaze)
+	while (adhoc_active)
 	{
-		buttons = poll_gamepad_analog();
-		irrmaze_update_analog_port(buttons >> 16);
-		buttons &= 0xffff;
-	}
-	else if (neogeo_ngh == NGH_popbounc)
-	{
-		buttons = poll_gamepad_analog();
-		popbounc_update_analog_port(buttons >> 16);
-		buttons &= 0xffff;
-	}
-	else buttons = poll_gamepad();
+		adhoc_update = 0;
 
-	if ((buttons & PSP_CTRL_START) && (buttons & PSP_CTRL_SELECT))
-	{
-		buttons &= ~(PSP_CTRL_START | PSP_CTRL_SELECT);
-
-		showmenu();
-
-		if (neogeo_input_mode)
-			neogeo_port_value[3] = neogeo_dipswitch & 0xff;
-		else
-			neogeo_port_value[3] = 0xff;
-	}
-
-	memset(input_flag, 0, sizeof(input_flag));
-
-	if ((buttons & TEST_SWITCH_FLAGS) == TEST_SWITCH_FLAGS)
-	{
-		buttons &= ~TEST_SWITCH_FLAGS;
-		input_flag[TEST_SWITCH] = 1;
-	}
-
-	for (i = 0; i < MAX_INPUTS; i++)
-		input_flag[i] |= (buttons & input_map[i]) != 0;
-
-	update_inputport0();
-	update_inputport1();
-	update_inputport2();
-	update_inputport4();
-	update_inputport5();
-
-	if (input_flag[SNAPSHOT])
-	{
-		save_snapshot();
-	}
-	if (input_flag[SWPLAYER])
-	{
-		if (!input_ui_wait)
+		do
 		{
-			option_controller ^= 1;
-			ui_popup("Controller: Player %d", option_controller + 1);
-			input_ui_wait = 30;
+			sceKernelDelayThread(166);
+		} while (!adhoc_update && adhoc_active);
+
+		if (!adhoc_paused)
+		{
+			service_switch = 0;
+
+			buttons = poll_gamepad();
+
+			if (buttons & PSP_CTRL_HOME)
+			{
+				buttons = 0;
+				adhoc_paused = adhoc_server + 1;
+			}
+			else if ((buttons & PSP_CTRL_LTRIGGER) && (buttons & PSP_CTRL_RTRIGGER))
+			{
+				if (buttons & PSP_CTRL_SELECT)
+				{
+					buttons &= ~(PSP_CTRL_SELECT | PSP_CTRL_LTRIGGER | PSP_CTRL_RTRIGGER);
+					service_switch = 1;
+				}
+			}
+
+			buttons = update_autofire(buttons);
+
+			for (i = 0; i < MAX_INPUTS; i++)
+				input_flag[i] = (buttons & input_map[i]) != 0;
+
+			update_inputport0();
+			update_inputport1();
+			update_inputport2();
+			update_inputport4();
+			update_inputport5();
+
+			send_data.buttons = adhoc_paused;
+			send_data.loop_flag = Loop;
+
+			if (adhoc_server)
+			{
+				adhocSendBlocking(&send_data, sizeof(ADHOC_DATA));
+				if (frames_displayed <= 1)
+				{
+					if (adhocRecvBlocking(&recv_data, sizeof(ADHOC_DATA)) == 0)
+					{
+						ui_popup(TEXT(LOST_SYNC));
+						Loop = LOOP_BROWSER;
+					}
+				}
+				else
+				{
+					if (adhocRecvBlockingTimeout(&recv_data, sizeof(ADHOC_DATA), (1000000/60)*10) == 0)
+					{
+						adhocSendBlocking(&send_data, sizeof(ADHOC_DATA));
+						if (adhocRecvBlocking(&recv_data, sizeof(ADHOC_DATA)) == 0)
+						{
+							ui_popup(TEXT(LOST_SYNC));
+							Loop = LOOP_BROWSER;
+						}
+					}
+				}
+			}
+			else
+			{
+				if (adhocRecvBlocking(&recv_data, sizeof(ADHOC_DATA)) == 0)
+				{
+					ui_popup(TEXT(LOST_SYNC));
+					Loop = LOOP_BROWSER;
+				}
+				adhocSendBlocking(&send_data, sizeof(ADHOC_DATA));
+			}
+
+			if (Loop == LOOP_EXEC)
+				Loop = recv_data.loop_flag;
+
+			if (recv_data.buttons > adhoc_paused)
+				adhoc_paused = recv_data.buttons;
+		}
+		else
+		{
+			send_data.buttons = poll_gamepad();
+
+			if (adhoc_server)
+			{
+				adhocSendBlocking(&send_data, sizeof(ADHOC_DATA));
+				if (frames_displayed <= 1)
+				{
+					if (adhocRecvBlocking(&recv_data, sizeof(ADHOC_DATA)) == 0)
+					{
+						ui_popup(TEXT(LOST_SYNC));
+						Loop = LOOP_BROWSER;
+					}
+				}
+				else
+				{
+					if (adhocRecvBlockingTimeout(&recv_data, sizeof(ADHOC_DATA), (1000000/60)*10) == 0)
+					{
+						adhocSendBlocking(&send_data, sizeof(ADHOC_DATA));
+						if (adhocRecvBlocking(&recv_data, sizeof(ADHOC_DATA)) == 0)
+						{
+							ui_popup(TEXT(LOST_SYNC));
+							Loop = LOOP_BROWSER;
+						}
+					}
+				}
+			}
+			else
+			{
+				if (adhocRecvBlocking(&recv_data, sizeof(ADHOC_DATA)) == 0)
+				{
+					ui_popup(TEXT(LOST_SYNC));
+					Loop = LOOP_BROWSER;
+				}
+				adhocSendBlocking(&send_data, sizeof(ADHOC_DATA));
+			}
 		}
 	}
-	if (input_ui_wait > 0) input_ui_wait--;
+
+	sceKernelExitThread(0);
+
+	return 0;
+}
+
+
+/*------------------------------------------------------
+	ポーズ
+------------------------------------------------------*/
+
+static void adhoc_pause(void)
+{
+	int control, sel = 0;
+	u32 buttons, frame = frames_displayed;
+	char buf[64];
+	RECT rect = { 140-8, 96-8, 340+8, 176+8 };
+
+	if ((adhoc_server && adhoc_paused == 2) || (!adhoc_server && adhoc_paused == 1))
+		control = 1;
+	else
+		control = 0;
+
+	sound_thread_enable(0);
+
+	video_copy_rect(show_frame, work_frame, &rect, &rect);
+
+	do
+	{
+		video_copy_rect(work_frame, draw_frame, &rect, &rect);
+
+		draw_dialog(140, 96, 340, 176);
+
+		sprintf(buf, TEXT(PAUSED_BY_x), (adhoc_paused == 2) ? TEXT(SERVER) : TEXT(CLIENT));
+		uifont_print_center(106, UI_COLOR(UI_PAL_INFO), buf);
+
+		if (sel == 0)
+		{
+			uifont_print_center(132, COLOR_WHITE, TEXT(RETURN_TO_GAME));
+			uifont_print_center(150, COLOR_GRAY, TEXT(DISCONNECT2));
+		}
+		else
+		{
+			uifont_print_center(132, COLOR_GRAY, TEXT(RETURN_TO_GAME));
+			uifont_print_center(150, COLOR_WHITE, TEXT(DISCONNECT2));
+		}
+
+		sceKernelDelayThread(1000000/60/2);
+		video_wait_vsync();
+		video_copy_rect(draw_frame, show_frame, &rect, &rect);
+		frame++;
+
+		if (frame & 1)
+		{
+			while (adhoc_update)
+			{
+				sceKernelDelayThread(50);
+			}
+
+			if (control)
+				buttons = send_data.buttons;
+			else
+				buttons = recv_data.buttons;
+			send_data.buttons = recv_data.buttons = 0;
+
+			adhoc_update = 1;
+
+			if (buttons & PSP_CTRL_UP)
+			{
+				sel = 0;
+			}
+			else if (buttons & PSP_CTRL_DOWN)
+			{
+				sel = 1;
+			}
+			else if (buttons & PSP_CTRL_CIRCLE)
+			{
+				adhoc_paused = 0;
+				if (sel == 1) Loop = LOOP_BROWSER;
+			}
+		}
+	} while (adhoc_paused);
+
+	autoframeskip_reset();
+	sound_thread_enable(1);
+}
+
+#endif
+
+
+/******************************************************************************
+	入力ポートインタフェース関数
+******************************************************************************/
+
+/*------------------------------------------------------
+	入力ポートの初期化(AdHoc)
+------------------------------------------------------*/
+
+#ifdef ADHOC
+void adhoc_input_init(void)
+{
+	adhoc_thread = -1;
+	adhoc_update = 0;
+	adhoc_active = 0;
+	adhoc_paused = 0;
+
+	if (adhoc_enable)
+	{
+		adhoc_thread = sceKernelCreateThread("Input thread", adhoc_update_inputport, 0x11, 0x2000, 0, NULL);
+		if (adhoc_thread < 0)
+		{
+			adhocTerm();
+			adhoc_enable = 0;
+		}
+	}
+}
+#endif
+
+
+/*------------------------------------------------------
+	入力ポートの初期化
+------------------------------------------------------*/
+
+void input_init(void)
+{
+	input_ui_wait = 0;
+	service_switch = 0;
+
+	memset(neogeo_port_value, 0xff, sizeof(neogeo_port_value));
+	memset(af_counter, 0, sizeof(af_counter));
+	memset(input_flag, 0, sizeof(input_flag));
+
+	input_analog_value[0] = 0x7f;
+	input_analog_value[1] = 0x7f;
+
+	neogeo_dipswitch = 0xff;
+}
+
+
+/*------------------------------------------------------
+	入力ポートの終了
+------------------------------------------------------*/
+
+void input_shutdown(void)
+{
+#ifdef ADHOC
+	if (adhoc_enable)
+	{
+		if (adhoc_thread >= 0)
+		{
+			adhoc_active = 0;
+			sceKernelWaitThreadEnd(adhoc_thread, NULL);
+
+			sceKernelDeleteThread(adhoc_thread);
+			adhoc_thread = -1;
+		}
+		adhocTerm();
+	}
+#endif
+}
+
+
+/*------------------------------------------------------
+	入力ポートをリセット
+------------------------------------------------------*/
+
+void input_reset(void)
+{
+	memset(neogeo_port_value, 0xff, sizeof(neogeo_port_value));
+	input_analog_value[0] = 0x7f;
+	input_analog_value[1] = 0x7f;
+	service_switch = 0;
+
+	check_input_mode();
+
+	setup_autofire();
+
+	if (neogeo_input_mode)
+		neogeo_port_value[3] = neogeo_dipswitch & 0xff;
+
+#ifdef ADHOC
+	if (adhoc_enable)
+	{
+		memset(send_data.port_value, 0xff, sizeof(send_data.port_value));
+		memset(recv_data.port_value, 0xff, sizeof(recv_data.port_value));
+
+		send_data.buttons = recv_data.buttons = 0;
+		send_data.loop_flag = recv_data.loop_flag = LOOP_EXEC;
+
+		if (!adhoc_active)
+		{
+			adhoc_active = 1;
+			sceKernelStartThread(adhoc_thread, 0, 0);
+		}
+	}
+#endif
+}
+
+
+/*------------------------------------------------------
+	連射フラグを設定
+------------------------------------------------------*/
+
+void setup_autofire(void)
+{
+	int i;
+
+	for (i = 0; i < MVS_BUTTON_MAX; i++)
+	{
+		af_map1[i] = input_map[P1_AF_A + i];
+		af_map2[i] = input_map[P1_BUTTONA + i];
+	}
+}
+
+
+/*------------------------------------------------------
+	入力ポートを更新
+------------------------------------------------------*/
+
+void update_inputport(void)
+{
+#ifdef ADHOC
+	if (adhoc_enable)
+	{
+		if (frames_displayed & 1)
+		{
+			while (adhoc_update && Loop == LOOP_EXEC)
+			{
+				sceKernelDelayThread(50);
+			}
+			neogeo_port_value[0] = send_data.port_value[0] & recv_data.port_value[0];
+			neogeo_port_value[1] = send_data.port_value[1] & recv_data.port_value[1];
+			neogeo_port_value[2] = send_data.port_value[2] & recv_data.port_value[2];
+			neogeo_port_value[4] = send_data.port_value[4] & recv_data.port_value[4];
+			neogeo_port_value[5] = send_data.port_value[5] & recv_data.port_value[5];
+			adhoc_update = 1;
+
+			if (adhoc_paused) adhoc_pause();
+		}
+	}
+	else
+#endif
+	{
+		int i;
+		u32 buttons;
+
+		service_switch = 0;
+
+		buttons = poll_gamepad();
+
+#ifdef KERNEL_MODE
+		if (buttons & PSP_CTRL_HOME)
+#else
+		if ((buttons & PSP_CTRL_START) && (buttons & PSP_CTRL_SELECT))
+#endif
+		{
+			showmenu();
+			setup_autofire();
+
+			if (neogeo_input_mode)
+				neogeo_port_value[3] = neogeo_dipswitch & 0xff;
+			else
+				neogeo_port_value[3] = 0xff;
+		}
+		else if ((buttons & PSP_CTRL_LTRIGGER) && (buttons & PSP_CTRL_RTRIGGER))
+		{
+			if (buttons & PSP_CTRL_SELECT)
+			{
+				buttons &= ~(PSP_CTRL_SELECT | PSP_CTRL_LTRIGGER | PSP_CTRL_RTRIGGER);
+				service_switch = 1;
+			}
+		}
+
+		if (neogeo_ngh == NGH_irrmaze)
+		{
+			buttons = poll_gamepad_analog();
+			irrmaze_update_analog_port(buttons >> 16);
+			buttons &= 0xffff;
+		}
+		else if (neogeo_ngh == NGH_popbounc)
+		{
+			buttons = poll_gamepad_analog();
+			popbounc_update_analog_port(buttons >> 16);
+			buttons &= 0xffff;
+		}
+		else buttons = poll_gamepad();
+
+		buttons = update_autofire(buttons);
+
+		for (i = 0; i < MAX_INPUTS; i++)
+			input_flag[i] = (buttons & input_map[i]) != 0;
+
+		update_inputport0();
+		update_inputport1();
+		update_inputport2();
+		update_inputport4();
+		update_inputport5();
+
+		if (input_flag[SNAPSHOT])
+		{
+			save_snapshot();
+		}
+		if (input_flag[SWPLAYER])
+		{
+			if (!input_ui_wait)
+			{
+				option_controller ^= 1;
+				ui_popup(TEXT(CONTROLLER_PLAYERx), option_controller + 1);
+				input_ui_wait = 30;
+			}
+		}
+		if (input_ui_wait > 0) input_ui_wait--;
+	}
 }
 
 

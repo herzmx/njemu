@@ -61,28 +61,73 @@ typedef struct cfg2_t
 	ÉçÅ[ÉJÉãç\ë¢ëÃ/ïœêî
 ******************************************************************************/
 
+#define INIVERSION	20
+
 static int ini_version;
 
-#define INCLUDE_INIVERSION
+#define INCLUDE_INIFILENAME
 
 #if (EMU_SYSTEM == CPS1 || EMU_SYSTEM == CPS2)
 #include "config/cps.c"
 #elif (EMU_SYSTEM == MVS)
 #include "config/mvs.c"
+#elif (EMU_SYSTEM == NCDZ)
+#include "config/ncdz.c"
 #endif
 
-#undef INCLUDE_INIVERSION
+#undef INCLUDE_INIFILENAME
 
 static cfg_type default_options[] =
 {
 	{ CFG_NONE,	"[System Settings]", },
-	{ CFG_INT,	"INIFileVersion",	&ini_version,		INIVERSION,		INIVERSION		},
-	{ CFG_INT,	"PSPClock",			&psp_cpuclock,		PSPCLOCK_333,	PSPCLOCK_333	},
-	{ CFG_INT,	"PSPRefreshRate",	&psp_refreshrate,	0,				60000000		},
-	{ CFG_INT,	"PSPSampleRate",	&psp_samplerate,	0,				44100			},
+	{ CFG_INT,	"INIFileVersion",	&ini_version,	INIVERSION,		INIVERSION   },
+	{ CFG_INT,	"PSPClock",			&psp_cpuclock,	PSPCLOCK_333,	PSPCLOCK_333 },
 #if (EMU_SYSTEM == MVS)
 	{ CFG_NONE,	"[Emulation Settings]", },
-	{ CFG_INT,	"NeogeoBIOS",			&neogeo_bios, -1, BIOS_MAX-1 },
+	{ CFG_INT,	"NeogeoBIOS",		&neogeo_bios,	-1,	BIOS_MAX-1 },
+#elif (EMU_SYSTEM == NCDZ)
+	{ CFG_NONE,	"[Emulation Settings]", },
+#if JAPANESE_UI
+	{ CFG_INT,	"NeogeoRegion",		&neogeo_region,	0,	2	},
+#else
+	{ CFG_INT,	"NeogeoRegion",		&neogeo_region,	1,	2	},
+#endif
+#endif
+
+#if PSP_VIDEO_32BPP
+	{ CFG_NONE,	"[Color Settings]", },
+	{ CFG_INT,	"BGImageType",			&bgimage_type,					  0,   3 },
+	{ CFG_INT,	"BGImageBlightness",	&bgimage_blightness,			 80, 100 },
+	{ CFG_INT,	"TitleFontR",			&ui_palette[UI_PAL_TITLE].r,	255, 255 },
+	{ CFG_INT,	"TitleFontG",			&ui_palette[UI_PAL_TITLE].g,	255, 255 },
+	{ CFG_INT,	"TitleFontB",			&ui_palette[UI_PAL_TITLE].b,	255, 255 },
+	{ CFG_INT,	"SelectFontR",			&ui_palette[UI_PAL_SELECT].r,	255, 255 },
+	{ CFG_INT,	"SelectFontG",			&ui_palette[UI_PAL_SELECT].g,	255, 255 },
+	{ CFG_INT,	"SelectFontB",			&ui_palette[UI_PAL_SELECT].b,	255, 255 },
+	{ CFG_INT,	"NormalFontR",			&ui_palette[UI_PAL_NORMAL].r,	180, 255 },
+	{ CFG_INT,	"NormalFontG",			&ui_palette[UI_PAL_NORMAL].g,	180, 255 },
+	{ CFG_INT,	"NormalFontB",			&ui_palette[UI_PAL_NORMAL].b,	180, 255 },
+	{ CFG_INT,	"InfoFontR",			&ui_palette[UI_PAL_INFO].r,		255, 255 },
+	{ CFG_INT,	"InfoFontG",			&ui_palette[UI_PAL_INFO].g,		255, 255 },
+	{ CFG_INT,	"InfoFontB",			&ui_palette[UI_PAL_INFO].b,		 64, 255 },
+	{ CFG_INT,	"WarningFontR",			&ui_palette[UI_PAL_WARNING].r,	255, 255 },
+	{ CFG_INT,	"WarningFontG",			&ui_palette[UI_PAL_WARNING].g,	 64, 255 },
+	{ CFG_INT,	"WarningFontB",			&ui_palette[UI_PAL_WARNING].b,	 64, 255 },
+	{ CFG_INT,	"BGColor1R",			&ui_palette[UI_PAL_BG1].r,		 48, 255 },
+	{ CFG_INT,	"BGColor1G",			&ui_palette[UI_PAL_BG1].g,		 48, 255 },
+	{ CFG_INT,	"BGColor1B",			&ui_palette[UI_PAL_BG1].b,		 48, 255 },
+	{ CFG_INT,	"BGColor2R",			&ui_palette[UI_PAL_BG2].r,		  0, 255 },
+	{ CFG_INT,	"BGColor3G",			&ui_palette[UI_PAL_BG2].g,		  0, 255 },
+	{ CFG_INT,	"BGColor2B",			&ui_palette[UI_PAL_BG2].b,		160, 255 },
+	{ CFG_INT,	"FrameColorR",			&ui_palette[UI_PAL_FRAME].r,	  0, 255 },
+	{ CFG_INT,	"FrameColorG",			&ui_palette[UI_PAL_FRAME].g,	  0, 255 },
+	{ CFG_INT,	"FrameColorB",			&ui_palette[UI_PAL_FRAME].b,	  0, 255 },
+	{ CFG_INT,	"FileSelect1R",			&ui_palette[UI_PAL_FILESEL1].r,	 40, 255 },
+	{ CFG_INT,	"FileSelect1G",			&ui_palette[UI_PAL_FILESEL1].g,	 40, 255 },
+	{ CFG_INT,	"FileSelect1B",			&ui_palette[UI_PAL_FILESEL1].b,	 40, 255 },
+	{ CFG_INT,	"FileSelect2R",			&ui_palette[UI_PAL_FILESEL2].r,	120, 255 },
+	{ CFG_INT,	"FileSelect2G",			&ui_palette[UI_PAL_FILESEL2].g,	120, 255 },
+	{ CFG_INT,	"FileSelect2B",			&ui_palette[UI_PAL_FILESEL2].b,	120, 255 },
 #endif
 	{ CFG_NONE, NULL, }
 };
@@ -100,6 +145,8 @@ static cfg2_type default_options2[] =
 #include "config/cps.c"
 #elif (EMU_SYSTEM == MVS)
 #include "config/mvs.c"
+#elif (EMU_SYSTEM == NCDZ)
+#include "config/ncdz.c"
 #endif
 
 #undef INCLUDE_CONFIG_STRUCT
@@ -414,6 +461,8 @@ void load_settings(void)
 				*default_options[i].value = default_options[i].def;
 		}
 
+		memset(startupDir, 0, sizeof(startupDir));
+
 		sceIoRemove(inifile_name);
 		delete_files("nvram", "nv");
 		delete_files("config", "ini");
@@ -446,6 +495,9 @@ void load_gamecfg(const char *name)
 	int i;
 	char path[MAX_PATH];
 	cfg_type *gamecfg;
+#if defined(ADHOC) && (EMU_SYSTEM == CPS1)
+	int dip[3];
+#endif
 
 	sprintf(path, "%sconfig/%s.ini", launchDir, name);
 
@@ -457,6 +509,8 @@ void load_gamecfg(const char *name)
 #include "config/cps.c"
 #elif (EMU_SYSTEM == MVS)
 #include "config/mvs.c"
+#elif (EMU_SYSTEM == NCDZ)
+#include "config/ncdz.c"
 #endif
 
 #undef INCLUDE_SETUP_CONFIG_STRUCT
@@ -483,6 +537,16 @@ void load_gamecfg(const char *name)
 
 	if (load_inifile(path, gamecfg, NULL) == 0)
 		save_gamecfg(name);
+
+#ifdef ADHOC
+#define INCLUDE_SET_DIPSWITCH_DEFAULT_VALUE
+
+#if (EMU_SYSTEM == CPS1)
+#include "config/cps.c"
+#endif
+
+#undef INCLUDE_SET_DIPSWITCH_DEFAULT_VALUE
+#endif
 }
 
 
@@ -503,6 +567,8 @@ void save_gamecfg(const char *name)
 #include "config/cps.c"
 #elif (EMU_SYSTEM == MVS)
 #include "config/mvs.c"
+#elif (EMU_SYSTEM == NCDZ)
+#include "config/ncdz.c"
 #endif
 
 #undef INCLUDE_SETUP_CONFIG_STRUCT

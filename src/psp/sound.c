@@ -20,7 +20,7 @@ static SceUID sound_thread;
 static int sound_volume;
 static int sound_enable;
 static int sound_pause;
-static s16 ALIGN_DATA sound_buffer[2][SOUND_BUFFER_SIZE];
+static s16 ALIGN_PSPDATA sound_buffer[2][SOUND_BUFFER_SIZE];
 
 static struct sound_t sound_info;
 
@@ -30,7 +30,10 @@ static struct sound_t sound_info;
 ******************************************************************************/
 
 struct sound_t *sound = &sound_info;
-int psp_samplerate;
+
+#if (EMU_SYSTEM != MVS)
+volatile int sound_thread_locked;
+#endif
 
 
 /******************************************************************************
@@ -45,7 +48,9 @@ static int sound_update_thread(SceSize args, void *argp)
 {
 	int flip = 0;
 
-	video_wait_vsync();
+#if (EMU_SYSTEM != MVS)
+	sound_thread_locked = 0;
+#endif
 
 	while (sound_active)
 	{
@@ -59,6 +64,14 @@ static int sound_update_thread(SceSize args, void *argp)
 
 		if (sound_enable)
 		{
+#if (EMU_SYSTEM != MVS)
+			if (sound_thread_locked)
+			{
+				while (sound_thread_locked)
+					sceKernelDelayThread(50);
+			}
+#endif
+
 			(*sound->update)(sound_buffer[flip]);
 			sceAudioOutputPannedBlocking(sound_handle, sound_volume, sound_volume, (char *)sound_buffer[flip]);
 		}
@@ -157,14 +170,14 @@ int sound_thread_start(void)
 		sound_handle = sceAudioChReserve(PSP_AUDIO_NEXT_CHANNEL, SOUND_SAMPLES, PSP_AUDIO_FORMAT_MONO);
 	if (sound_handle < 0)
 	{
-		fatalerror("Could not reserve audio channel for sound.");
+		fatalerror(TEXT(COULD_NOT_RESERVE_AUDIO_CHANNEL_FOR_SOUND));
 		return 0;
 	}
 
 	sound_thread = sceKernelCreateThread("Sound thread", sound_update_thread, 0x08, sound->stack, 0, NULL);
 	if (sound_thread < 0)
 	{
-		fatalerror("Could not start sound thread.");
+		fatalerror(TEXT(COULD_NOT_START_SOUND_THREAD));
 		sceAudioChRelease(sound_handle);
 		sound_handle = -1;
 		return 0;

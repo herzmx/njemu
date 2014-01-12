@@ -19,18 +19,6 @@
 #define BLOCK_NOT_CACHED	0xffff
 #define BLOCK_EMPTY			0xffffffff
 
-#if (EMU_SYSTEM == CPS2)
-#define GFX_MEMORY			memory_region_gfx1
-#define GFX_SIZE			memory_length_gfx1
-#define CHECK_FNAME			"block_empty"
-#elif (EMU_SYSTEM == MVS)
-#define GFX_MEMORY			memory_region_gfx3
-#define GFX_SIZE			memory_length_gfx3
-#define PCM_CACHE_SIZE		0x10000
-#define PCM_CACHE_MASK		0xffff
-#define PCM_CACHE_SHIFT		16
-#endif
-
 
 /******************************************************************************
 	グローバル構造体/変数
@@ -42,7 +30,6 @@ void (*update_cache)(u32 offset);
 u32 block_offset[MAX_CACHE_BLOCKS];
 u8  *block_empty = (u8 *)block_offset;
 #endif
-int cache_type;
 
 
 /******************************************************************************
@@ -73,6 +60,8 @@ static SceUID pcm_fd;
 static char pcm_cache_name[MAX_PATH];
 static u8 *pcm_cache[7];
 static u16 ALIGN_DATA pcm_cache_block[7];
+#else
+static int cache_type;
 #endif
 
 
@@ -232,7 +221,7 @@ static int fill_cache(void)
 
 				if (!cache_open(p->block))
 				{
-					msg_printf("ERROR: Could not open sprite block %03x\n", p->block);
+					msg_printf(TEXT(COULD_NOT_OPEN_SPRITE_BLOCK_x), p->block);
 					return 0;
 				}
 				cache_load(p->idx);
@@ -459,21 +448,18 @@ void cache_init(void)
 {
 	int i;
 
-	num_cache  = 0;
-	cache_fd   = -1;
-	cache_type = CACHE_NOTFOUND;
+	num_cache = 0;
+	cache_fd = -1;
 
 #if (EMU_SYSTEM == MVS)
 	pcm_cache_enable = 0;
 	pcm_fd = -1;
 	memset(pcm_cache, 0, sizeof(pcm_cache));
 	memset(pcm_cache_block, 0xff, sizeof(pcm_cache_block));
-#endif
-
-#if (EMU_SYSTEM == MVS)
-	read_cache   = read_cache_disable;
+	read_cache = read_cache_disable;
 #else
-	read_cache   = read_cache_static;
+	cache_type = CACHE_NOTFOUND;
+	read_cache = read_cache_static;
 #endif
 	update_cache = update_cache_disable;
 
@@ -488,17 +474,45 @@ void cache_init(void)
 
 int cache_start(void)
 {
-	int i;
+	int i, found;
 	u32 size = 0;
+	char version_str[8];
 #if (EMU_SYSTEM == MVS)
 	extern int disable_sound;
-#else
-	int found = 0;
 #endif
 
 	zip_close();
 
 #if (EMU_SYSTEM == MVS)
+
+	msg_printf(TEXT(LOADING_CACHE_INFORMATION_DATA));
+
+	found = 0;
+	if (cachefile_open("cache_info") != -1)
+	{
+		file_read(version_str, 8);
+
+		if (strcmp(version_str, "MVS_" CACHE_VERSION) == 0)
+		{
+			file_read(gfx_pen_usage[2], memory_length_gfx3 / 128);
+			found = 1;
+		}
+		file_close();
+
+		if (!found)
+		{
+			msg_printf(TEXT(UNSUPPORTED_VERSION_OF_CACHE_FILE), version_str[5], version_str[6]);
+			msg_printf(TEXT(CURRENT_REQUIRED_VERSION_IS_x));
+			msg_printf(TEXT(PLEASE_REBUILD_CACHE_FILE));
+			return 0;
+		}
+	}
+	else
+	{
+		msg_printf(TEXT(COULD_NOT_OPEN_CACHE_FILE));
+		return 0;
+	}
+
 	if (option_sound_enable && disable_sound)
 	{
 		sprintf(pcm_cache_name, "%s/%s_cache/vrom", cache_dir, game_name);
@@ -527,7 +541,7 @@ int cache_start(void)
 			if (pcm_cache_enable)
 			{
 				disable_sound = 0;
-				msg_printf("PCM cache enabled.\n");
+				msg_printf(TEXT(PCM_CACHE_ENABLED));
 			}
 		}
 		if (!pcm_cache_enable) memory_length_sound1 = 0;
@@ -536,41 +550,99 @@ int cache_start(void)
 	sprintf(spr_cache_name, "%s/%s_cache/crom", cache_dir, game_name);
 	if ((cache_fd = sceIoOpen(spr_cache_name, PSP_O_RDONLY, 0777)) < 0)
 	{
-		msg_printf("ERROR: Could not open cache file.\n");
+		msg_printf(TEXT(COULD_NOT_OPEN_CACHE_FILE));
 		return 0;
 	}
-#else
-	if (cache_type == CACHE_RAWFILE)
+
+#elif (EMU_SYSTEM == CPS2)
+	found = 1;
+	cache_type = CACHE_RAWFILE;
+
+	sprintf(spr_cache_name, "%s/%s.cache", cache_dir, game_name);
+	if ((cache_fd = sceIoOpen(spr_cache_name, PSP_O_RDONLY, 0777)) < 0)
 	{
-		sprintf(spr_cache_name, "%s/%s.cache", cache_dir, game_name);
-		found = (cache_fd = sceIoOpen(spr_cache_name, PSP_O_RDONLY, 0777)) >= 0;
-	}
-	else
-	{
-		sprintf(spr_cache_name, "%s/%s_cache.zip", cache_dir, game_name);
-		found = zip_open(spr_cache_name) != -1;
-	}
-	if (!found && cache_parent_name[0])
-	{
-		if (cache_type == CACHE_RAWFILE)
+		sprintf(spr_cache_name, "%s/%s.cache", cache_dir, cache_parent_name);
+		if ((cache_fd = sceIoOpen(spr_cache_name, PSP_O_RDONLY, 0777)) < 0)
 		{
-			sprintf(spr_cache_name, "%s/%s.cache", cache_dir, cache_parent_name);
-			found = (cache_fd = sceIoOpen(spr_cache_name, PSP_O_RDONLY, 0777)) >= 0;
-		}
-		else
-		{
-			sprintf(spr_cache_name, "%s/%s_cache.zip", cache_dir, cache_parent_name);
-			found = zip_open(spr_cache_name) != -1;
+			found = 0;
 		}
 	}
 	if (!found)
 	{
-		msg_printf("ERROR: Could not open cache file.\n");
+		found = 1;
+		cache_type = CACHE_ZIPFILE;
+
+		sprintf(spr_cache_name, "%s/%s_cache.zip", cache_dir, game_name);
+		if (zip_open(spr_cache_name) == -1)
+		{
+			sprintf(spr_cache_name, "%s/%s_cache.zip", cache_dir, cache_parent_name);
+			if (zip_open(spr_cache_name) == -1)
+			{
+				found = 0;
+				zip_close();
+			}
+		}
+	}
+	if (!found)
+	{
+		cache_type = CACHE_NOTFOUND;
+		msg_printf(TEXT(COULD_NOT_OPEN_CACHE_FILE));
 		return 0;
 	}
-#endif
 
-#if (EMU_SYSTEM == CPS2)
+	msg_printf(TEXT(LOADING_CACHE_INFORMATION_DATA));
+
+	if (cache_type == CACHE_RAWFILE)
+	{
+		sceIoRead(cache_fd, version_str, 8);
+
+		if (strcmp(version_str, "CPS2" CACHE_VERSION) == 0)
+		{
+			sceIoRead(cache_fd, gfx_pen_usage[TILE08], gfx_total_elements[TILE08]);
+			sceIoRead(cache_fd, gfx_pen_usage[TILE16], gfx_total_elements[TILE16]);
+			sceIoRead(cache_fd, gfx_pen_usage[TILE32], gfx_total_elements[TILE32]);
+			sceIoRead(cache_fd, block_offset, MAX_CACHE_BLOCKS * sizeof(u32));
+		}
+		else
+		{
+			sceIoClose(cache_fd);
+			found = 0;
+		}
+	}
+	else
+	{
+		if ((cache_fd = zopen("cache_info")) != -1)
+		{
+			zread(cache_fd, version_str, 8);
+
+			if (strcmp(version_str, "CPS2" CACHE_VERSION) == 0)
+			{
+				zread(cache_fd, gfx_pen_usage[TILE08], gfx_total_elements[TILE08]);
+				zread(cache_fd, gfx_pen_usage[TILE16], gfx_total_elements[TILE16]);
+				zread(cache_fd, gfx_pen_usage[TILE32], gfx_total_elements[TILE32]);
+				zread(cache_fd, block_empty, MAX_CACHE_BLOCKS);
+				zclose(cache_fd);
+			}
+			else
+			{
+				zclose(cache_fd);
+				found = 0;
+			}
+		}
+		else
+		{
+			found = 0;
+		}
+		if (!found) zip_close();
+	}
+	if (!found)
+	{
+		msg_printf(TEXT(UNSUPPORTED_VERSION_OF_CACHE_FILE), version_str[5], version_str[6]);
+		msg_printf(TEXT(CURRENT_REQUIRED_VERSION_IS_x));
+		msg_printf(TEXT(PLEASE_REBUILD_CACHE_FILE));
+		return 0;
+	}
+
 	if ((GFX_MEMORY = (u8 *)memalign(MEM_ALIGN, GFX_SIZE + CACHE_SAFETY)) != NULL)
 	{
 		free(GFX_MEMORY);
@@ -606,13 +678,13 @@ int cache_start(void)
 
 		if (i < MIN_CACHE_SIZE)
 		{
-			msg_printf("ERROR: memory not enough.\n");
+			msg_printf(TEXT(MEMORY_NOT_ENOUGH));
 			return 0;
 		}
 
 		if ((GFX_MEMORY = (u8 *)memalign(MEM_ALIGN, size)) == NULL)
 		{
-			msg_printf("ERROR: Could not allocate cache memory.\n");
+			msg_printf(TEXT(COULD_NOT_ALLOCATE_CACHE_MEMORY));
 			return 0;
 		}
 		memset(GFX_MEMORY, 0, size);
@@ -620,7 +692,7 @@ int cache_start(void)
 		num_cache = i;
 	}
 
-	msg_printf("%dKB cache allocated.\n", (num_cache << BLOCK_SHIFT) / 1024);
+	msg_printf(TEXT(xKB_CACHE_ALLOCATED), (num_cache << BLOCK_SHIFT) / 1024);
 
 	for (i = 0; i < num_cache; i++)
 		cache_data[i].idx = i;
@@ -639,15 +711,13 @@ int cache_start(void)
 
 	if (!fill_cache())
 	{
-		msg_printf("Cache load error!!!\n");
+		msg_printf(TEXT(CACHE_LOAD_ERROR));
 		pad_wait_press(PAD_WAIT_INFINITY);
 		Loop = LOOP_BROWSER;
 		return 0;
 	}
 
 	if (size == 0) cache_shutdown();
-
-	msg_printf("Complete.\n");
 
 	return 1;
 }

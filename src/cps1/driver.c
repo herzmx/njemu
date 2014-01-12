@@ -76,161 +76,128 @@
 #define GFX_PANG3		0,    0,0,0, 0,        {0x0000,0xffff}, {0x0000,0x7fff}, {0x0000,0x1fff}
 #define GFX_SFZCH		0,    0,0,0, 0x7effff, {0x0000,0x07ff}, {0xd400,0xf1ff}, {0x3d00,0x3f7f}
 
-#define SPR_FORGOTTN	352, 176, 320, 320,  64
-#define SPR_GHOULS		400,  48, 320, 384,  80
-#define SPR_STRIDER		304,  96, 256, 384, 192
-#define SPR_DYNWAR		304, 208, 256, 384,  80
-#define SPR_WILLOW		320, 128, 352, 384,  48
-#define SPR_FFIGHT		464, 128, 224, 320,  96
-#define SPR_1941		464, 128, 256, 320,  64
-#define SPR_UNSQUAD		512,  96, 288, 256,  80
-#define SPR_MERCS		512, 112, 352, 256,   0
-#define SPR_MSWORD		512, 144, 208, 320,  48
-#define SPR_MTWINS		432, 160, 288, 256,  96
-#define SPR_NEMO		448, 112, 256, 320,  96
-#define SPR_CAWING		496,  96, 256, 320,  64
-#define SPR_SF2			432, 112, 352, 320,  16
-#define SPR_3WONDERS	384, 144, 256, 384,  64
-#define SPR_KOD			496,  96, 288, 256,  96
-#define SPR_CAPTCOMM	336, 128, 288, 320, 160
-#define SPR_KNIGHTS		352, 112, 288, 384,  96
-#define SPR_VARTH		480,  48, 288, 320,  96
-#define SPR_CWORLD2J	512, 128, 368, 192,  32
-#define SPR_WOF			240, 160, 288, 384, 160
-#define SPR_DINO		496, 112, 224, 320,  80
-#define SPR_PUNISHER	400, 128, 224, 320, 160
-#define SPR_SLAMMAST	320,  80, 288, 448,  96
-#define SPR_SF2HF		416, 112, 352, 320,  32
-#define SPR_QAD			512, 112, 224, 384,   0
-#define SPR_QADJ		512, 128, 176, 384,  32
-#define SPR_QTONO2		320, 192, 320, 384,  16
-#define SPR_MEGAMAN		400,  80, 320, 384,  48
-#define SPR_PUNICKJ		512,  64, 384, 256,  16
-#define SPR_PANG3		348, 144, 320, 384,  36
-#define SPR_SFZCH		496,  64, 384, 256,  32
-
 struct driver_t CPS1_driver[] =
 {
 	/* name       CPSB    kludge                gfx type */
-	{"forgottn",CPS_B_01, CPS1_KLUDGE_FORGOTTN, GFX_FORGOTTN, SPR_FORGOTTN },
-	{"lostwrld",CPS_B_01, CPS1_KLUDGE_FORGOTTN, GFX_FORGOTTN, SPR_FORGOTTN },
-	{"ghouls",  CPS_B_01, CPS1_KLUDGE_GHOULS,   GFX_GHOULS,   SPR_GHOULS   },
-	{"ghoulsu", CPS_B_01, CPS1_KLUDGE_GHOULS,   GFX_GHOULS,   SPR_GHOULS   },
-	{"daimakai",CPS_B_01, CPS1_KLUDGE_GHOULS,   GFX_GHOULS,   SPR_GHOULS   },
-	{"strider", CPS_B_01, 0,                    GFX_STRIDER,  SPR_STRIDER  },
-	{"stridrua",CPS_B_01, 0,                    GFX_STRIDER,  SPR_STRIDER  },
-	{"striderj",CPS_B_01, 0,                    GFX_STRIDER,  SPR_STRIDER  },
-	{"stridrja",CPS_B_01, 0,                    GFX_STRIDER,  SPR_STRIDER  },
-	{"dynwar",  CPS_B_02, 0,                    GFX_DYNWAR,   SPR_DYNWAR   },
-	{"dynwarj", CPS_B_02, 0,                    GFX_DYNWAR,   SPR_DYNWAR   },
-	{"willow",  CPS_B_03, 0,                    GFX_WILLOW,   SPR_WILLOW   },
-	{"willowj", CPS_B_03, 0,                    GFX_WILLOW,   SPR_WILLOW   },
-	{"willowje",CPS_B_03, 0,                    GFX_WILLOW,   SPR_WILLOW   },
-	{"ffight",  CPS_B_04, 0,                    GFX_FFIGHT,   SPR_FFIGHT   },
-	{"ffightu", CPS_B_01, 0,                    GFX_FFIGHT,   SPR_FFIGHT   },
-	{"ffightua",CPS_B_05, 0,                    GFX_FFIGHT,   SPR_FFIGHT   },
-	{"ffightj", CPS_B_04, 0,                    GFX_FFIGHT,   SPR_FFIGHT   },
-	{"ffightj1",CPS_B_02, 0,                    GFX_FFIGHT,   SPR_FFIGHT   },
-	{"1941",    CPS_B_05, 0,                    GFX_1941,     SPR_1941     },
-	{"1941j",   CPS_B_05, 0,                    GFX_1941,     SPR_1941     },
-	{"unsquad", CPS_B_11, 0,                    GFX_UNSQUAD,  SPR_UNSQUAD  },
-	{"area88",  CPS_B_11, 0,                    GFX_UNSQUAD,  SPR_UNSQUAD  },
-	{"mercs",   CPS_B_12, CPS1_KLUDGE_MERCS,    GFX_MERCS,    SPR_MERCS    },
-	{"mercsu",  CPS_B_12, CPS1_KLUDGE_MERCS,    GFX_MERCS,    SPR_MERCS    },
-	{"mercsua", CPS_B_12, CPS1_KLUDGE_MERCS,    GFX_MERCS,    SPR_MERCS    },
-	{"mercsj",  CPS_B_12, CPS1_KLUDGE_MERCS,    GFX_MERCS,    SPR_MERCS    },
-	{"msword",  CPS_B_13, 0,                    GFX_MSWORD,   SPR_MSWORD   },
-	{"mswordr1",CPS_B_13, 0,                    GFX_MSWORD,   SPR_MSWORD   },
-	{"mswordu", CPS_B_13, 0,                    GFX_MSWORD,   SPR_MSWORD   },
-	{"mswordj", CPS_B_13, 0,                    GFX_MSWORD,   SPR_MSWORD   },
-	{"mtwins",  CPS_B_14, 0,                    GFX_MTWINS,   SPR_MTWINS   },
-	{"chikij",  CPS_B_14, 0,                    GFX_MTWINS,   SPR_MTWINS   },
-	{"nemo",    CPS_B_15, 0,                    GFX_NEMO,     SPR_NEMO     },
-	{"nemoj",   CPS_B_15, 0,                    GFX_NEMO,     SPR_NEMO     },
-	{"cawing",  CPS_B_16, 0,                    GFX_CAWING,   SPR_CAWING   },
-	{"cawingr1",CPS_B_16, 0,                    GFX_CAWING,   SPR_CAWING   },
-	{"cawingu", CPS_B_16, 0,                    GFX_CAWING,   SPR_CAWING   },
-	{"cawingj", CPS_B_16, 0,                    GFX_CAWING,   SPR_CAWING   },
-	{"sf2",     CPS_B_11, 0,                    GFX_SF2,      SPR_SF2      },
-	{"sf2eb",   CPS_B_17, 0,                    GFX_SF2,      SPR_SF2      },
-	{"sf2ua",   CPS_B_17, 0,                    GFX_SF2,      SPR_SF2      },
-	{"sf2ub",   CPS_B_17, 0,                    GFX_SF2,      SPR_SF2      },
-	{"sf2ud",   CPS_B_05, 0,                    GFX_SF2,      SPR_SF2      },
-	{"sf2ue",   CPS_B_18, 0,                    GFX_SF2,      SPR_SF2      },
-	{"sf2uf",   CPS_B_15, 0,                    GFX_SF2,      SPR_SF2      },
-	{"sf2ui",   CPS_B_14, 0,                    GFX_SF2,      SPR_SF2      },
-	{"sf2uk",   CPS_B_17, 0,                    GFX_SF2,      SPR_SF2      },
-	{"sf2j",    CPS_B_13, 0,                    GFX_SF2,      SPR_SF2      },
-	{"sf2ja",   CPS_B_17, 0,                    GFX_SF2,      SPR_SF2      },
-	{"sf2jc",   CPS_B_12, 0,                    GFX_SF2,      SPR_SF2      },
-	{"3wonders",BATTRY_1, CPS1_KLUDGE_3WONDERS, GFX_3WONDERS, SPR_3WONDERS },
-	{"3wonderu",BATTRY_1, CPS1_KLUDGE_3WONDERS, GFX_3WONDERS, SPR_3WONDERS },
-	{"wonder3", BATTRY_1, CPS1_KLUDGE_3WONDERS, GFX_3WONDERS, SPR_3WONDERS },
-	{"kod",     BATTRY_2, 0,                    GFX_KOD,      SPR_KOD      },
-	{"kodu",    BATTRY_2, 0,                    GFX_KOD,      SPR_KOD      },
-	{"kodj",    BATTRY_2, 0,                    GFX_KOD,      SPR_KOD      },
+	{"forgottn",CPS_B_01, CPS1_KLUDGE_FORGOTTN, GFX_FORGOTTN },
+	{"lostwrld",CPS_B_01, CPS1_KLUDGE_FORGOTTN, GFX_FORGOTTN },
+	{"ghouls",  CPS_B_01, CPS1_KLUDGE_GHOULS,   GFX_GHOULS   },
+	{"ghoulsu", CPS_B_01, CPS1_KLUDGE_GHOULS,   GFX_GHOULS   },
+	{"daimakai",CPS_B_01, CPS1_KLUDGE_GHOULS,   GFX_GHOULS   },
+	{"strider", CPS_B_01, 0,                    GFX_STRIDER  },
+	{"stridrua",CPS_B_01, 0,                    GFX_STRIDER  },
+	{"striderj",CPS_B_01, 0,                    GFX_STRIDER  },
+	{"stridrja",CPS_B_01, 0,                    GFX_STRIDER  },
+	{"dynwar",  CPS_B_02, 0,                    GFX_DYNWAR   },
+	{"dynwarj", CPS_B_02, 0,                    GFX_DYNWAR   },
+	{"willow",  CPS_B_03, 0,                    GFX_WILLOW   },
+	{"willowj", CPS_B_03, 0,                    GFX_WILLOW   },
+	{"willowje",CPS_B_03, 0,                    GFX_WILLOW   },
+	{"ffight",  CPS_B_04, 0,                    GFX_FFIGHT   },
+	{"ffightu", CPS_B_01, 0,                    GFX_FFIGHT   },
+	{"ffightua",CPS_B_05, 0,                    GFX_FFIGHT   },
+	{"ffightj", CPS_B_04, 0,                    GFX_FFIGHT   },
+	{"ffightj1",CPS_B_02, 0,                    GFX_FFIGHT   },
+	{"1941",    CPS_B_05, 0,                    GFX_1941     },
+	{"1941j",   CPS_B_05, 0,                    GFX_1941     },
+	{"unsquad", CPS_B_11, 0,                    GFX_UNSQUAD  },
+	{"area88",  CPS_B_11, 0,                    GFX_UNSQUAD  },
+	{"mercs",   CPS_B_12, CPS1_KLUDGE_MERCS,    GFX_MERCS    },
+	{"mercsu",  CPS_B_12, CPS1_KLUDGE_MERCS,    GFX_MERCS    },
+	{"mercsua", CPS_B_12, CPS1_KLUDGE_MERCS,    GFX_MERCS    },
+	{"mercsj",  CPS_B_12, CPS1_KLUDGE_MERCS,    GFX_MERCS    },
+	{"msword",  CPS_B_13, 0,                    GFX_MSWORD   },
+	{"mswordr1",CPS_B_13, 0,                    GFX_MSWORD   },
+	{"mswordu", CPS_B_13, 0,                    GFX_MSWORD   },
+	{"mswordj", CPS_B_13, 0,                    GFX_MSWORD   },
+	{"mtwins",  CPS_B_14, 0,                    GFX_MTWINS   },
+	{"chikij",  CPS_B_14, 0,                    GFX_MTWINS   },
+	{"nemo",    CPS_B_15, 0,                    GFX_NEMO     },
+	{"nemoj",   CPS_B_15, 0,                    GFX_NEMO     },
+	{"cawing",  CPS_B_16, 0,                    GFX_CAWING   },
+	{"cawingr1",CPS_B_16, 0,                    GFX_CAWING   },
+	{"cawingu", CPS_B_16, 0,                    GFX_CAWING   },
+	{"cawingj", CPS_B_16, 0,                    GFX_CAWING   },
+	{"sf2",     CPS_B_11, 0,                    GFX_SF2      },
+	{"sf2eb",   CPS_B_17, 0,                    GFX_SF2      },
+	{"sf2ua",   CPS_B_17, 0,                    GFX_SF2      },
+	{"sf2ub",   CPS_B_17, 0,                    GFX_SF2      },
+	{"sf2ud",   CPS_B_05, 0,                    GFX_SF2      },
+	{"sf2ue",   CPS_B_18, 0,                    GFX_SF2      },
+	{"sf2uf",   CPS_B_15, 0,                    GFX_SF2      },
+	{"sf2ui",   CPS_B_14, 0,                    GFX_SF2      },
+	{"sf2uk",   CPS_B_17, 0,                    GFX_SF2      },
+	{"sf2j",    CPS_B_13, 0,                    GFX_SF2      },
+	{"sf2ja",   CPS_B_17, 0,                    GFX_SF2      },
+	{"sf2jc",   CPS_B_12, 0,                    GFX_SF2      },
+	{"3wonders",BATTRY_1, CPS1_KLUDGE_3WONDERS, GFX_3WONDERS },
+	{"3wonderu",BATTRY_1, CPS1_KLUDGE_3WONDERS, GFX_3WONDERS },
+	{"wonder3", BATTRY_1, CPS1_KLUDGE_3WONDERS, GFX_3WONDERS },
+	{"kod",     BATTRY_2, 0,                    GFX_KOD      },
+	{"kodu",    BATTRY_2, 0,                    GFX_KOD      },
+	{"kodj",    BATTRY_2, 0,                    GFX_KOD      },
 #if !RELEASE
-	{"kodb",    BATTRY_2, 0,                    GFX_KOD,      SPR_KOD      },
+	{"kodb",    BATTRY_2, 0,                    GFX_KOD      },
 #endif
-	{"captcomm",BATTRY_3, 0,                    GFX_CAPTCOMM, SPR_CAPTCOMM },
-	{"captcomu",BATTRY_3, 0,                    GFX_CAPTCOMM, SPR_CAPTCOMM },
-	{"captcomj",BATTRY_3, 0,                    GFX_CAPTCOMM, SPR_CAPTCOMM },
-	{"knights", BATTRY_4, 0,                    GFX_KNIGHTS,  SPR_KNIGHTS  },
-	{"knightsu",BATTRY_4, 0,                    GFX_KNIGHTS,  SPR_KNIGHTS  },
-	{"knightsj",BATTRY_4, 0,                    GFX_KNIGHTS,  SPR_KNIGHTS  },
-	{"sf2ce",   NOBATTRY, 0,                    GFX_SF2,      SPR_SF2      },
-	{"sf2ceua", NOBATTRY, 0,                    GFX_SF2,      SPR_SF2      },
-	{"sf2ceub", NOBATTRY, 0,                    GFX_SF2,      SPR_SF2      },
-	{"sf2ceuc", NOBATTRY, 0,                    GFX_SF2,      SPR_SF2      },
-	{"sf2cej",  NOBATTRY, 0,                    GFX_SF2,      SPR_SF2      },
+	{"captcomm",BATTRY_3, 0,                    GFX_CAPTCOMM },
+	{"captcomu",BATTRY_3, 0,                    GFX_CAPTCOMM },
+	{"captcomj",BATTRY_3, 0,                    GFX_CAPTCOMM },
+	{"knights", BATTRY_4, 0,                    GFX_KNIGHTS  },
+	{"knightsu",BATTRY_4, 0,                    GFX_KNIGHTS  },
+	{"knightsj",BATTRY_4, 0,                    GFX_KNIGHTS  },
+	{"sf2ce",   NOBATTRY, 0,                    GFX_SF2      },
+	{"sf2ceua", NOBATTRY, 0,                    GFX_SF2      },
+	{"sf2ceub", NOBATTRY, 0,                    GFX_SF2      },
+	{"sf2ceuc", NOBATTRY, 0,                    GFX_SF2      },
+	{"sf2cej",  NOBATTRY, 0,                    GFX_SF2      },
 #if !RELEASE
-	{"sf2rb",   NOBATTRY, 0,                    GFX_SF2,      SPR_SF2      },
-	{"sf2rb2",  NOBATTRY, 0,                    GFX_SF2,      SPR_SF2      },
-	{"sf2red",  NOBATTRY, 0,                    GFX_SF2,      SPR_SF2      },
-	{"sf2v004", NOBATTRY, 0,                    GFX_SF2,      SPR_SF2      },
-	{"sf2accp2",NOBATTRY, 0,                    GFX_SF2,      SPR_SF2      },
-	{"sf2m1",   NOBATTRY, 0,                    GFX_SF2,      SPR_SF2      },
-	{"sf2m2",   NOBATTRY, 0,                    GFX_SF2,      SPR_SF2      },
-	{"sf2m3",   NOBATTRY, 0,                    GFX_SF2,      SPR_SF2      },
-	{"sf2m4",   HACK_B_1, CPS1_KLUDGE_SF2CEB,   GFX_SF2,      SPR_SF2      },
-	{"sf2m5",   NOBATTRY, CPS1_KLUDGE_SF2CEB,   GFX_SF2,      SPR_SF2      },
-	{"sf2m6",   NOBATTRY, CPS1_KLUDGE_SF2CEB,   GFX_SF2,      SPR_SF2      },
-	{"sf2m7",   NOBATTRY, CPS1_KLUDGE_SF2CEB,   GFX_SF2,      SPR_SF2      },
-	{"sf2yyc",  NOBATTRY, CPS1_KLUDGE_SF2CEB,   GFX_SF2,      SPR_SF2      },
-	{"sf2koryu",NOBATTRY, CPS1_KLUDGE_SF2CEB,   GFX_SF2,      SPR_SF2      },
+	{"sf2rb",   NOBATTRY, 0,                    GFX_SF2      },
+	{"sf2rb2",  NOBATTRY, 0,                    GFX_SF2      },
+	{"sf2red",  NOBATTRY, 0,                    GFX_SF2      },
+	{"sf2v004", NOBATTRY, 0,                    GFX_SF2      },
+	{"sf2accp2",NOBATTRY, 0,                    GFX_SF2      },
+	{"sf2m1",   NOBATTRY, 0,                    GFX_SF2      },
+	{"sf2m2",   NOBATTRY, 0,                    GFX_SF2      },
+	{"sf2m3",   NOBATTRY, 0,                    GFX_SF2      },
+	{"sf2m4",   HACK_B_1, CPS1_KLUDGE_SF2CEB,   GFX_SF2      },
+	{"sf2m5",   NOBATTRY, CPS1_KLUDGE_SF2CEB,   GFX_SF2      },
+	{"sf2m6",   NOBATTRY, CPS1_KLUDGE_SF2CEB,   GFX_SF2      },
+	{"sf2m7",   NOBATTRY, CPS1_KLUDGE_SF2CEB,   GFX_SF2      },
+	{"sf2yyc",  NOBATTRY, CPS1_KLUDGE_SF2CEB,   GFX_SF2      },
+	{"sf2koryu",NOBATTRY, CPS1_KLUDGE_SF2CEB,   GFX_SF2      },
 #endif
-	{"varth",   CPS_B_04, 0,                    GFX_VARTH,    SPR_VARTH    },
-	{"varthr1", CPS_B_04, 0,                    GFX_VARTH,    SPR_VARTH    },
-	{"varthu",  CPS_B_04, 0,                    GFX_VARTH,    SPR_VARTH    },
-	{"varthj",  BATTRY_5, 0,                    GFX_VARTH,    SPR_VARTH    },
-	{"cworld2j",BATTRY_6, 0,                    GFX_CWORLD2J, SPR_CWORLD2J },
-	{"wof",     NOBATTRY, 0,                    GFX_WOF,      SPR_WOF      },
-	{"wofa",    NOBATTRY, 0,                    GFX_WOF,      SPR_WOF      },
-	{"wofu",    QSOUND_1, 0,                    GFX_WOF,      SPR_WOF      },
-	{"wofj",    QSOUND_1, 0,                    GFX_WOF,      SPR_WOF      },
-	{"dino",    QSOUND_2, 0,                    GFX_DINO,     SPR_DINO     },
-	{"dinou",   QSOUND_2, 0,                    GFX_DINO,     SPR_DINO     },
-	{"dinoj",   QSOUND_2, 0,                    GFX_DINO,     SPR_DINO     },
-	{"punisher",QSOUND_3, 0,                    GFX_PUNISHER, SPR_PUNISHER },
-	{"punishru",QSOUND_3, 0,                    GFX_PUNISHER, SPR_PUNISHER },
-	{"punishrj",QSOUND_3, 0,                    GFX_PUNISHER, SPR_PUNISHER },
-	{"slammast",QSOUND_4, 0,                    GFX_SLAMMAST, SPR_SLAMMAST },
-	{"slammasu",QSOUND_4, 0,                    GFX_SLAMMAST, SPR_SLAMMAST },
-	{"mbomberj",QSOUND_4, 0,                    GFX_SLAMMAST, SPR_SLAMMAST },
-	{"mbombrd", QSOUND_5, 0,                    GFX_SLAMMAST, SPR_SLAMMAST },
-	{"mbombrdj",QSOUND_5, 0,                    GFX_SLAMMAST, SPR_SLAMMAST },
-	{"sf2hf",   NOBATTRY, 0,                    GFX_SF2HF,    SPR_SF2HF    },
-	{"sf2t",    NOBATTRY, 0,                    GFX_SF2HF,    SPR_SF2HF    },
-	{"sf2tj",   NOBATTRY, 0,                    GFX_SF2HF,    SPR_SF2HF    },
-	{"qad",     BATTRY_7, 0,                    GFX_QAD,      SPR_QAD      },
-	{"qadj",    NOBATTRY, 0,                    GFX_QADJ,     SPR_QADJ     },
-	{"qtono2",  NOBATTRY, 0,                    GFX_QTONO2,   SPR_QTONO2   },
-	{"megaman", NOBATTRY, 0,                    GFX_MEGAMAN,  SPR_MEGAMAN  },
-	{"rockmanj",NOBATTRY, 0,                    GFX_MEGAMAN,  SPR_MEGAMAN  },
-	{"pnickj",  NOBATTRY, 0,                    GFX_PUNICKJ,  SPR_PUNICKJ  },
-	{"pang3",   NOBATTRY, CPS1_KLUDGE_PANG3,    GFX_PANG3,    SPR_PANG3    },
-	{"pang3j",  NOBATTRY, CPS1_KLUDGE_PANG3,    GFX_PANG3,    SPR_PANG3    },
-	{"sfzch",   NOBATTRY, 0,                    GFX_SFZCH,    SPR_SFZCH    },
+	{"varth",   CPS_B_04, 0,                    GFX_VARTH    },
+	{"varthr1", CPS_B_04, 0,                    GFX_VARTH    },
+	{"varthu",  CPS_B_04, 0,                    GFX_VARTH    },
+	{"varthj",  BATTRY_5, 0,                    GFX_VARTH    },
+	{"cworld2j",BATTRY_6, 0,                    GFX_CWORLD2J },
+	{"wof",     NOBATTRY, 0,                    GFX_WOF      },
+	{"wofa",    NOBATTRY, 0,                    GFX_WOF      },
+	{"wofu",    QSOUND_1, 0,                    GFX_WOF      },
+	{"wofj",    QSOUND_1, 0,                    GFX_WOF      },
+	{"dino",    QSOUND_2, 0,                    GFX_DINO     },
+	{"dinou",   QSOUND_2, 0,                    GFX_DINO     },
+	{"dinoj",   QSOUND_2, 0,                    GFX_DINO     },
+	{"punisher",QSOUND_3, 0,                    GFX_PUNISHER },
+	{"punishru",QSOUND_3, 0,                    GFX_PUNISHER },
+	{"punishrj",QSOUND_3, 0,                    GFX_PUNISHER },
+	{"slammast",QSOUND_4, 0,                    GFX_SLAMMAST },
+	{"slammasu",QSOUND_4, 0,                    GFX_SLAMMAST },
+	{"mbomberj",QSOUND_4, 0,                    GFX_SLAMMAST },
+	{"mbombrd", QSOUND_5, 0,                    GFX_SLAMMAST },
+	{"mbombrdj",QSOUND_5, 0,                    GFX_SLAMMAST },
+	{"sf2hf",   NOBATTRY, 0,                    GFX_SF2HF    },
+	{"sf2t",    NOBATTRY, 0,                    GFX_SF2HF    },
+	{"sf2tj",   NOBATTRY, 0,                    GFX_SF2HF    },
+	{"qad",     BATTRY_7, 0,                    GFX_QAD      },
+	{"qadj",    NOBATTRY, 0,                    GFX_QADJ     },
+	{"qtono2",  NOBATTRY, 0,                    GFX_QTONO2   },
+	{"megaman", NOBATTRY, 0,                    GFX_MEGAMAN  },
+	{"rockmanj",NOBATTRY, 0,                    GFX_MEGAMAN  },
+	{"pnickj",  NOBATTRY, 0,                    GFX_PUNICKJ  },
+	{"pang3",   NOBATTRY, CPS1_KLUDGE_PANG3,    GFX_PANG3    },
+	{"pang3j",  NOBATTRY, CPS1_KLUDGE_PANG3,    GFX_PANG3    },
+	{"sfzch",   NOBATTRY, 0,                    GFX_SFZCH    },
 	{NULL}
 };
 
@@ -409,6 +376,11 @@ WRITE8_HANDLER( cps1_snd_bankswitch_w )
 	z80_set_bank(bankaddress + 0x10000);
 }
 
+WRITE8_HANDLER( cps1_oki_pin7_w )
+{
+	OKIM6295_set_pin7_w(0, (data & 1));
+}
+
 READ8_HANDLER( cps1_sound_fade_timer_r )
 {
 	return cps1_sound_fade_timer;
@@ -444,13 +416,8 @@ void cps1_sound_interrupt(int state)
 
 READ16_HANDLER( qsound_rom_r )
 {
-	if (!memory_region_user1)
-	{
-#ifndef RELEASE
-		ui_popup("read sound ROM byte %04x", offset);
-#endif
-		return 0;
-	}
+	if (!memory_region_user1) return 0;
+
 	offset &= 0x7fff;
 	return memory_region_user1[offset] | 0xff00;
 }
@@ -599,39 +566,60 @@ void pang3_decode(void)
 	ドライバインタフェース
 ******************************************************************************/
 
-void cps1_driver_init(void)
+int cps1_driver_init(void)
 {
 	m68000_init();
 
 	z80_init();
 	z80_bank = -1;
 
-	switch (machine_driver_type)
+	if (machine_driver_type == MACHINE_qsound)
 	{
-	case MACHINE_qsound:
 		EEPROM_init(&qsound_eeprom_interface);
-		cps1_nvram_read_write(0);
-		break;
-
-	case MACHINE_pang3:
-		EEPROM_init(&pang3_eeprom_interface);
-		cps1_nvram_read_write(0);
-		break;
 	}
+	else
+	{
+		EEPROM_init(&pang3_eeprom_interface);
+	}
+	if (machine_driver_type == MACHINE_qsound
+	||	machine_driver_type == MACHINE_pang3)
+	{
+#ifdef ADHOC
+		if (adhoc_enable)
+		{
+			if (adhoc_server)
+			{
+				msg_printf(TEXT(SENDING_EEPROM_DATA));
+				return adhoc_send_eeprom();
+			}
+			else
+			{
+				msg_printf(TEXT(RECIEVING_EEPROM_DATA));
+				return adhoc_recv_eeprom();
+			}
+		}
+		else
+#endif
+		{
+			cps1_nvram_read_write(0);
+		}
+	}
+
+	return 1;
 }
 
 
 void cps1_driver_exit(void)
 {
-	switch (machine_driver_type)
+#ifdef ADHOC
+	if (!adhoc_enable || adhoc_server)
+#endif
 	{
-	case MACHINE_qsound:
-		cps1_nvram_read_write(1);
-		break;
-
-	case MACHINE_pang3:
-		cps1_nvram_read_write(1);
-		break;
+		if (machine_driver_type == MACHINE_qsound
+		||	machine_driver_type == MACHINE_pang3)
+		{
+			cps1_nvram_read_write(1);
+		}
 	}
 }
 

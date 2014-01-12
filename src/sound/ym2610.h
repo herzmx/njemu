@@ -22,7 +22,9 @@ typedef void (*FM_IRQHANDLER)(int irq);
 
 void YM2610Init(int baseclock, int rate,
 				void *pcmroma, int pcmsizea,
+#if (EMU_SYSTEM == MVS)
 				void *pcmromb, int pcmsizeb,
+#endif
 				FM_TIMERHANDLER TimerHandler,
 				FM_IRQHANDLER IRQHandler);
 
@@ -30,6 +32,7 @@ void YM2610Reset(void);
 int  YM2610Write(int addr, u8 value);
 u8   YM2610Read(int addr);
 int  YM2610TimerOver(int channel);
+void YM2610_set_samplerate(void);
 
 #ifdef SAVE_STATE
 STATE_SAVE( ym2610 );

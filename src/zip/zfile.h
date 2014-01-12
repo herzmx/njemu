@@ -1,3 +1,11 @@
+/******************************************************************************
+
+	zfile.c
+
+	ZIPƒtƒ@ƒCƒ‹‘€ìŠÖ”
+
+******************************************************************************/
+
 #ifndef ZFILE_H
 #define ZFILE_H
 
@@ -19,5 +27,8 @@ int zread(int fd, void *buf, unsigned size);
 int zgetc(int fd);
 int zclose(int fd);
 int zsize(int fd);
-
+#if (EMU_SYSTEM == NCDZ)
+int zlength(const char *filename);
 #endif
+
+#endif /* ZFILE_H */

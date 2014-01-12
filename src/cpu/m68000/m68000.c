@@ -68,14 +68,14 @@ static u16 m68000_read_pcrelative_16(u32 offset)
 void m68000_init(void)
 {
 	C68k_Init(&C68K);
-#if (EMU_SYSTEM == CPS1)
-	C68k_Set_Fetch(&C68K, 0x000000, 0x1fffff, (u32)memory_region_cpu1);
-	C68k_Set_Fetch(&C68K, 0x900000, 0x92ffff, (u32)cps1_gfxram);
-	C68k_Set_Fetch(&C68K, 0xff0000, 0xffffff, (u32)cps1_ram);
 	C68k_Set_ReadB(&C68K, m68000_read_memory_8);
 	C68k_Set_ReadW(&C68K, m68000_read_memory_16);
 	C68k_Set_WriteB(&C68K, m68000_write_memory_8);
 	C68k_Set_WriteW(&C68K, m68000_write_memory_16);
+#if (EMU_SYSTEM == CPS1)
+	C68k_Set_Fetch(&C68K, 0x000000, 0x1fffff, (u32)memory_region_cpu1);
+	C68k_Set_Fetch(&C68K, 0x900000, 0x92ffff, (u32)cps1_gfxram);
+	C68k_Set_Fetch(&C68K, 0xff0000, 0xffffff, (u32)cps1_ram);
 #elif (EMU_SYSTEM == CPS2)
 	if (memory_length_user1)
 		C68k_Set_Fetch(&C68K, 0x000000, 0x3fffff, (u32)memory_region_user1);
@@ -84,10 +84,6 @@ void m68000_init(void)
 	C68k_Set_Fetch(&C68K, 0x660000, 0x663fff, (u32)cps2_ram);
 	C68k_Set_Fetch(&C68K, 0x900000, 0x92ffff, (u32)cps1_gfxram);
 	C68k_Set_Fetch(&C68K, 0xff0000, 0xffffff, (u32)cps1_ram);
-	C68k_Set_ReadB(&C68K, m68000_read_memory_8);
-	C68k_Set_ReadW(&C68K, m68000_read_memory_16);
-	C68k_Set_WriteB(&C68K, m68000_write_memory_8);
-	C68k_Set_WriteW(&C68K, m68000_write_memory_16);
 	if (memory_length_user1)
 	{
 		C68k_Set_ReadB_PC_Relative(&C68K, m68000_read_pcrelative_8);
@@ -101,10 +97,10 @@ void m68000_init(void)
 	else
 		C68k_Set_Fetch(&C68K, 0x200000, 0x2fffff, (u32)memory_region_cpu1);
 	C68k_Set_Fetch(&C68K, 0xc00000, 0xc00000 + (memory_length_user1 - 1), (u32)memory_region_user1);
-	C68k_Set_ReadB(&C68K, m68000_read_memory_8);
-	C68k_Set_ReadW(&C68K, m68000_read_memory_16);
-	C68k_Set_WriteB(&C68K, m68000_write_memory_8);
-	C68k_Set_WriteW(&C68K, m68000_write_memory_16);
+#elif (EMU_SYSTEM == NCDZ)
+	C68k_Set_Fetch(&C68K, 0x000000, 0x1fffff, (u32)memory_region_cpu1);
+	C68k_Set_Fetch(&C68K, 0xc00000, 0xc7ffff, (u32)memory_region_user1);
+	C68k_Reset(&C68K);
 #endif
 }
 
@@ -136,6 +132,58 @@ int m68000_execute(int cycles)
 {
 	return C68k_Exec(&C68K, cycles);
 }
+
+
+/*--------------------------------------------------------
+	CPU実行 (NEOGEO CDZ専用: ロード画面用)
+--------------------------------------------------------*/
+
+#if (EMU_SYSTEM == NCDZ)
+void m68000_execute2(u32 start, u32 break_point)
+{
+	int nest_counter = 0;
+	u32 pc, old_pc, opcode;
+	c68k_struc C68K_temp;
+
+	old_pc = C68k_Get_Reg(&C68K, M68K_PC);
+
+	memcpy(&C68K_temp, &C68K, sizeof(c68k_struc));
+
+	C68k_Set_Reg(&C68K_temp, C68K_PC, start);
+	C68K_temp.A[5] = 0x108000;
+	C68K_temp.A[7] -= 4 * 8 * 2;
+
+	while ((pc = C68k_Get_Reg(&C68K_temp, M68K_PC)) != break_point)
+	{
+		opcode = m68000_read_memory_16(pc);
+		if (opcode == 0x4e75)
+		{
+			// rts
+			nest_counter--;
+			if (nest_counter < 0) break;
+		}
+		else if (opcode == 0x6100)
+		{
+			// bsr 16
+			nest_counter++;
+		}
+		else if ((opcode & 0xff00) == 0x6100)
+		{
+			// bsr 8
+			nest_counter++;
+		}
+		else if ((opcode & 0xffc0) == 0x4e80)
+		{
+			// jsr
+			nest_counter++;
+		}
+
+		C68k_Exec(&C68K_temp, 1);
+	}
+
+	C68k_Set_Reg(&C68K, C68K_PC, old_pc);
+}
+#endif
 
 
 /*--------------------------------------------------------

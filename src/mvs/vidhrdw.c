@@ -22,7 +22,7 @@ u16 ALIGN_DATA neogeo_palettebank16[2][0x2000 / 2];
 u32 neogeo_palette_index;
 
 u16 *video_palette;
-u16 ALIGN_DATA video_palettebank[2][0x2000 / 2];
+u16 ALIGN_PSPDATA video_palettebank[2][0x2000 / 2];
 u16 ALIGN_DATA video_clut16[0x8000];
 
 u8 *gfx_pen_usage[3];
@@ -363,7 +363,7 @@ void neogeo_video_reset(void)
 
 void neogeo_screenrefresh(void)
 {
-	blit_partial_start(FIRST_VISIBLE_LINE, LAST_VISIBLE_LINE);
+	blit_start(FIRST_VISIBLE_LINE, LAST_VISIBLE_LINE);
 	draw_spr(FIRST_VISIBLE_LINE, LAST_VISIBLE_LINE);
 	draw_fix();
 	blit_finish();
@@ -380,7 +380,7 @@ void neogeo_partial_screenrefresh(int current_line)
 	{
 		if (current_line >= next_update_first_line)
 		{
-			blit_partial_start(next_update_first_line, current_line);
+			blit_start(next_update_first_line, current_line);
 			draw_spr(next_update_first_line, current_line);
 		}
 

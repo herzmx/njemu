@@ -2,13 +2,12 @@
 
 
 #define SERIAL_BUFFER_LENGTH	40
-#define MEMORY_SIZE				EEPROM_SIZE
 
 static struct EEPROM_interface *intf;
 
 static int serial_count;
 static u8 serial_buffer[SERIAL_BUFFER_LENGTH];
-static u8 eeprom_data[MEMORY_SIZE];
+static u8 eeprom_data[EEPROM_SIZE];
 static int eeprom_data_bits;
 static int eeprom_read_address;
 static int eeprom_clock_count;
@@ -78,7 +77,7 @@ void EEPROM_init(struct EEPROM_interface *interface)
 {
 	intf = interface;
 
-	if ((1 << intf->address_bits) * intf->data_bits / 8 > MEMORY_SIZE)
+	if ((1 << intf->address_bits) * intf->data_bits / 8 > EEPROM_SIZE)
 	{
 		fatalerror("EEPROM larger than eeprom.c allows");
 	}
@@ -323,7 +322,7 @@ STATE_SAVE( eeprom )
 	state_save_long(&locked, 1);
 	state_save_long(&reset_delay, 1);
 	state_save_byte(serial_buffer, SERIAL_BUFFER_LENGTH);
-	state_save_byte(eeprom_data, MEMORY_SIZE);
+	state_save_byte(eeprom_data, EEPROM_SIZE);
 }
 
 STATE_LOAD( eeprom )
@@ -339,7 +338,35 @@ STATE_LOAD( eeprom )
 	state_load_long(&locked, 1);
 	state_load_long(&reset_delay, 1);
 	state_load_byte(serial_buffer, SERIAL_BUFFER_LENGTH);
-	state_load_byte(eeprom_data, MEMORY_SIZE);
+	state_load_byte(eeprom_data, EEPROM_SIZE);
 }
 
 #endif /* SAVE_STATE */
+
+/*------------------------------------------------------
+	Adhocóp eepromëóéÛêM
+------------------------------------------------------*/
+
+#ifdef ADHOC
+
+int adhoc_send_eeprom(void)
+{
+	if (adhocSendRecvAck(eeprom_data, EEPROM_SIZE) <= 0)
+	{
+		msg_printf(TEXT(LOST_SYNC));
+		return 0;
+	}
+	return 1;
+}
+
+int adhoc_recv_eeprom(void)
+{
+	if (adhocRecvSendAck(eeprom_data, EEPROM_SIZE) <= 0)
+	{
+		msg_printf(TEXT(LOST_SYNC));
+		return 0;
+	}
+	return 1;
+}
+
+#endif /* ADHOC */

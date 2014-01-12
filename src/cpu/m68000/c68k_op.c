@@ -4587,3 +4587,31 @@ OP(1111)
 	EXCEPTION(C68K_1111_EX)
 	RET(34)
 }
+
+#ifdef BUILD_NCDZPSP
+
+OP(FAC0)
+{
+	extern void cdrom_load_files(void);
+
+	cdrom_load_files();
+	RET(400)
+}
+
+OP(FAC1)
+{
+	extern void neogeo_cdda_control(void);
+
+	neogeo_cdda_control();
+	RET(200)
+}
+
+OP(FAC2)
+{
+	extern void neogeo_bios_exit(void);
+
+	neogeo_bios_exit();
+	RET(200)
+}
+
+#endif /* BUILD_NCDZPSP */

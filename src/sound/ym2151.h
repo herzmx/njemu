@@ -16,6 +16,7 @@ typedef void (*FM_IRQHANDLER)(int irq);
 
 void YM2151Init(int clock, int rate, FM_IRQHANDLER IRQHandler);
 void YM2151Reset(void);
+void YM2151_set_samplerate(void);
 void YM2151Update(int p);
 void YM2151WriteReg(int reg, int value);
 int YM2151ReadStatus(void);

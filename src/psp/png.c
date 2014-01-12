@@ -6,12 +6,12 @@
 
 ***************************************************************************/
 
-#include "psp.h"
+#include "emumain.h"
 #include <math.h>
 #include "zlib/zlib.h"
 
+
 #define PNG_Signature       "\x89\x50\x4E\x47\x0D\x0A\x1A\x0A"
-#define MNG_Signature       "\x8A\x4D\x4E\x47\x0D\x0A\x1A\x0A"
 
 #define PNG_CN_IHDR 0x49484452L     /* Chunk names */
 #define PNG_CN_PLTE 0x504C5445L
@@ -36,42 +36,38 @@
 #define PNG_PF_Average  3
 #define PNG_PF_Paeth    4
 
-#define MNG_CN_MHDR 0x4D484452L     /* MNG Chunk names */
-#define MNG_CN_MEND 0x4D454E44L
-#define MNG_CN_TERM 0x5445524DL
-#define MNG_CN_BACK 0x4241434BL
-
 
 /* PNG support */
-struct png_info {
-	u32 width, height;
-	u32 xres, yres;
-	struct rectangle screen;
-	double xscale, yscale;
-	double source_gamma;
-	u32 chromaticities[8];
-	u32 resolution_unit, offset_unit, scale_unit;
-	u8 bit_depth;
-	u32 significant_bits[4];
-	u32 background_color[4];
-	u8 color_type;
-	u8 compression_method;
-	u8 filter_method;
-	u8 interlace_method;
-	u32 num_palette;
-	u8 *palette;
-	u32 num_trans;
-	u8 *trans;
-	u8 *image;
-
-	/* The rest is private and should not be used
-	 * by the public functions
-	 */
-	u8 bpp;
+struct png_info
+{
+	u32 width;
+	u32 height;
+	u8  *image;
 	u32 rowbytes;
-	u8 *zimage;
+	u8  *zimage;
 	u32 zlength;
-	u8 *fimage;
+
+#if PSP_VIDEO_32BPP || (EMU_SYSTEM == NCDZ)
+	u32 xres;
+	u32 yres;
+	u32 resolution_unit;
+	u32 offset_unit;
+	u32 scale_unit;
+	u8  bpp;
+	u8  bit_depth;
+	u8  color_type;
+	u8  compression_method;
+	u8  filter_method;
+	u8  interlace_method;
+	u32 num_palette;
+	u8  *palette;
+	u32 num_trans;
+	u8  *trans;
+	u8  *fimage;
+	double xscale;
+	double yscale;
+	double source_gamma;
+#endif
 };
 
 /********************************************************************************
@@ -80,24 +76,661 @@ struct png_info {
 
 ********************************************************************************/
 
-static void errormsg(int no)
+static void errormsg(int number)
 {
-	switch (no)
+	switch (number)
 	{
-	case 0:
-		ui_popup("Error: Could not allocate memory for PNG.");
-		break;
-
-	case 1:
-		ui_popup("Error: Could not enecode PNG image.");
-		break;
+	case 0: ui_popup(TEXT(COULD_NOT_ALLOCATE_MEMORY_FOR_PNG)); break;
+	case 1: ui_popup(TEXT(COULD_NOT_ENCODE_PNG_IMAGE)); break;
+#if PSP_VIDEO_32BPP || (EMU_SYSTEM == NCDZ)
+	case 2: ui_popup(TEXT(COULD_NOT_DECODE_PNG_IMAGE)); break;
+#endif
 	}
 }
 
 
+#if USE_CACHE
+
+#define ALLOC_LOAD_SIZE	(((400*2) + 1024) * 1024)
+#define ALLOC_SAVE_SIZE	((400 + 1024) * 1024)
+
+static int left_mem;
+static int alloc_size;
+static u8 *next_ptr;
+
+static void png_mem_init(int flag)
+{
+	if (GFX_MEMORY)
+	{
+		u8 *mem;
+
+		if (flag)
+			alloc_size = ALLOC_LOAD_SIZE;
+		else
+			alloc_size = ALLOC_SAVE_SIZE;
+
+		mem = cache_alloc_state_buffer(alloc_size);
+
+		next_ptr = (u8 *)(((u32)mem + 15) & ~15);
+		left_mem = alloc_size - 16;
+	}
+}
+
+static void png_mem_exit(void)
+{
+	if (GFX_MEMORY)
+	{
+		cache_free_state_buffer(alloc_size);
+	}
+}
+
+static void *png_alloc(int size)
+{
+	if (GFX_MEMORY)
+	{
+		size = (size + 15) & ~15;
+
+		if (left_mem >= size)
+		{
+			u8 *mem = next_ptr;
+
+			next_ptr = next_ptr + size;
+			left_mem -= size;
+
+			memset(mem, 0, size);
+
+			return mem;
+		}
+		return NULL;
+	}
+	return malloc(size);
+}
+
+static void png_free(void *ptr)
+{
+	if (!GFX_MEMORY)
+	{
+		free(ptr);
+	}
+}
+
+static voidpf png_zcalloc(voidpf opaque, unsigned items, unsigned size)
+{
+	return png_alloc(items * size);
+}
+
+static void png_zcfree(voidpf opaque, voidpf ptr)
+{
+	png_free(ptr);
+}
+
+#else
+
+#define png_mem_init(flag)
+#define png_mem_exit()
+#define png_alloc		malloc
+#define png_free		free
+#define png_zcalloc		0
+#define png_zcfree		0
+
+#endif
+
+
+#if PSP_VIDEO_32BPP
+static const u8 *png_data;
+static u32 png_size;
+static u32 png_offset;
+
+static size_t png_read(void *buf, size_t size, FILE *fp)
+{
+	if (fp)
+	{
+		return fread(buf, 1, size, fp);
+	}
+	else
+	{
+		if ((png_size - png_offset) >= size)
+		{
+			memcpy(buf, &png_data[png_offset], size);
+			png_offset += size;
+			return size;
+		}
+		else
+		{
+			size = png_size - png_offset;
+
+			memcpy(buf, &png_data[png_offset], size);
+			png_offset += size;
+			return size;
+		}
+	}
+}
+#elif (EMU_SYSTEM == NCDZ)
+#define png_read(buf, size, fp)	fread(buf, 1, size, fp);
+#endif
+
+
 /********************************************************************************
 
-  PNG write functions (16bit color only)
+  PNG read functions
+
+********************************************************************************/
+
+#if PSP_VIDEO_32BPP || (EMU_SYSTEM == NCDZ)
+
+/* convert_uint is here so we don't have to deal with byte-ordering issues */
+static u32 convert_from_network_order(u8 *v)
+{
+	return (v[0] << 24) | (v[1] << 16) | (v[2] << 8) | (v[3]);
+}
+
+static int png_verify_signature(FILE *fp)
+{
+	s8 signature[8];
+
+	if (png_read(signature, 8, fp) == 8)
+	{
+		if (memcmp(signature, PNG_Signature, 8) == 0)
+			return 1;
+	}
+
+	errormsg(2);
+	return 0;
+}
+
+static int png_unfilter(struct png_info *p)
+{
+	u32 res = 0;
+
+	if ((p->image = (u8 *)png_alloc(p->height * (p->rowbytes + 1))) != NULL)
+	{
+		u32 i, j, bpp, filter;
+		s32 prediction, pA, pB, pC, dA, dB, dC;
+		u8 *src, *dst;
+
+		src = p->fimage;
+		dst = p->image;
+		bpp = p->bpp;
+		memset(p->image, 0, p->height * (p->rowbytes + 1));
+
+		for (i = 0; i < p->height; i++)
+		{
+			dst++;
+			filter = *src++;
+			if (!filter)
+			{
+				memcpy(dst, src, p->rowbytes);
+				src += p->rowbytes;
+				dst += p->rowbytes;
+			}
+			else
+			{
+				for (j = 0; j < p->rowbytes; j++)
+				{
+					pA = (j < bpp) ? 0 : *(dst - bpp);
+					pB = (i < 1) ? 0 : *(dst - (p->rowbytes + 1));
+					pC = (j < bpp || i < 1) ? 0 : *(dst - (p->rowbytes + 1) - bpp);
+
+					switch (filter)
+					{
+					case PNG_PF_Sub:
+						prediction = pA;
+						break;
+
+					case PNG_PF_Up:
+						prediction = pB;
+						break;
+
+					case PNG_PF_Average:
+						prediction = ((pA + pB) / 2);
+						break;
+
+					case PNG_PF_Paeth:
+						prediction = pA + pB - pC;
+						dA = abs(prediction - pA);
+						dB = abs(prediction - pB);
+						dC = abs(prediction - pC);
+						if (dA <= dB && dA <= dC) prediction = pA;
+						else if (dB <= dC) prediction = pB;
+						else prediction = pC;
+						break;
+
+					default:
+						errormsg(2);
+						prediction = 0;
+						goto error;
+					}
+
+					*dst++ = 0xff & (*src++ + prediction);
+				}
+			}
+		}
+		res = 1;
+	}
+	else errormsg(0);
+
+error:
+	png_free(p->fimage);
+
+	return res;
+}
+
+static int png_inflate_image(struct png_info *p)
+{
+	u32 res = 0;
+	unsigned long fbuff_size;
+	z_stream stream;
+
+	fbuff_size = p->height * (p->rowbytes + 1);
+
+	if ((p->fimage = (u8 *)png_alloc(fbuff_size)) == NULL)
+	{
+		errormsg(0);
+		png_free(p->zimage);
+		return res;
+	}
+
+	stream.next_in   = p->zimage;
+	stream.avail_in  = (uInt)p->zlength;
+	stream.next_out  = (Bytef *)p->fimage;
+	stream.avail_out = (uInt)&fbuff_size;
+	stream.zalloc    = (alloc_func)png_zcalloc;
+	stream.zfree     = (free_func)png_zcfree;
+	stream.opaque    = (voidpf)0;
+
+	if (inflateInit(&stream) == Z_OK)
+	{
+		if (inflate(&stream, Z_FINISH) == Z_STREAM_END)
+		{
+			res = 1;
+		}
+		inflateEnd(&stream);
+	}
+
+	png_free(p->zimage);
+
+	if (res)
+	{
+		if (p->filter_method)
+		{
+			return png_unfilter(p);
+		}
+		else
+		{
+			p->image = p->fimage;
+		}
+	}
+	else errormsg(2);
+
+	return res;
+}
+
+static int png_read_file(FILE *fp, struct png_info *p)
+{
+	/* translates color_type to bytes per pixel */
+	const int samples[] = {1, 0, 3, 1, 2, 0, 4};
+
+	u32 chunk_length, chunk_type=0, chunk_crc, crc;
+	u8 *chunk_data, *temp;
+	u8 str_chunk_type[5], v[4];
+
+	struct idat
+	{
+		struct idat *next;
+		int length;
+		u8 *data;
+	} *ihead, *pidat;
+
+	if ((ihead = malloc(sizeof(struct idat))) == NULL)
+		return 0;
+
+	pidat = ihead;
+
+	if (png_verify_signature(fp) == 0)
+		return 0;
+
+	while (chunk_type != PNG_CN_IEND)
+	{
+		if (png_read(v, 4, fp) != 4) errormsg(2);
+		chunk_length = convert_from_network_order(v);
+
+		if (png_read(str_chunk_type, 4, fp) != 4) errormsg(1);
+
+		str_chunk_type[4] = 0; /* terminate string */
+
+		crc = crc32(0, str_chunk_type, 4);
+		chunk_type = convert_from_network_order(str_chunk_type);
+
+		if (chunk_length)
+		{
+			if ((chunk_data = (u8 *)malloc(chunk_length + 1)) == NULL)
+			{
+				errormsg(0);
+				return 0;
+			}
+			if (png_read(chunk_data, chunk_length, fp) != chunk_length)
+			{
+				errormsg(2);
+				free(chunk_data);
+				return 0;
+			}
+
+			crc = crc32(crc, chunk_data, chunk_length);
+		}
+		else
+			chunk_data = NULL;
+
+		if (png_read(v, 4, fp) != 4) errormsg(2);
+		chunk_crc = convert_from_network_order(v);
+
+		if (crc != chunk_crc)
+		{
+			errormsg(2);
+			return 0;
+		}
+
+		switch (chunk_type)
+		{
+		case PNG_CN_IHDR:
+			p->width = convert_from_network_order(chunk_data);
+			p->height = convert_from_network_order(chunk_data + 4);
+			p->bit_depth = *(chunk_data + 8);
+			p->color_type = *(chunk_data + 9);
+			p->compression_method = *(chunk_data + 10);
+			p->filter_method = *(chunk_data + 11);
+			p->interlace_method = *(chunk_data + 12);
+			free(chunk_data);
+			break;
+
+		case PNG_CN_PLTE:
+			p->num_palette = chunk_length/3;
+			p->palette = chunk_data;
+			break;
+
+		case PNG_CN_tRNS:
+			p->num_trans = chunk_length;
+			p->trans = chunk_data;
+			break;
+
+		case PNG_CN_IDAT:
+			pidat->data = chunk_data;
+			pidat->length = chunk_length;
+			if ((pidat->next = malloc(sizeof(struct idat))) == NULL)
+				return 0;
+			pidat = pidat->next;
+			pidat->next = 0;
+			p->zlength += chunk_length;
+			break;
+
+		case PNG_CN_tEXt:
+			{
+				char *text = (char *)chunk_data;
+
+				while (*text++);
+				chunk_data[chunk_length] = 0;
+			}
+			free(chunk_data);
+			break;
+
+		case PNG_CN_tIME:
+			free(chunk_data);
+			break;
+
+		case PNG_CN_gAMA:
+			p->source_gamma	 = convert_from_network_order(chunk_data) / 100000.0;
+			free(chunk_data);
+			break;
+
+		case PNG_CN_pHYs:
+			p->xres = convert_from_network_order(chunk_data);
+			p->yres = convert_from_network_order(chunk_data + 4);
+			p->resolution_unit = *(chunk_data + 8);
+			free(chunk_data);
+			break;
+
+		case PNG_CN_IEND:
+			break;
+
+		default:
+			if (chunk_data) free(chunk_data);
+			break;
+		}
+	}
+
+	if (p->width > SCR_WIDTH || p->height > SCR_HEIGHT)
+	{
+		errormsg(2);
+		return 0;
+	}
+
+	if ((p->zimage = (u8 *)png_alloc(p->zlength)) == NULL)
+	{
+		errormsg(0);
+		return 0;
+	}
+
+	/* combine idat chunks to compressed image data */
+	temp = p->zimage;
+	while (ihead->next)
+	{
+		pidat = ihead;
+		memcpy(temp, pidat->data, pidat->length);
+		free(pidat->data);
+		temp += pidat->length;
+		ihead = pidat->next;
+		free(pidat);
+	}
+	p->bpp = (samples[p->color_type] * p->bit_depth) / 8;
+	p->rowbytes = ceil((p->width * p->bit_depth * samples[p->color_type]) / 8.0);
+
+	if (png_inflate_image(p) == 0)
+		return 0;
+
+	return 1;
+}
+
+
+/*--------------------------------------------------------
+	”wŒi‰æ‘œ‚Ì–¾“x‚ð•ÏX
+--------------------------------------------------------*/
+
+#if PSP_VIDEO_32BPP
+INLINE void adjust_blightness(u8 *r, u8 *g, u8 *b)
+{
+	switch (bgimage_blightness)
+	{
+	case 25:
+		*r  >>= 2;
+		*g  >>= 2;
+		*b  >>= 2;
+		break;
+
+	case 50:
+		*r  >>= 1;
+		*g  >>= 1;
+		*b  >>= 1;
+		break;
+
+	case 75:
+		*r = (*r >> 1) + (*r >> 2);
+		*g = (*g >> 1) + (*g >> 2);
+		*b = (*b >> 1) + (*b >> 2);
+		break;
+
+	default:
+		*r = (u8)((int)*r * bgimage_blightness / 100);
+		*g = (u8)((int)*g * bgimage_blightness / 100);
+		*b = (u8)((int)*b * bgimage_blightness / 100);
+		break;
+	}
+}
+#endif
+
+
+/*--------------------------------------------------------
+	PNG“Ç‚Ýž‚Ý
+--------------------------------------------------------*/
+
+int load_png(const char *name, int number)
+{
+	struct png_info p;
+	FILE *fp;
+	u32 res = 0;
+
+	memset(&p, 0, sizeof(struct png_info));
+
+	video_clear_frame(draw_frame);
+
+#if PSP_VIDEO_32BPP
+	if (name)
+	{
+		if ((fp = fopen(name, "rb")) == NULL)
+			return 0;
+	}
+	else
+	{
+		fp = NULL;
+		png_data = wallpaper[number];
+		png_size = wallpaper_size[number];
+		png_offset = 0;
+	}
+#else
+	if ((fp = fopen(name, "rb")) == NULL)
+		return 0;
+#endif
+
+	png_mem_init(1);
+
+	if ((res = png_read_file(fp, &p)))
+	{
+		u32 x, y, sx, sy;
+		u8 *src = p.image;
+
+		sx = (SCR_WIDTH - p.width) >> 1;
+		sy = (SCR_HEIGHT - p.height) >> 1;
+
+#if PSP_VIDEO_32BPP
+		if (video_mode == 32)
+		{
+			u32 *vptr, *dst;
+
+			vptr = (u32 *)video_frame_addr(draw_frame, sx, sy);
+
+			switch (p.bpp * p.bit_depth)
+			{
+			case 8:
+				for (y = 0; y < p.height; y++)
+				{
+					src++;
+					dst = &vptr[y * BUF_WIDTH];
+
+					for (x = 0; x < p.width; x++)
+					{
+						u8 color = *src++;
+						u8 r = p.palette[color * 3 + 0];
+						u8 g = p.palette[color * 3 + 1];
+						u8 b = p.palette[color * 3 + 2];
+
+						if (bgimage_blightness != 100)
+							adjust_blightness(&r, &g, &b);
+
+						dst[x] = MAKECOL15(r, g, b);
+					}
+				}
+				break;
+
+			case 24:
+				for (y = 0; y < p.height; y++)
+				{
+					src++;
+					dst = &vptr[y * BUF_WIDTH];
+
+					for (x = 0; x < p.width; x++)
+					{
+						u8 r = *src++;
+						u8 g = *src++;
+						u8 b = *src++;
+
+						if (bgimage_blightness != 100)
+							adjust_blightness(&r, &g, &b);
+
+						dst[x] = MAKECOL32(r, g, b);
+					}
+				}
+				break;
+
+			default:
+				ui_popup(TEXT(xBIT_COLOR_PNG_IMAGE_NOT_SUPPORTED), p.bpp * p.bit_depth);
+				break;
+			}
+		}
+		else
+#endif
+		{
+			u16 *vptr, *dst;
+
+			vptr = (u16 *)video_frame_addr(draw_frame, sx, sy);
+
+			switch (p.bpp * p.bit_depth)
+			{
+			case 8:
+				for (y = 0; y < p.height; y++)
+				{
+					src++;
+					dst = &vptr[y * BUF_WIDTH];
+
+					for (x = 0; x < p.width; x++)
+					{
+						u8 color = *src++;
+						u8 r = p.palette[color * 3 + 0];
+						u8 g = p.palette[color * 3 + 1];
+						u8 b = p.palette[color * 3 + 2];
+
+						dst[x] = MAKECOL15(r, g, b);
+					}
+				}
+				break;
+
+			case 24:
+				for (y = 0; y < p.height; y++)
+				{
+					src++;
+					dst = &vptr[y * BUF_WIDTH];
+
+					for (x = 0; x < p.width; x++)
+					{
+						u8 r = *src++;
+						u8 g = *src++;
+						u8 b = *src++;
+
+						dst[x] = MAKECOL32(r, g, b);
+					}
+				}
+				break;
+
+			default:
+				ui_popup(TEXT(xBIT_COLOR_PNG_IMAGE_NOT_SUPPORTED), p.bpp * p.bit_depth);
+				break;
+			}
+		}
+	}
+
+	if (p.palette) free(p.palette);
+	if (p.image) png_free(p.image);
+
+	fclose(fp);
+
+	png_mem_exit();
+
+	return res;
+}
+
+#endif
+
+
+/********************************************************************************
+
+  PNG write functions
 
 ********************************************************************************/
 
@@ -122,13 +755,11 @@ static int png_add_text(const char *keyword, const char *text)
 {
 	struct png_text *pt;
 
-	pt = malloc(sizeof(struct png_text));
-	if (pt == 0)
+	if ((pt = malloc(sizeof(struct png_text))) == NULL)
 		return 0;
 
 	pt->length = strlen(keyword) + strlen(text) + 1;
-	pt->data = malloc(pt->length + 1);
-	if (pt->data == 0)
+	if ((pt->data = malloc(pt->length + 1)) == NULL)
 		return 0;
 
 	strcpy(pt->data, keyword);
@@ -139,7 +770,7 @@ static int png_add_text(const char *keyword, const char *text)
 	return 1;
 }
 
-static int write_chunk(FILE *fp, u32 chunk_type, u8 *chunk_data, u32 chunk_length)
+static int write_chunk(SceUID fd, u32 chunk_type, u8 *chunk_data, u32 chunk_length)
 {
 	u32 crc;
 	u8 v[4];
@@ -147,26 +778,26 @@ static int write_chunk(FILE *fp, u32 chunk_type, u8 *chunk_data, u32 chunk_lengt
 
 	/* write length */
 	convert_to_network_order(chunk_length, v);
-	written = fwrite(v, 1, 4, fp);
+	written = sceIoWrite(fd, v, 4);
 
 	/* write type */
 	convert_to_network_order(chunk_type, v);
-	written += fwrite(v, 1, 4, fp);
+	written += sceIoWrite(fd, v, 4);
 
 	/* calculate crc */
 	crc = crc32(0, v, 4);
 	if (chunk_length > 0)
 	{
 		/* write data */
-		written += fwrite(chunk_data, 1, chunk_length, fp);
+		written += sceIoWrite(fd, chunk_data, chunk_length);
 		crc = crc32(crc, chunk_data, chunk_length);
 	}
 	convert_to_network_order(crc, v);
 
 	/* write crc */
-	written += fwrite(v, 1, 4, fp);
+	written += sceIoWrite(fd, v, 4);
 
-	if (written != 3*4+chunk_length)
+	if (written != 3 * 4 + chunk_length)
 	{
 		errormsg(1);
 		return 0;
@@ -174,10 +805,10 @@ static int write_chunk(FILE *fp, u32 chunk_type, u8 *chunk_data, u32 chunk_lengt
 	return 1;
 }
 
-static int png_write_sig(FILE *fp)
+static int png_write_sig(SceUID fd)
 {
 	/* PNG Signature */
-	if (fwrite(PNG_Signature, 1, 8, fp) != 8)
+	if (sceIoWrite(fd, PNG_Signature, 8) != 8)
 	{
 		errormsg(1);
 		return 0;
@@ -185,7 +816,7 @@ static int png_write_sig(FILE *fp)
 	return 1;
 }
 
-static int png_write_datastream(FILE *fp, struct png_info *p)
+static int png_write_datastream(SceUID fd, struct png_info *p)
 {
 	u8 ihdr[13];
 	struct png_text *pt;
@@ -193,29 +824,24 @@ static int png_write_datastream(FILE *fp, struct png_info *p)
 	/* IHDR */
 	convert_to_network_order(p->width, ihdr);
 	convert_to_network_order(p->height, ihdr + 4);
-	*(ihdr +  8) = p->bit_depth;
-	*(ihdr +  9) = p->color_type;
-	*(ihdr + 10) = p->compression_method;
-	*(ihdr + 11) = p->filter_method;
-	*(ihdr + 12) = p->interlace_method;
+	*(ihdr +  8) = 8;	// bit depth;
+	*(ihdr +  9) = 2;	// color type
+	*(ihdr + 10) = 0;	// compression method;
+	*(ihdr + 11) = 0;	// fliter
+	*(ihdr + 12) = 0;	// interlace
 
-	if (write_chunk(fp, PNG_CN_IHDR, ihdr, 13) == 0)
+	if (write_chunk(fd, PNG_CN_IHDR, ihdr, 13) == 0)
 		return 0;
 
-	/* PLTE */
-	if (p->num_palette > 0)
-		if (write_chunk(fp, PNG_CN_PLTE, p->palette, p->num_palette*3) == 0)
-			return 0;
-
 	/* IDAT */
-	if (write_chunk(fp, PNG_CN_IDAT, p->zimage, p->zlength) == 0)
+	if (write_chunk(fd, PNG_CN_IDAT, p->zimage, p->zlength) == 0)
 		return 0;
 
 	/* tEXt */
 	while (png_text_list)
 	{
 		pt = png_text_list;
-		if (write_chunk(fp, PNG_CN_tEXt, (u8 *)pt->data, pt->length) == 0)
+		if (write_chunk(fd, PNG_CN_tEXt, (u8 *)pt->data, pt->length) == 0)
 			return 0;
 		free(pt->data);
 
@@ -224,176 +850,152 @@ static int png_write_datastream(FILE *fp, struct png_info *p)
 	}
 
 	/* IEND */
-	if (write_chunk(fp, PNG_CN_IEND, NULL, 0) == 0)
+	if (write_chunk(fd, PNG_CN_IEND, NULL, 0) == 0)
 		return 0;
 
-	return 1;
-}
-
-static int png_filter(struct png_info *p)
-{
-	u32 i;
-	u8 *src, *dst;
-
-	if ((p->fimage = (u8 *)malloc(p->height * (p->rowbytes + 1))) == NULL)
-	{
-		errormsg(0);
-		return 0;
-	}
-
-	dst = p->fimage;
-	src = p->image;
-
-	for (i = 0; i < p->height; i++)
-	{
-		*dst++ = 0; /* No filter */
-		memcpy(dst, src, p->rowbytes);
-		src += p->rowbytes;
-		dst += p->rowbytes;
-	}
 	return 1;
 }
 
 static int png_deflate_image(struct png_info *p)
 {
 	unsigned long zbuff_size;
+	z_stream stream;
 
 	zbuff_size = (p->height * (p->rowbytes + 1)) * 1.1 + 12;
 
-	if ((p->zimage = (u8 *)malloc(zbuff_size)) == NULL)
+	if ((p->zimage = (u8 *)png_alloc(zbuff_size)) == NULL)
 	{
 		errormsg(0);
 		return 0;
 	}
 
-	if (compress(p->zimage, &zbuff_size, p->fimage, p->height * (p->rowbytes + 1)) != Z_OK)
+	stream.next_in   = (Bytef*)p->image;
+	stream.avail_in  = p->height * p->rowbytes;
+	stream.next_out  = p->zimage;
+	stream.avail_out = (uInt)&zbuff_size;
+	stream.zalloc    = (alloc_func)png_zcalloc;
+	stream.zfree     = (free_func)png_zcfree;
+	stream.opaque    = (voidpf)0;
+
+	if (deflateInit(&stream, Z_DEFAULT_COMPRESSION) == Z_OK)
 	{
-		errormsg(1);
-		return 0;
-	}
-	p->zlength = zbuff_size;
-
-	return 1;
-}
-
-#if 0
-static int png_pack_buffer(struct png_info *p)
-{
-	u8 *outp, *inp;
-	int i,j,k;
-
-	outp = inp = p->image;
-
-	if (p->bit_depth < 8)
-	{
-		for (i = 0; i < p->height; i++)
+		if (deflate(&stream, Z_FINISH) == Z_STREAM_END)
 		{
-			for (j=0; j<p->width/(8/p->bit_depth); j++)
-			{
-				for (k=8/p->bit_depth-1; k>=0; k--)
-					*outp |= *inp++ << k * p->bit_depth;
-				outp++;
-				*outp = 0;
-			}
-			if (p->width % (8/p->bit_depth))
-			{
-				for (k=p->width%(8/p->bit_depth)-1; k>=0; k--)
-					*outp |= *inp++ << k * p->bit_depth;
-				outp++;
-				*outp = 0;
-			}
+			deflateEnd(&stream);
+			p->zlength = stream.total_out;
+			return 1;
 		}
+		deflateEnd(&stream);
 	}
-	return 1;
-}
-#endif
 
-static int png_create_datastream(FILE *fp)
+	errormsg(1);
+	return 0;
+}
+
+static int png_create_datastream(SceUID fd)
 {
-	u32 i, j;
-	u8 *ip;
+	u32 x, y;
+	u8 *dst;
 	struct png_info p;
-	u16 *vptr, *src;
 
 	memset(&p, 0, sizeof (struct png_info));
-	p.xscale = p.yscale = p.source_gamma = 0.0;
-	p.palette = p.trans = p.image = p.zimage = p.fimage = NULL;
-	p.width = SCR_WIDTH;
-	p.height = SCR_HEIGHT;
-	p.color_type = 2;
+	p.width    = SCR_WIDTH;
+	p.height   = SCR_HEIGHT;
 	p.rowbytes = p.width * 3;
-	p.bit_depth = 8;
 
-	if ((p.image = (u8 *)malloc(p.height * p.rowbytes))==NULL)
+	if ((p.image = (u8 *)png_alloc(p.height * (p.rowbytes + 1))) == NULL)
 	{
 		errormsg(0);
 		return 0;
 	}
 
-	ip = p.image;
+	dst = p.image;
 
-	vptr = video_frame_addr(show_frame, 0, 0);
-
-	for (i = 0; i < p.height; i++)
+#if PSP_VIDEO_32BPP
+#if 0
+	if (video_mode == 32)
 	{
-		src = &vptr[i * BUF_WIDTH];
+		u32 *vptr, *src;
 
-		for (j = 0; j < p.width; j++)
+		vptr = (u32 *)video_frame_addr(show_frame, 0, 0);
+
+		for (y = 0; y < p.height; y++)
 		{
-			u16 color = src[j];
-			*ip++ = (u8)GETR15(color);
-			*ip++ = (u8)GETG15(color);
-			*ip++ = (u8)GETB15(color);
+			src = &vptr[y * BUF_WIDTH];
+
+			*dst++ = 0;
+			for (x = 0; x < p.width; x++)
+			{
+				u32 color = src[x];
+				*dst++ = (u8)GETR32(color);
+				*dst++ = (u8)GETG32(color);
+				*dst++ = (u8)GETB32(color);
+			}
 		}
 	}
+#endif
+#endif
+	{
+		u16 *vptr, *src;
 
-	if (png_filter(&p) == 0)
-		return 0;
+		vptr = (u16 *)video_frame_addr(show_frame, 0, 0);
+
+		for (y = 0; y < p.height; y++)
+		{
+			src = &vptr[y * BUF_WIDTH];
+
+			*dst++ = 0;
+			for (x = 0; x < p.width; x++)
+			{
+				u16 color = src[x];
+				*dst++ = (u8)GETR15(color);
+				*dst++ = (u8)GETG15(color);
+				*dst++ = (u8)GETB15(color);
+			}
+		}
+	}
 
 	if (png_deflate_image(&p) == 0)
 		return 0;
 
-	if (png_write_datastream(fp, &p) == 0)
+	if (png_write_datastream(fd, &p) == 0)
 		return 0;
 
-	if (p.palette) free(p.palette);
-	if (p.image) free(p.image);
-	if (p.zimage) free(p.zimage);
-	if (p.fimage) free(p.fimage);
+	if (p.image)  png_free(p.image);
+	if (p.zimage) png_free(p.zimage);
+
 	return 1;
 }
 
 
-/********************************************************************************
-
-  Interface for PSP
-
-********************************************************************************/
-
 /*--------------------------------------------------------
-	Save PNG
- -------------------------------------------------------*/
+	PNG•Û‘¶
+--------------------------------------------------------*/
 
 int save_png(const char *path)
 {
-	FILE *fp;
-	int res;
+	SceUID fd;
+	int res = 0;
 
-	if ((fp = fopen(path, "wb")) == NULL)
-		return 0;
+	png_mem_init(0);
 
-	if ((res = png_add_text("Software", APPNAME_STR " " VERSION_STR)))
+	if ((fd = sceIoOpen(path, PSP_O_WRONLY|PSP_O_CREAT, 0777)) >= 0)
 	{
-		if ((res = png_add_text("System", "PSP")))
+		if ((res = png_add_text("Software", APPNAME_STR " " VERSION_STR)))
 		{
-			if ((res = png_write_sig(fp)))
+			if ((res = png_add_text("System", "PSP")))
 			{
-				res = png_create_datastream(fp);
+				if ((res = png_write_sig(fd)))
+				{
+					res = png_create_datastream(fd);
+				}
 			}
 		}
+
+		sceIoClose(fd);
 	}
 
-	fclose(fp);
+	png_mem_exit();
 
 	return res;
 }
