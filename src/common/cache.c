@@ -12,8 +12,7 @@
 
 #define MIN_CACHE_SIZE		0x40		// â∫å¿  4MB
 #ifdef PSP_SLIM
-//#define MAX_CACHE_SIZE		0x200		// è„å¿ 32MB
-#define MAX_CACHE_SIZE		0x1E0		// è„å¿ 32MB		//AHMAN
+#define MAX_CACHE_SIZE		0x200		// è„å¿ 32MB
 #else
 #define MAX_CACHE_SIZE		0x140		// è„å¿ 20MB
 #endif

@@ -13,14 +13,14 @@ BUILD_CPS2PSP = 1
 #BUILD_MVSPSP = 1
 #BUILD_NCDZPSP = 1
 
-PSP_SLIM = 1
-#KERNEL_MODE = 1
+#PSP_SLIM = 1
+KERNEL_MODE = 1
 SAVE_STATE = 1
-ADHOC = 1
+#ADHOC = 1
 COMMAND_LIST = 1
 #JAPANESE_UI = 1
 #UI_32BPP = 1
-RELEASE = 1
+#RELEASE = 1
 
 VERSION_MAJOR = 2
 VERSION_MINOR = 2
@@ -62,7 +62,7 @@ TARGET = NCDZPSP
 endif
 
 ifdef ADHOC
-#KERNEL_MODE = 1
+KERNEL_MODE = 1
 endif
 
 PBPNAME_STR = $(TARGET)
@@ -78,13 +78,13 @@ EXTRA_TARGETS = maketree EBOOT.PBP delelf
 # Utilities
 #------------------------------------------------------------------------------
 
-#ifeq ($(PSPDEV),)
+ifeq ($(PSPDEV),)
 MD = -mkdir
 RM = -rm
-#else
-#MD = -mkdir.exe
-#RM = -rm.exe
-#endif
+else
+MD = -mkdir.exe
+RM = -rm.exe
+endif
 
 
 #------------------------------------------------------------------------------
@@ -205,7 +205,7 @@ CFLAGS = \
 	-Wwrite-strings \
 	-Wmissing-prototypes \
 	-Wsign-compare \
-#	-Werror
+	-Werror
 
 ifdef ADHOC
 CFLAGS += -G0 -O2

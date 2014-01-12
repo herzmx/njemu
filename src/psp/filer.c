@@ -956,7 +956,7 @@ void file_browser(void)
 	getDir(curr_dir);
 
 #ifdef PSP_SLIM
-	if (sceKernelDevkitVersion() < 0x03060010 || kuKernelGetModel() != PSP_MODEL_SLIM_AND_LITE)	//AHMAN
+	if (sceKernelDevkitVersion() < 0x03070110 || kuKernelGetModel() != PSP_MODEL_SLIM_AND_LITE)
 	{
 #if PSP_VIDEO_32BPP
 		load_background(WP_LOGO);

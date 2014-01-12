@@ -235,11 +235,6 @@ int main(int argc, char *argv[])
 
 	set_cpu_clock(PSPCLOCK_222);
 
-        // AHMAN
-#ifdef ADHOC
-        pspSdkLoadAdhocModules();
-#endif
-
 	pad_init();
 	video_set_mode(32);
 	video_init();

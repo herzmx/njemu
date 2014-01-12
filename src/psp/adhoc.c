@@ -14,9 +14,6 @@
 #include <pspnet_adhocctl.h>
 #include <pspnet_adhocmatching.h>
 #include <pspwlan.h>
-#ifndef KERNEL_MODE
-#include "psputility_netmodules.h"              //AHMAN
-#endif
 
 #define NUM_ENTRIES			32
 
@@ -282,8 +279,6 @@ static void matchingCallback(int unk1, int event, char *mac2, int optLen, char *
 
 int pspSdkLoadAdhocModules(void)
 {
-// AHMAN
-#ifdef KERNEL_MODE
 	int modID;
 
 	modID = pspSdkLoadStartModule("flash0:/kd/ifhandle.prx", PSP_MEMORY_PARTITION_KERNEL);
@@ -324,10 +319,6 @@ int pspSdkLoadAdhocModules(void)
 
 	sceKernelDcacheWritebackAll();
 	sceKernelIcacheInvalidateAll();
-#else
-        sceUtilityLoadNetModule(PSP_NET_MODULE_COMMON);         // AHMAN
-        sceUtilityLoadNetModule(PSP_NET_MODULE_ADHOC);          // AHMAN
-#endif
 
 	return 0;
 }
@@ -363,8 +354,7 @@ int adhocInit(const char *matchingData)
 {
 	struct productStruct product;
 	int error = 0, state = 0;
-	unsigned char mac[20];
-	char buf[256];
+	char mac[20], buf[256];
 
 	video_set_mode(32);
 
@@ -534,8 +524,7 @@ static void adhocDisconnect(void)
 int adhocReconnect(char *ssid)
 {
 	int error = 0, state = 1;
-	unsigned char mac[20];
-	char buf[256];
+	char mac[20], buf[256];
 
 	adhoc_init_progress(6, TEXT(DISCONNECTING));
 
@@ -638,7 +627,7 @@ int adhocSelect(void)
 	int currentState = PSP_LISTING;
 	int prev_max = 0;
 	int update = 1;
-	unsigned char mac[16];		//AHMAN
+	char mac[16];
 	char name[64];
 	char temp[64];
 	char ssid[10];
