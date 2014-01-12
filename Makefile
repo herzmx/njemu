@@ -23,8 +23,8 @@ RELEASE = 1
 #------------------------------------------------------------------------------
 
 VERSION_MAJOR = 1
-VERSION_MINOR = 1
-VERSION_BUILD = 3
+VERSION_MINOR = 2
+VERSION_BUILD = 1
 
 ifdef BUILD_CPS1PSP
 BUILD_CPS2PSP=

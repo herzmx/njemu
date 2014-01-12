@@ -84,10 +84,7 @@ static SPRITE *object_free_head;
 
 static u8  *gfx_object;
 static u16 *tex_object;
-static s16 ALIGN_DATA object_x[OBJECT_MAX_SPRITES];
-static s16 ALIGN_DATA object_y[OBJECT_MAX_SPRITES];
-static u16 ALIGN_DATA object_idx[OBJECT_MAX_SPRITES];
-static u16 ALIGN_DATA object_atr[OBJECT_MAX_SPRITES];
+static struct Vertex ALIGN_DATA vertices_object[OBJECT_MAX_SPRITES * 2];
 static u16 object_num;
 static u16 object_texture_num;
 static u16 object_max;
@@ -104,7 +101,7 @@ static u8 object_palette_is_dirty;
 #define SCROLL1_HASH_SIZE		0x200
 #define SCROLL1_HASH_MASK		0x1ff
 #define SCROLL1_TEXTURE_SIZE	((BUF_WIDTH/8)*(SCROLL1_MAX_HEIGHT/8))
-#define SCROLL1_MAX_SPRITES		0x2000
+#define SCROLL1_MAX_SPRITES		((384/8 + 2) * (224/8 + 2))
 
 static SPRITE *scroll1_head[SCROLL1_HASH_SIZE];
 static SPRITE scroll1_data[SCROLL1_TEXTURE_SIZE];
@@ -112,10 +109,7 @@ static SPRITE *scroll1_free_head;
 
 static u8  *gfx_scroll1;
 static u16 *tex_scroll1;
-static s16 ALIGN_DATA scroll1_x[SCROLL1_MAX_SPRITES];
-static s16 ALIGN_DATA scroll1_y[SCROLL1_MAX_SPRITES];
-static u16 ALIGN_DATA scroll1_idx[SCROLL1_MAX_SPRITES];
-static u16 ALIGN_DATA scroll1_atr[SCROLL1_MAX_SPRITES];
+static struct Vertex ALIGN_DATA vertices_scroll1[SCROLL1_MAX_SPRITES * 2];
 static u16 scroll1_num;
 static u16 scroll1_texture_num;
 static u16 scroll1_max;
@@ -132,7 +126,7 @@ static u8 scroll1_palette_is_dirty;
 #define SCROLL2_HASH_SIZE		0x100
 #define SCROLL2_HASH_MASK		0xff
 #define SCROLL2_TEXTURE_SIZE	((BUF_WIDTH/16)*(SCROLL2_MAX_HEIGHT/16))
-#define SCROLL2_MAX_SPRITES		0x1000
+#define SCROLL2_MAX_SPRITES		((384/16 + 2) * (224/16 + 2))
 
 static SPRITE *scroll2_head[SCROLL2_HASH_SIZE];
 static SPRITE scroll2_data[SCROLL2_TEXTURE_SIZE];
@@ -140,10 +134,7 @@ static SPRITE *scroll2_free_head;
 
 static u8  *gfx_scroll2;
 static u16 *tex_scroll2;
-static s16 ALIGN_DATA scroll2_x[SCROLL2_MAX_SPRITES];
-static s16 ALIGN_DATA scroll2_y[SCROLL2_MAX_SPRITES];
-static u16 ALIGN_DATA scroll2_idx[SCROLL2_MAX_SPRITES];
-static u16 ALIGN_DATA scroll2_atr[SCROLL2_MAX_SPRITES];
+static struct Vertex ALIGN_DATA vertices_scroll2[SCROLL2_MAX_SPRITES * 2];
 static u16 scroll2_num;
 static u16 scroll2_texture_num;
 static u16 scroll2_max;
@@ -160,7 +151,7 @@ static u8 scroll2_palette_is_dirty;
 #define SCROLL3_HASH_SIZE		0x80
 #define SCROLL3_HASH_MASK		0x7f
 #define SCROLL3_TEXTURE_SIZE	((BUF_WIDTH/32)*(SCROLL3_MAX_HEIGHT/32))
-#define SCROLL3_MAX_SPRITES		0x200
+#define SCROLL3_MAX_SPRITES		((384/32 + 2) * (224/32 + 2))
 
 static SPRITE *scroll3_head[SCROLL3_HASH_SIZE];
 static SPRITE scroll3_data[SCROLL3_TEXTURE_SIZE];
@@ -168,10 +159,7 @@ static SPRITE *scroll3_free_head;
 
 static u8  *gfx_scroll3;
 static u16 *tex_scroll3;
-static s16 ALIGN_DATA scroll3_x[SCROLL3_MAX_SPRITES];
-static s16 ALIGN_DATA scroll3_y[SCROLL3_MAX_SPRITES];
-static u16 ALIGN_DATA scroll3_idx[SCROLL3_MAX_SPRITES];
-static u16 ALIGN_DATA scroll3_atr[SCROLL3_MAX_SPRITES];
+static struct Vertex ALIGN_DATA vertices_scroll3[SCROLL3_MAX_SPRITES * 2];
 static u16 scroll3_num;
 static u16 scroll3_texture_num;
 static u16 scroll3_max;
@@ -188,7 +176,7 @@ static u8 scroll3_palette_is_dirty;
 #define SCROLLH_HASH_SIZE		0x200
 #define SCROLLH_HASH_MASK		0x1ff
 #define SCROLLH_TEXTURE_SIZE	((BUF_WIDTH/8)*(SCROLLH_MAX_HEIGHT/8))
-#define SCROLLH_MAX_SPRITES		0x2000
+#define SCROLLH_MAX_SPRITES		SCROLL1_MAX_SPRITES
 
 #define SCROLL1H_TEXTURE_SIZE	SCROLLH_TEXTURE_SIZE
 #define SCROLL1H_MAX_SPRITES	SCROLL1_MAX_SPRITES
@@ -202,10 +190,7 @@ static SPRITE scrollh_data[SCROLLH_TEXTURE_SIZE];
 static SPRITE *scrollh_free_head;
 
 static u16 *tex_scrollh;
-static s16 ALIGN_DATA scrollh_x[SCROLLH_MAX_SPRITES];
-static s16 ALIGN_DATA scrollh_y[SCROLLH_MAX_SPRITES];
-static u16 ALIGN_DATA scrollh_idx[SCROLLH_MAX_SPRITES];
-static u16 ALIGN_DATA scrollh_atr[SCROLLH_MAX_SPRITES];
+static struct Vertex ALIGN_DATA vertices_scrollh[SCROLLH_MAX_SPRITES * 2];
 static u16 scrollh_num;
 static u16 scrollh_texture_num;
 static u16 scroll1h_max;
@@ -1400,6 +1385,7 @@ void blit_draw_object(int x, int y, u32 code, u32 attr)
 	if ((x > 48 && x < 448) && (y > 0 && y < 248))
 	{
 		int idx;
+		struct Vertex *vertices;
 		u32 key = MAKE_KEY(code, attr);
 
 		if ((idx = object_get_sprite(key)) < 0)
@@ -1444,11 +1430,22 @@ void blit_draw_object(int x, int y, u32 code, u32 attr)
 			}
 		}
 
-		object_idx[object_num] = idx;
-		object_x[object_num]   = x;
-		object_y[object_num]   = y;
-		object_atr[object_num] = attr;
-		object_num++;
+		vertices = &vertices_object[object_num];
+
+		vertices[0].u = vertices[1].u = (idx & 31) << 4;
+		vertices[0].v = vertices[1].v = (idx >> 5) << 4;
+
+		attr ^= 0x60;
+		vertices[(attr & 0x20) >> 5].u += 16;
+		vertices[(attr & 0x40) >> 6].v += 16;
+
+		vertices[0].x = x;
+		vertices[0].y = y;
+
+		vertices[1].x = x + 16;
+		vertices[1].y = y + 16;
+
+		object_num += 2;
 	}
 }
 
@@ -1459,62 +1456,19 @@ void blit_draw_object(int x, int y, u32 code, u32 attr)
 
 void blit_finish_object(void)
 {
-	int i, u, v;
-	struct Vertex *vertices, *vertices_tmp;
+	struct Vertex *vertices;
 
 	if (!object_num) return;
 
 	sceGuStart(GU_DIRECT, gulist);
 
+	vertices = (struct Vertex *)sceGuGetMemory(object_num * sizeof(struct Vertex));
+	memcpy(vertices, vertices_object, object_num * sizeof(struct Vertex));
 	sceGuDrawBufferList(GU_PSM_5551, work_frame, BUF_WIDTH);
-	sceGuScissor(cps_src_clip.left, cps_src_clip.top, cps_src_clip.right, cps_src_clip.bottom);
+	sceGuScissor(64, 16, 448, 240);
 	sceGuTexImage(0, 512, 512, BUF_WIDTH, tex_object);
 
-	vertices = (struct Vertex *)sceGuGetMemory(object_num * 2 * sizeof(struct Vertex));
-//	if (vertices)
-	{
-		vertices_tmp = vertices;
-
-		for (i = object_num - 1; i >= 0; i--)
-		{
-			u = (object_idx[i] & 31) << 4;
-			v = (object_idx[i] >> 5) << 4;
-
-			if (object_atr[i] & 0x20)
-			{
-				// flipx
-				vertices_tmp[0].u = u + 16;
-				vertices_tmp[1].u = u;
-			}
-			else
-			{
-				vertices_tmp[0].u = u;
-				vertices_tmp[1].u = u + 16;
-			}
-
-			if (object_atr[i] & 0x40)
-			{
-				// flipy
-				vertices_tmp[0].v = v + 16;
-				vertices_tmp[1].v = v;
-			}
-			else
-			{
-				vertices_tmp[0].v = v;
-				vertices_tmp[1].v = v + 16;
-			}
-
-			vertices_tmp[0].x = object_x[i];
-			vertices_tmp[0].y = object_y[i];
-
-			vertices_tmp[1].x = object_x[i] + 16;
-			vertices_tmp[1].y = object_y[i] + 16;
-
-			vertices_tmp += 2;
-		}
-
-		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, 2 * object_num, 0, vertices);
-	}
+	sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, object_num, 0, vertices);
 
 	sceGuFinish();
 	sceGuSync(0, 0);
@@ -1554,6 +1508,7 @@ void blit_draw_scroll1(int x, int y, u32 code, u32 attr, int gfxset)
 	if ((x > 56 && x < 448) && (y > 8 && y < 248))
 	{
 		int idx;
+		struct Vertex *vertices;
 		u32 key = MAKE_KEY(code, attr);
 
 		if ((idx = scroll1_get_sprite(key)) < 0)
@@ -1590,11 +1545,22 @@ void blit_draw_scroll1(int x, int y, u32 code, u32 attr, int gfxset)
 			}
 		}
 
-		scroll1_idx[scroll1_num] = idx;
-		scroll1_x[scroll1_num]   = x;
-		scroll1_y[scroll1_num]   = y;
-		scroll1_atr[scroll1_num] = attr;
-		scroll1_num++;
+		vertices = &vertices_scroll1[scroll1_num];
+
+		vertices[0].u = vertices[1].u = (idx & 63) << 3;
+		vertices[0].v = vertices[1].v = (idx >> 6) << 3;
+
+		attr ^= 0x60;
+		vertices[(attr & 0x20) >> 5].u += 8;
+		vertices[(attr & 0x40) >> 6].v += 8;
+
+		vertices[0].x = x;
+		vertices[0].y = y;
+
+		vertices[1].x = x + 8;
+		vertices[1].y = y + 8;
+
+		scroll1_num += 2;
 	}
 }
 
@@ -1605,62 +1571,20 @@ void blit_draw_scroll1(int x, int y, u32 code, u32 attr, int gfxset)
 
 void blit_finish_scroll1(void)
 {
-	int i, u, v;
-	struct Vertex *vertices, *vertices_tmp;
+	struct Vertex *vertices;
 
 	if (!scroll1_num) return;
 
 	sceGuStart(GU_DIRECT, gulist);
 
+	vertices = (struct Vertex *)sceGuGetMemory(scroll1_num * sizeof(struct Vertex));
+	memcpy(vertices, vertices_scroll1, scroll1_num * sizeof(struct Vertex));
+
 	sceGuDrawBufferList(GU_PSM_5551, work_frame, BUF_WIDTH);
-	sceGuScissor(cps_src_clip.left, cps_src_clip.top, cps_src_clip.right, cps_src_clip.bottom);
+	sceGuScissor(64, 16, 448, 240);
 	sceGuTexImage(0, 512, 512, BUF_WIDTH, tex_scroll1);
 
-	vertices = (struct Vertex *)sceGuGetMemory(scroll1_num * 2 * sizeof(struct Vertex));
-//	if (vertices)
-	{
-		vertices_tmp = vertices;
-
-		for (i = 0; i < scroll1_num; i++)
-		{
-			u = (scroll1_idx[i] & 63) << 3;
-			v = (scroll1_idx[i] >> 6) << 3;
-
-			if (scroll1_atr[i] & 0x20)
-			{
-				// flipx
-				vertices_tmp[0].u = u + 8;
-				vertices_tmp[1].u = u;
-			}
-			else
-			{
-				vertices_tmp[0].u = u;
-				vertices_tmp[1].u = u + 8;
-			}
-
-			if (scroll1_atr[i] & 0x40)
-			{
-				// flipy
-				vertices_tmp[0].v = v + 8;
-				vertices_tmp[1].v = v;
-			}
-			else
-			{
-				vertices_tmp[0].v = v;
-				vertices_tmp[1].v = v + 8;
-			}
-
-			vertices_tmp[0].x = scroll1_x[i];
-			vertices_tmp[0].y = scroll1_y[i];
-
-			vertices_tmp[1].x = scroll1_x[i] + 8;
-			vertices_tmp[1].y = scroll1_y[i] + 8;
-
-			vertices_tmp += 2;
-		}
-
-		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, 2 * scroll1_num, 0, vertices);
-	}
+	sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, scroll1_num, 0, vertices);
 
 	sceGuFinish();
 	sceGuSync(0, 0);
@@ -1700,6 +1624,7 @@ void blit_draw_scroll1h(int x, int y, u32 code, u32 attr, u16 tpens, int gfxset)
 	if ((x > 56 && x < 448) && (y > 8 && y < 248))
 	{
 		int idx;
+		struct Vertex *vertices;
 		u32 key = MAKE_HIGH_KEY(code, attr);
 
 		if ((idx = scrollh_get_sprite(key)) < 0)
@@ -1746,80 +1671,23 @@ void blit_draw_scroll1h(int x, int y, u32 code, u32 attr, u16 tpens, int gfxset)
 			}
 		}
 
-		scrollh_idx[scrollh_num] = idx;
-		scrollh_x[scrollh_num]   = x;
-		scrollh_y[scrollh_num]   = y;
-		scrollh_atr[scrollh_num] = attr;
-		scrollh_num++;
+		vertices = &vertices_scrollh[scrollh_num];
+
+		vertices[0].u = vertices[1].u = (idx & 63) << 3;
+		vertices[0].v = vertices[1].v = (idx >> 6) << 3;
+
+		attr ^= 0x60;
+		vertices[(attr & 0x20) >> 5].u += 8;
+		vertices[(attr & 0x40) >> 6].v += 8;
+
+		vertices[0].x = x;
+		vertices[0].y = y;
+
+		vertices[1].x = x + 8;
+		vertices[1].y = y + 8;
+
+		scrollh_num += 2;
 	}
-}
-
-
-/*------------------------------------------------------------------------
-	SCROLL1(ハイレイヤー)描画終了
-------------------------------------------------------------------------*/
-
-void blit_finish_scroll1h(void)
-{
-	int i, u, v;
-	struct Vertex *vertices, *vertices_tmp;
-
-	if (!scrollh_num) return;
-
-	sceGuStart(GU_DIRECT, gulist);
-
-	sceGuDrawBufferList(GU_PSM_5551, work_frame, BUF_WIDTH);
-	sceGuScissor(cps_src_clip.left, cps_src_clip.top, cps_src_clip.right, cps_src_clip.bottom);
-	sceGuTexImage(0, 512, 512, BUF_WIDTH, tex_scrollh);
-
-	vertices = (struct Vertex *)sceGuGetMemory(scrollh_num * 2 * sizeof(struct Vertex));
-//	if (vertices)
-	{
-		vertices_tmp = vertices;
-
-		for (i = 0; i < scrollh_num; i++)
-		{
-			u = (scrollh_idx[i] & 63) << 3;
-			v = (scrollh_idx[i] >> 6) << 3;
-
-			if (scrollh_atr[i] & 0x20)
-			{
-				// flipx
-				vertices_tmp[0].u = u + 8;
-				vertices_tmp[1].u = u;
-			}
-			else
-			{
-				vertices_tmp[0].u = u;
-				vertices_tmp[1].u = u + 8;
-			}
-
-			if (scrollh_atr[i] & 0x40)
-			{
-				// flipy
-				vertices_tmp[0].v = v + 8;
-				vertices_tmp[1].v = v;
-			}
-			else
-			{
-				vertices_tmp[0].v = v;
-				vertices_tmp[1].v = v + 8;
-			}
-
-			vertices_tmp[0].x = scrollh_x[i];
-			vertices_tmp[0].y = scrollh_y[i];
-
-			vertices_tmp[1].x = scrollh_x[i] + 8;
-			vertices_tmp[1].y = scrollh_y[i] + 8;
-
-			vertices_tmp += 2;
-		}
-
-		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, 2 * scrollh_num, 0, vertices);
-	}
-
-	sceGuFinish();
-	sceGuSync(0, 0);
 }
 
 
@@ -1856,6 +1724,7 @@ void blit_draw_scroll2(int x, int y, u32 code, u32 attr)
 	if ((x > 48 && x < 448) && (y > 0 && y < 248))
 	{
 		int idx;
+		struct Vertex *vertices;
 		u32 key = MAKE_KEY(code, attr);
 
 		if ((idx = scroll2_get_sprite(key)) < 0)
@@ -1900,11 +1769,22 @@ void blit_draw_scroll2(int x, int y, u32 code, u32 attr)
 			}
 		}
 
-		scroll2_idx[scroll2_num] = idx;
-		scroll2_x[scroll2_num]   = x;
-		scroll2_y[scroll2_num]   = y;
-		scroll2_atr[scroll2_num] = attr;
-		scroll2_num++;
+		vertices = &vertices_scroll2[scroll2_num];
+
+		vertices[0].u = vertices[1].u = (idx & 31) << 4;
+		vertices[0].v = vertices[1].v = (idx >> 5) << 4;
+
+		attr ^= 0x60;
+		vertices[(attr & 0x20) >> 5].u += 16;
+		vertices[(attr & 0x40) >> 6].v += 16;
+
+		vertices[0].x = x;
+		vertices[0].y = y;
+
+		vertices[1].x = x + 16;
+		vertices[1].y = y + 16;
+
+		scroll2_num += 2;
 	}
 }
 
@@ -1915,62 +1795,23 @@ void blit_draw_scroll2(int x, int y, u32 code, u32 attr)
 
 void blit_finish_scroll2(int min_y, int max_y)
 {
-	int i, u, v;
-	struct Vertex *vertices, *vertices_tmp;
+	struct Vertex *vertices;
 
 	if (!scroll2_num) return;
 
+	if (min_y < 16)  min_y = 16;
+	if (max_y > 240) max_y = 240;
+
 	sceGuStart(GU_DIRECT, gulist);
 
+	vertices = (struct Vertex *)sceGuGetMemory(scroll2_num * sizeof(struct Vertex));
+	memcpy(vertices, vertices_scroll2, scroll2_num * sizeof(struct Vertex));
+
 	sceGuDrawBufferList(GU_PSM_5551, work_frame, BUF_WIDTH);
-	sceGuScissor(cps_src_clip.left, min_y, cps_src_clip.right, max_y);
+	sceGuScissor(64, min_y, 448, max_y);
 	sceGuTexImage(0, 512, 512, BUF_WIDTH, tex_scroll2);
 
-	vertices = (struct Vertex *)sceGuGetMemory(scroll2_num * 2 * sizeof(struct Vertex));
-//	if (vertices)
-	{
-		vertices_tmp = vertices;
-
-		for (i = 0; i < scroll2_num; i++)
-		{
-			u = (scroll2_idx[i] & 31) << 4;
-			v = (scroll2_idx[i] >> 5) << 4;
-
-			if (scroll2_atr[i] & 0x20)
-			{
-				// flipx
-				vertices_tmp[0].u = u + 16;
-				vertices_tmp[1].u = u;
-			}
-			else
-			{
-				vertices_tmp[0].u = u;
-				vertices_tmp[1].u = u + 16;
-			}
-
-			if (scroll2_atr[i] & 0x40)
-			{
-				// flipy
-				vertices_tmp[0].v = v + 16;
-				vertices_tmp[1].v = v;
-			}
-			else
-			{
-				vertices_tmp[0].v = v;
-				vertices_tmp[1].v = v + 16;
-			}
-
-			vertices_tmp[0].x = scroll2_x[i];
-			vertices_tmp[0].y = scroll2_y[i];
-
-			vertices_tmp[1].x = scroll2_x[i] + 16;
-			vertices_tmp[1].y = scroll2_y[i] + 16;
-
-			vertices_tmp += 2;
-		}
-
-		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, 2 * scroll2_num, 0, vertices);
-	}
+	sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, scroll2_num, 0, vertices);
 
 	sceGuFinish();
 	sceGuSync(0, 0);
@@ -2012,6 +1853,7 @@ void blit_draw_scroll2h(int x, int y, u32 code, u32 attr, u16 tpens)
 	if ((x > 48 && x < 448) && (y > 0 && y < 248))
 	{
 		int idx;
+		struct Vertex *vertices;
 		u32 key = MAKE_HIGH_KEY(code, attr);
 
 		if ((idx = scrollh_get_sprite(key)) < 0)
@@ -2066,11 +1908,22 @@ void blit_draw_scroll2h(int x, int y, u32 code, u32 attr, u16 tpens)
 			}
 		}
 
-		scrollh_idx[scrollh_num] = idx;
-		scrollh_x[scrollh_num]   = x;
-		scrollh_y[scrollh_num]   = y;
-		scrollh_atr[scrollh_num] = attr;
-		scrollh_num++;
+		vertices = &vertices_scrollh[scrollh_num];
+
+		vertices[0].u = vertices[1].u = (idx & 31) << 4;
+		vertices[0].v = vertices[1].v = (idx >> 5) << 4;
+
+		attr ^= 0x60;
+		vertices[(attr & 0x20) >> 5].u += 16;
+		vertices[(attr & 0x40) >> 6].v += 16;
+
+		vertices[0].x = x;
+		vertices[0].y = y;
+
+		vertices[1].x = x + 16;
+		vertices[1].y = y + 16;
+
+		scrollh_num += 2;
 	}
 }
 
@@ -2081,65 +1934,28 @@ void blit_draw_scroll2h(int x, int y, u32 code, u32 attr, u16 tpens)
 
 void blit_finish_scroll2h(int min_y, int max_y)
 {
-	int i, u, v;
-	struct Vertex *vertices, *vertices_tmp;
+	struct Vertex *vertices;
 
 	if (!scrollh_num) return;
 
+	if (min_y < 16)  min_y = 16;
+	if (max_y > 240) max_y = 240;
+
 	sceGuStart(GU_DIRECT, gulist);
 
+	vertices = (struct Vertex *)sceGuGetMemory(scrollh_num * sizeof(struct Vertex));
+	memcpy(vertices, vertices_scrollh, scrollh_num * sizeof(struct Vertex));
+
 	sceGuDrawBufferList(GU_PSM_5551, work_frame, BUF_WIDTH);
-	sceGuScissor(cps_src_clip.left, min_y, cps_src_clip.right, max_y);
+	sceGuScissor(64, min_y, 448, max_y);
 	sceGuTexImage(0, 512, 512, BUF_WIDTH, tex_scrollh);
 
-	vertices = (struct Vertex *)sceGuGetMemory(scrollh_num * 2 * sizeof(struct Vertex));
-//	if (vertices)
-	{
-		vertices_tmp = vertices;
-
-		for (i = 0; i < scrollh_num; i++)
-		{
-			u = (scrollh_idx[i] & 31) << 4;
-			v = (scrollh_idx[i] >> 5) << 4;
-
-			if (scrollh_atr[i] & 0x20)
-			{
-				// flipx
-				vertices_tmp[0].u = u + 16;
-				vertices_tmp[1].u = u;
-			}
-			else
-			{
-				vertices_tmp[0].u = u;
-				vertices_tmp[1].u = u + 16;
-			}
-
-			if (scrollh_atr[i] & 0x40)
-			{
-				// flipy
-				vertices_tmp[0].v = v + 16;
-				vertices_tmp[1].v = v;
-			}
-			else
-			{
-				vertices_tmp[0].v = v;
-				vertices_tmp[1].v = v + 16;
-			}
-
-			vertices_tmp[0].x = scrollh_x[i];
-			vertices_tmp[0].y = scrollh_y[i];
-
-			vertices_tmp[1].x = scrollh_x[i] + 16;
-			vertices_tmp[1].y = scrollh_y[i] + 16;
-
-			vertices_tmp += 2;
-		}
-
-		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, 2 * scrollh_num, 0, vertices);
-	}
+	sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, scrollh_num, 0, vertices);
 
 	sceGuFinish();
 	sceGuSync(0, 0);
+
+	scrollh_num = 0;
 }
 
 
@@ -2176,6 +1992,7 @@ void blit_draw_scroll3(int x, int y, u32 code, u32 attr)
 	if ((x > 32 && x < 448) && (y > -16 && y < 248))
 	{
 		int idx;
+		struct Vertex *vertices;
 		u32 key = MAKE_KEY(code, attr);
 
 		if ((idx = scroll3_get_sprite(key)) < 0)
@@ -2238,11 +2055,22 @@ void blit_draw_scroll3(int x, int y, u32 code, u32 attr)
 			}
 		}
 
-		scroll3_idx[scroll3_num] = idx;
-		scroll3_x[scroll3_num]   = x;
-		scroll3_y[scroll3_num]   = y;
-		scroll3_atr[scroll3_num] = attr;
-		scroll3_num++;
+		vertices = &vertices_scroll3[scroll3_num];
+
+		vertices[0].u = vertices[1].u = (idx & 15) << 5;
+		vertices[0].v = vertices[1].v = (idx >> 4) << 5;
+
+		attr ^= 0x60;
+		vertices[(attr & 0x20) >> 5].u += 32;
+		vertices[(attr & 0x40) >> 6].v += 32;
+
+		vertices[0].x = x;
+		vertices[0].y = y;
+
+		vertices[1].x = x + 32;
+		vertices[1].y = y + 32;
+
+		scroll3_num += 2;
 	}
 }
 
@@ -2253,62 +2081,20 @@ void blit_draw_scroll3(int x, int y, u32 code, u32 attr)
 
 void blit_finish_scroll3(void)
 {
-	int i, u, v;
-	struct Vertex *vertices, *vertices_tmp;
+	struct Vertex *vertices;
 
 	if (!scroll3_num) return;
 
 	sceGuStart(GU_DIRECT, gulist);
 
+	vertices = (struct Vertex *)sceGuGetMemory(scroll3_num * sizeof(struct Vertex));
+	memcpy(vertices, vertices_scroll3, scroll3_num * sizeof(struct Vertex));
+
 	sceGuDrawBufferList(GU_PSM_5551, work_frame, BUF_WIDTH);
-	sceGuScissor(cps_src_clip.left, cps_src_clip.top, cps_src_clip.right, cps_src_clip.bottom);
+	sceGuScissor(64, 16, 448, 240);
 	sceGuTexImage(0, 512, 512, BUF_WIDTH, tex_scroll3);
 
-	vertices = (struct Vertex *)sceGuGetMemory(scroll3_num * 2 * sizeof(struct Vertex));
-//	if (vertices)
-	{
-		vertices_tmp = vertices;
-
-		for (i = 0; i < scroll3_num; i++)
-		{
-			u = (scroll3_idx[i] & 15) << 5;
-			v = (scroll3_idx[i] >> 4) << 5;
-
-			if (scroll3_atr[i] & 0x20)
-			{
-				// flipx
-				vertices_tmp[0].u = u + 32;
-				vertices_tmp[1].u = u;
-			}
-			else
-			{
-				vertices_tmp[0].u = u;
-				vertices_tmp[1].u = u + 32;
-			}
-
-			if (scroll3_atr[i] & 0x40)
-			{
-				// flipy
-				vertices_tmp[0].v = v + 32;
-				vertices_tmp[1].v = v;
-			}
-			else
-			{
-				vertices_tmp[0].v = v;
-				vertices_tmp[1].v = v + 32;
-			}
-
-			vertices_tmp[0].x = scroll3_x[i];
-			vertices_tmp[0].y = scroll3_y[i];
-
-			vertices_tmp[1].x = scroll3_x[i] + 32;
-			vertices_tmp[1].y = scroll3_y[i] + 32;
-
-			vertices_tmp += 2;
-		}
-
-		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, 2 * scroll3_num, 0, vertices);
-	}
+	sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, scroll3_num, 0, vertices);
 
 	sceGuFinish();
 	sceGuSync(0, 0);
@@ -2348,6 +2134,7 @@ void blit_draw_scroll3h(int x, int y, u32 code, u32 attr, u16 tpens)
 	if ((x > 32 && x < 448) && (y > -16 && y < 248))
 	{
 		int idx;
+		struct Vertex *vertices;
 		u32 key = MAKE_HIGH_KEY(code, attr);
 
 		if ((idx = scrollh_get_sprite(key)) < 0)
@@ -2420,77 +2207,46 @@ void blit_draw_scroll3h(int x, int y, u32 code, u32 attr, u16 tpens)
 			}
 		}
 
-		scrollh_idx[scrollh_num] = idx;
-		scrollh_x[scrollh_num]   = x;
-		scrollh_y[scrollh_num]   = y;
-		scrollh_atr[scrollh_num] = attr;
-		scrollh_num++;
+		vertices = &vertices_scrollh[scrollh_num];
+
+		vertices[0].u = vertices[1].u = (idx & 15) << 5;
+		vertices[0].v = vertices[1].v = (idx >> 4) << 5;
+
+		attr ^= 0x60;
+		vertices[(attr & 0x20) >> 5].u += 32;
+		vertices[(attr & 0x40) >> 6].v += 32;
+
+		vertices[0].x = x;
+		vertices[0].y = y;
+
+		vertices[1].x = x + 32;
+		vertices[1].y = y + 32;
+
+		scrollh_num += 2;
 	}
 }
 
 
 /*------------------------------------------------------------------------
-	SCROLL3(ハイレイヤー)描画終了
+	SCROLL1,3(ハイレイヤー)描画終了
 ------------------------------------------------------------------------*/
 
-void blit_finish_scroll3h(void)
+void blit_finish_scrollh(void)
 {
-	int i, u, v;
-	struct Vertex *vertices, *vertices_tmp;
+	struct Vertex *vertices;
 
 	if (!scrollh_num) return;
 
 	sceGuStart(GU_DIRECT, gulist);
 
+	vertices = (struct Vertex *)sceGuGetMemory(scrollh_num * sizeof(struct Vertex));
+	memcpy(vertices, vertices_scrollh, scrollh_num * sizeof(struct Vertex));
+
 	sceGuDrawBufferList(GU_PSM_5551, work_frame, BUF_WIDTH);
-	sceGuScissor(cps_src_clip.left, cps_src_clip.top, cps_src_clip.right, cps_src_clip.bottom);
+	sceGuScissor(64, 16, 448, 240);
 	sceGuTexImage(0, 512, 512, BUF_WIDTH, tex_scrollh);
 
-	vertices = (struct Vertex *)sceGuGetMemory(scrollh_num * 2 * sizeof(struct Vertex));
-//	if (vertices)
-	{
-		vertices_tmp = vertices;
-
-		for (i = 0; i < scrollh_num; i++)
-		{
-			u = (scrollh_idx[i] & 15) << 5;
-			v = (scrollh_idx[i] >> 4) << 5;
-
-			if (scrollh_atr[i] & 0x20)
-			{
-				// flipx
-				vertices_tmp[0].u = u + 32;
-				vertices_tmp[1].u = u;
-			}
-			else
-			{
-				vertices_tmp[0].u = u;
-				vertices_tmp[1].u = u + 32;
-			}
-
-			if (scrollh_atr[i] & 0x40)
-			{
-				// flipy
-				vertices_tmp[0].v = v + 32;
-				vertices_tmp[1].v = v;
-			}
-			else
-			{
-				vertices_tmp[0].v = v;
-				vertices_tmp[1].v = v + 32;
-			}
-
-			vertices_tmp[0].x = scrollh_x[i];
-			vertices_tmp[0].y = scrollh_y[i];
-
-			vertices_tmp[1].x = scrollh_x[i] + 32;
-			vertices_tmp[1].y = scrollh_y[i] + 32;
-
-			vertices_tmp += 2;
-		}
-
-		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, 2 * scrollh_num, 0, vertices);
-	}
+	sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, scrollh_num, 0, vertices);
 
 	sceGuFinish();
 	sceGuSync(0, 0);

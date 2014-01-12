@@ -51,7 +51,7 @@
 
 #define SPRITE_MASK_SFA3														\
 {																				\
-	{ MASK_CHECK_MASK | MASK_CHECK_OBJ, 3, 7 },									\
+	{ MASK_COUNT_OBJ, 3, 7 },													\
 	SPRMASK_NONE,																\
 	SPRMASK_NONE,																\
 	SPRMASK_NONE																\

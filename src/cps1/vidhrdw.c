@@ -571,15 +571,15 @@ void cps1_build_palette(void)
 	int x, y, sx, sy, code, attr;												\
 	int nx, ny, nsx, nsy;														\
 	u16 ncode;																	\
-	struct cps1_object_t *object = cps1_object;									\
+	struct cps1_object_t *object = cps1_last_object;							\
 																				\
-	while (object < cps1_last_object)											\
+	while (object >= cps1_object)												\
 	{																			\
 		sx   = object->sx;														\
 		sy   = object->sy;														\
 		code = object->code;													\
 		attr = object->attr;													\
-		object++;																\
+		object--;																\
 																				\
 		switch (cps1_kludge)													\
 		{																		\
@@ -1174,7 +1174,7 @@ static void cps1_render_scroll2_foreground(void)
 	}
 	else
 	{
-		blit_finish_scroll2h(16, 248);
+		blit_finish_scrollh();
 	}
 }
 
@@ -1805,9 +1805,10 @@ static void cps1_render_layer(int layer)
 		cps1_render_object();
 		switch (cps1_high_layer)
 		{
-		case 1: blit_finish_scroll1h(); break;
 		case 2: cps1_render_scroll2_foreground(); break;
-		case 3: blit_finish_scroll3h(); break;
+
+		case 1:
+		case 3: blit_finish_scrollh(); break;
 		}
 		break;
 
@@ -1921,7 +1922,7 @@ void cps1_objram_latch(void)
 
 		base += 4;
 	}
-	cps1_last_object = object;
+	cps1_last_object = --object;
 
 	cps1_build_palette();
 }

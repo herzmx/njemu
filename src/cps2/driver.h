@@ -24,11 +24,12 @@
 #define MASK_CHECK_MASK			0x01
 #define MASK_CHECK_OBJ			0x02
 #define MASK_CHECK_ATTR			0x04
-#define MASK_AFTER_DRAW			0x08
-#define MASK_MSH				0x10
+#define MASK_COUNT_OBJ			0x08
+#define MASK_AFTER_DRAW			0x10
+#define MASK_MSH				0x20
 
-#define OBJECT_FLAG_MASK		0x10
-#define OBJECT_FLAG_ZOBJ		0x20
+#define OBJECT_FLAG_ZOBJ		0x10
+#define OBJECT_FLAG_MASK		0x20
 
 enum
 {

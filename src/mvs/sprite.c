@@ -70,16 +70,14 @@ static u8 palette_is_dirty[256];
 #define FIX_TEXTURE_SIZE	((BUF_WIDTH/8)*(208/8))
 #define FIX_HASH_MASK		0xff
 #define FIX_HASH_SIZE		0x100
-#define FIX_MAX_SPRITES		((320/8)*(256/8))
+#define FIX_MAX_SPRITES		((320/8) * (240/8))
 
 static SPRITE *fix_head[FIX_HASH_SIZE];
 static SPRITE fix_data[FIX_TEXTURE_SIZE];
 static SPRITE *fix_free_head;
 
 static u16 *tex_fix;
-static s16 ALIGN_DATA fix_x[FIX_MAX_SPRITES];
-static s16 ALIGN_DATA fix_y[FIX_MAX_SPRITES];
-static u16 ALIGN_DATA fix_idx[FIX_MAX_SPRITES];
+static struct Vertex ALIGN_DATA vertices_fix[FIX_MAX_SPRITES * 2];
 static u16 fix_num;
 static u16 fix_texture_num;
 static u8 fix_texture_clear;
@@ -98,7 +96,7 @@ static u8 fix_palette_is_dirty;
 #define SPR_TEXTURE_SIZE	((BUF_WIDTH/16)*((512*2)/16))
 #define SPR_HASH_MASK		0x1ff
 #define SPR_HASH_SIZE		0x200
-#define SPR_MAX_SPRITES		0x3000
+#define SPR_MAX_SPRITES		0x2000
 #define SPR_AUTOANIME		(3 << 20)
 #define SPR_AUTOANIME4		(1 << 20)
 #define SPR_AUTOANIME8		(2 << 20)
@@ -109,12 +107,7 @@ static SPRITE *spr_free_head;
 
 static u16 *tex_spr1;
 static u16 *tex_spr2;
-static s16 ALIGN_DATA spr_x[SPR_MAX_SPRITES];
-static s16 ALIGN_DATA spr_y[SPR_MAX_SPRITES];
-static u16 ALIGN_DATA spr_w[SPR_MAX_SPRITES];
-static u16 ALIGN_DATA spr_h[SPR_MAX_SPRITES];
-static u16 ALIGN_DATA spr_idx[SPR_MAX_SPRITES];
-static u16 ALIGN_DATA spr_atr[SPR_MAX_SPRITES];
+static struct Vertex ALIGN_DATA vertices_spr[SPR_MAX_SPRITES * 2];
 static u16 spr_num;
 static u16 spr_texture_num;
 static u8 spr_texture_clear;
@@ -693,9 +686,8 @@ void blit_finish(void)
 void blit_draw_fix(int x, int y, u32 code, u32 attr)
 {
 	int idx;
+	struct Vertex *vertices;
 	u32 key;
-
-	if (fix_num == FIX_MAX_SPRITES) return;
 
 	key = MAKE_FIX_KEY(code, attr);
 
@@ -730,10 +722,20 @@ void blit_draw_fix(int x, int y, u32 code, u32 attr)
 		}
 	}
 
-	fix_idx[fix_num] = idx;
-	fix_x[fix_num] = x;
-	fix_y[fix_num] = y;
-	fix_num++;
+	vertices = &vertices_fix[fix_num];
+
+	vertices[0].u = vertices[1].u = (idx & 63) << 3;
+	vertices[0].v = vertices[1].v = (idx >> 6) << 3;
+
+	vertices[0].x = x;
+	vertices[0].y = y;
+
+	vertices[1].u += 8;
+	vertices[1].v += 8;
+	vertices[1].x = x + 8;
+	vertices[1].y = y + 8;
+
+	fix_num += 2;
 }
 
 
@@ -743,47 +745,23 @@ void blit_draw_fix(int x, int y, u32 code, u32 attr)
 
 void blit_finish_fix(void)
 {
-	int i, u, v;
-	struct Vertex *vertices, *vertices_tmp;
+	struct Vertex *vertices;
 
 	if (!fix_num) return;
 
 	sceGuStart(GU_DIRECT, gulist);
 
+	vertices = (struct Vertex *)sceGuGetMemory(fix_num * sizeof(struct Vertex));
+	memcpy(vertices, vertices_fix, fix_num * sizeof(struct Vertex));
+
 	sceGuDrawBufferList(GU_PSM_5551, work_frame, BUF_WIDTH);
-	sceGuScissor(mvs_src_clip.left, mvs_src_clip.top, mvs_src_clip.right, mvs_src_clip.bottom);
+	sceGuScissor(8, 16, 312, 240);
 	sceGuTexImage(0, 512, 512, BUF_WIDTH, tex_fix);
 
-	vertices = (struct Vertex *)sceGuGetMemory(fix_num * 2 * sizeof(struct Vertex));
-//	if (vertices)
-	{
-		vertices_tmp = vertices;
-
-		for (i = 0; i < fix_num; i++)
-		{
-			u = (fix_idx[i] & 63) << 3;
-			v = (fix_idx[i] >> 6) << 3;
-
-			vertices_tmp[0].u = u;
-			vertices_tmp[0].v = v;
-			vertices_tmp[0].x = fix_x[i];
-			vertices_tmp[0].y = fix_y[i];
-
-			vertices_tmp[1].u = u + 8;
-			vertices_tmp[1].v = v + 8;
-			vertices_tmp[1].x = fix_x[i] + 8;
-			vertices_tmp[1].y = fix_y[i] + 8;
-
-			vertices_tmp += 2;
-		}
-
-		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, 2 * fix_num, 0, vertices);
-	}
+	sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, fix_num, 0, vertices);
 
 	sceGuFinish();
 	sceGuSync(0, 0);
-
-	fix_num = 0;
 }
 
 
@@ -794,6 +772,7 @@ void blit_finish_fix(void)
 void blit_draw_spr(int x, int y, int w, int h, u32 code, u32 attr)
 {
 	int idx;
+	struct Vertex *vertices;
 	u32 key;
 
 	if (spr_disable_this_frame) return;
@@ -809,17 +788,12 @@ void blit_draw_spr(int x, int y, int w, int h, u32 code, u32 attr)
 
 		if (spr_texture_num == SPR_TEXTURE_SIZE - 1)
 		{
-			spr_delete_sprite(1, 0);
+			spr_delete_sprite(0, 0);
 
 			if (spr_texture_num == SPR_TEXTURE_SIZE - 1)
 			{
-				spr_delete_sprite(0, 1);
-
-				if (spr_texture_num == SPR_TEXTURE_SIZE - 1)
-				{
-					spr_disable_this_frame = 1;
-					return;
-				}
+				spr_disable_this_frame = 1;
+				return;
 			}
 		}
 
@@ -853,13 +827,32 @@ void blit_draw_spr(int x, int y, int w, int h, u32 code, u32 attr)
 		}
 	}
 
-	spr_idx[spr_num] = idx;
-	spr_x[spr_num] = x;
-	spr_y[spr_num] = y;
-	spr_w[spr_num] = w;
-	spr_h[spr_num] = h;
-	spr_atr[spr_num] = attr;
-	spr_num++;
+	vertices = &vertices_spr[spr_num];
+
+	vertices[0].u = vertices[1].u = (idx & 31) << 4;
+	vertices[0].v = vertices[1].v = (idx >> 5) << 4;
+
+	if (vertices[0].v & 512)
+	{
+		vertices[0].v = vertices[1].v &= 511;
+		vertices[0].z = vertices[1].z = 1;
+	}
+	else
+	{
+		vertices[0].z = vertices[1].z = 0;
+	}
+
+	attr ^= 0x03;
+	vertices[(attr & 0x01) >> 0].u += 16;
+	vertices[(attr & 0x02) >> 1].v += 16;
+
+	vertices[0].x = x;
+	vertices[0].y = y;
+
+	vertices[1].x = x + w;
+	vertices[1].y = y + h;
+
+	spr_num += 2;
 }
 
 
@@ -869,76 +862,40 @@ void blit_draw_spr(int x, int y, int w, int h, u32 code, u32 attr)
 
 void blit_finish_spr(void)
 {
-	int i, u, v, total_spr = 0, cur_tex = 0;
+	int i, total_spr = 0, cur_tex = 0;
 	struct Vertex *vertices, *vertices_tmp;
 
 	if (!spr_num) return;
 
 	sceGuStart(GU_DIRECT, gulist);
 
+	vertices_tmp = vertices = (struct Vertex *)sceGuGetMemory(spr_num * sizeof(struct Vertex));
+
 	sceGuDrawBufferList(GU_PSM_5551, work_frame, BUF_WIDTH);
-	sceGuScissor(mvs_src_clip.left, clip_min_y, mvs_src_clip.right, clip_max_y);
+	sceGuScissor(8, clip_min_y, 312, clip_max_y);
 	sceGuTexImage(0, 512, 512, BUF_WIDTH, tex_spr1);
 
-	vertices = (struct Vertex *)sceGuGetMemory(spr_num * 2 * sizeof(struct Vertex));
-//	if (vertices)
+	for (i = 0; i < spr_num; i += 2)
 	{
-		vertices_tmp = vertices;
-
-		for (i = 0; i < spr_num; i++)
+		if (vertices_spr[i].z != cur_tex)
 		{
-			v = (spr_idx[i] >> 5) << 4;
+			sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, total_spr, 0, vertices);
 
-			if ((v & 512) != cur_tex)
-			{
-				sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, 2 * total_spr, 0, vertices);
-
-				cur_tex ^= 512;
-				total_spr = 0;
-				vertices = vertices_tmp;
-				sceGuTexImage(0, 512, 512, BUF_WIDTH, (cur_tex ? tex_spr2 : tex_spr1));
-			}
-
-			v &= 511;
-			u = (spr_idx[i] & 31) << 4;
-
-			if (spr_atr[i] & 0x01)
-			{
-				// flipx
-				vertices_tmp[0].u = u + 16;
-				vertices_tmp[1].u = u;
-			}
-			else
-			{
-				vertices_tmp[0].u = u;
-				vertices_tmp[1].u = u + 16;
-			}
-
-			if (spr_atr[i] & 0x02)
-			{
-				// flipy
-				vertices_tmp[0].v = v + 16;
-				vertices_tmp[1].v = v;
-			}
-			else
-			{
-				vertices_tmp[0].v = v;
-				vertices_tmp[1].v = v + 16;
-			}
-
-			vertices_tmp[0].x = spr_x[i];
-			vertices_tmp[0].y = spr_y[i];
-
-			vertices_tmp[1].x = spr_x[i] + spr_w[i];
-			vertices_tmp[1].y = spr_y[i] + spr_h[i];
-
-			vertices_tmp += 2;
-			total_spr++;
+			cur_tex ^= 1;
+			total_spr = 0;
+			vertices = vertices_tmp;
+			sceGuTexImage(0, 512, 512, BUF_WIDTH, (cur_tex ? tex_spr2 : tex_spr1));
 		}
 
-		if (total_spr)
-			sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, 2 * total_spr, 0, vertices);
+		vertices_tmp[0] = vertices_spr[i + 0];
+		vertices_tmp[1] = vertices_spr[i + 1];
+
+		total_spr += 2;
+		vertices_tmp += 2;
 	}
+
+	if (total_spr)
+		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, total_spr, 0, vertices);
 
 	sceGuFinish();
 	sceGuSync(0, 0);

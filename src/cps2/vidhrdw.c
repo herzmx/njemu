@@ -1073,6 +1073,23 @@ static int cps2_check_mask(int mask_number)
 		}
 		return 0;
 	}
+	else if (mask_flag & MASK_COUNT_OBJ)
+	{
+		int count = 0;
+
+		object = cps2_object;
+
+		while (object < cps2_last_object)
+		{
+			if (object->pri == obj_pri)
+			{
+				if (cps_pen_usage[TILE16][object->code] & SPR_MASKED_OBJ)
+					count++;
+			}
+			object++;
+		}
+		return ((count == 24) ? 1 : 0);
+	}
 	else if (mask_flag & MASK_MSH)
 	{
 		object = cps2_object;

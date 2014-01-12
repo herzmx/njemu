@@ -27,7 +27,6 @@ void blit_finish_scroll1(void);
 
 void blit_update_scroll1h(int x, int y, u32 code, u32 attr);
 void blit_draw_scroll1h(int x, int y, u32 code, u32 attr, u16 tpens, int gfxset);
-void blit_finish_scroll1h(void);
 
 void blit_update_scroll2(int x, int y, u32 code, u32 attr);
 void blit_draw_scroll2(int x, int y, u32 code, u32 attr);
@@ -43,6 +42,7 @@ void blit_finish_scroll3(void);
 
 void blit_update_scroll3h(int x, int y, u32 code, u32 attr);
 void blit_draw_scroll3h(int x, int y, u32 code, u32 attr, u16 tpens);
-void blit_finish_scroll3h(void);
+
+void blit_finish_scrollh(void);
 
 #endif /* CPS1_SPRITE_H */

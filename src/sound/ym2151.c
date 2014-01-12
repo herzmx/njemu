@@ -1226,17 +1226,17 @@ static void chan_calc(u32 chan)
 		}
 	}
 
-	env = volume_calc(op + 1);	/* M2 */
+	env = volume_calc(op+1);	/* M2 */
 	if (env < ENV_QUIET)
-		*(op + 1)->connect += op_calc(op + 1, env, m2);
+		*(op+1)->connect += op_calc(op+1, env, m2);
 
-	env = volume_calc(op + 2);	/* C1 */
+	env = volume_calc(op+2);	/* C1 */
 	if (env < ENV_QUIET)
-		*(op + 2)->connect += op_calc(op + 2, env, c1);
+		*(op+2)->connect += op_calc(op+2, env, c1);
 
-	env = volume_calc(op + 3);	/* C2 */
+	env = volume_calc(op+3);	/* C2 */
 	if (env < ENV_QUIET)
-		chanout[chan] += op_calc(op + 3, env, c2);
+		chanout[chan] += op_calc(op+3, env, c2);
 
 	/* M1 */
 	op->mem_value = mem;
@@ -1277,15 +1277,15 @@ static void chan7_calc(void)
 		}
 	}
 
-	env = volume_calc(op + 1);	/* M2 */
+	env = volume_calc(op+1);	/* M2 */
 	if (env < ENV_QUIET)
-		*(op + 1)->connect += op_calc(op + 1, env, m2);
+		*(op+1)->connect += op_calc(op+1, env, m2);
 
-	env = volume_calc(op + 2);	/* C1 */
+	env = volume_calc(op+2);	/* C1 */
 	if (env < ENV_QUIET)
-		*(op + 2)->connect += op_calc(op + 2, env, c1);
+		*(op+2)->connect += op_calc(op+2, env, c1);
 
-	env = volume_calc(op + 3);	/* C2 */
+	env = volume_calc(op+3);	/* C2 */
 	if (ym2151->noise & 0x80)
 	{
 		u32 noiseout;
@@ -1298,7 +1298,7 @@ static void chan7_calc(void)
 	else
 	{
 		if (env < ENV_QUIET)
-			chanout[7] += op_calc(op + 3, env, c2);
+			chanout[7] += op_calc(op+3, env, c2);
 	}
 	/* M1 */
 	op->mem_value = mem;
@@ -1412,7 +1412,7 @@ static void advance(void)
 		/* AM: 255 down to 0 */
 		/* PM: 0 to 127, -127 to 0 (at PMD=127: LFP = 0 to 126, -126 to 0) */
 		a = 255 - i;
-		p = (i < 128) ? p = i : i - 255;
+		p = (i < 128) ? i : i - 255;
 		break;
 
 	case 1:
@@ -1493,25 +1493,25 @@ static void advance(void)
 			if (mod_ind)
 			{
 				u32 kc_channel =	op->kc_i + mod_ind;
-				(op + 0)->phase += ((ym2151->freq[kc_channel + (op + 0)->dt2] + (op + 0)->dt1) * (op + 0)->mul) >> 1;
-				(op + 1)->phase += ((ym2151->freq[kc_channel + (op + 1)->dt2] + (op + 1)->dt1) * (op + 1)->mul) >> 1;
-				(op + 2)->phase += ((ym2151->freq[kc_channel + (op + 2)->dt2] + (op + 2)->dt1) * (op + 2)->mul) >> 1;
-				(op + 3)->phase += ((ym2151->freq[kc_channel + (op + 3)->dt2] + (op + 3)->dt1) * (op + 3)->mul) >> 1;
+				(op+0)->phase += ((ym2151->freq[kc_channel + (op+0)->dt2] + (op+0)->dt1) * (op+0)->mul) >> 1;
+				(op+1)->phase += ((ym2151->freq[kc_channel + (op+1)->dt2] + (op+1)->dt1) * (op+1)->mul) >> 1;
+				(op+2)->phase += ((ym2151->freq[kc_channel + (op+2)->dt2] + (op+2)->dt1) * (op+2)->mul) >> 1;
+				(op+3)->phase += ((ym2151->freq[kc_channel + (op+3)->dt2] + (op+3)->dt1) * (op+3)->mul) >> 1;
 			}
 			else		/* phase modulation from LFO is equal to zero */
 			{
-				(op + 0)->phase += (op + 0)->freq;
-				(op + 1)->phase += (op + 1)->freq;
-				(op + 2)->phase += (op + 2)->freq;
-				(op + 3)->phase += (op + 3)->freq;
+				(op+0)->phase += (op+0)->freq;
+				(op+1)->phase += (op+1)->freq;
+				(op+2)->phase += (op+2)->freq;
+				(op+3)->phase += (op+3)->freq;
 			}
 		}
 		else			/* phase modulation from LFO is disabled */
 		{
-			(op + 0)->phase += (op + 0)->freq;
-			(op + 1)->phase += (op + 1)->freq;
-			(op + 2)->phase += (op + 2)->freq;
-			(op + 3)->phase += (op + 3)->freq;
+			(op+0)->phase += (op+0)->freq;
+			(op+1)->phase += (op+1)->freq;
+			(op+2)->phase += (op+2)->freq;
+			(op+3)->phase += (op+3)->freq;
 		}
 
 		op += 4;
