@@ -11,12 +11,10 @@
 
 #define YM2610_TIMERA			0
 #define YM2610_TIMERB			1
-#define SCANLINE_TIMER			2
-#define VBLANK_TIMER			3
-#define SOUNDLATCH_TIMER		4
-#define SOUNDUPDATE_TIMER		5
-#define CPUSPIN_TIMER			6
-#define MAX_TIMER				7
+#define SOUNDLATCH_TIMER		3
+#define SOUNDUPDATE_TIMER		4
+#define CPUSPIN_TIMER			5
+#define MAX_TIMER				6
 
 #define TIME_NOW				(0)
 #define TIME_NEVER				(0x7fffffff)
@@ -44,9 +42,11 @@ int timer_enable(int which, int enable);
 void timer_adjust(int which, int duration, int param, void (*callback)(int raram));
 void timer_set(int which, int duration, int param, void (*callback)(int param));
 float timer_get_time(void);
-float timer_timeelapsed(void);
 int timer_getscanline(void);
-void timer_update_cpu(void);
+
+#define video_get_vpos()	(timer_getscanline() - (NEOGEO_VBEND + (RASTER_COUNTER_RELOAD - NEOGEO_VBSTART)))
+
+extern void (*timer_update_cpu)(void);
 void timer_update_subcpu(void);
 
 #ifdef SAVE_STATE

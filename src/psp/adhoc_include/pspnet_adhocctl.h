@@ -25,7 +25,7 @@ struct productStruct
 	int unknown;
 	/** The product ID string */
 	unsigned char product[9];
-	unsigned char padding[3];
+	unsigned char filler[3];
 } productStruct;
 
 /**
@@ -37,7 +37,7 @@ struct productStruct
  *
  * @return 0 on success, < 0 on error
  */
-int sceNetAdhocctlInit(unsigned int unk1, int unk2, struct productStruct *product);
+int sceNetAdhocctlInit(SceSize unk1, int unk2, struct productStruct *product);
 
 /**
  * Terminate the Adhoc control library
@@ -53,7 +53,7 @@ int sceNetAdhocctlTerm(void);
  *
  * @return 0 on success, < 0 on error.
  */
-int sceNetAdhocctlConnect(const unsigned char *unk1);
+int sceNetAdhocctlConnect(const void *unk1);
 
 /**
  * Disconnect from the Adhoc control

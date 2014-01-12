@@ -14,16 +14,17 @@ BUILD_CPS2PSP = 1
 #BUILD_NCDZPSP = 1
 
 #PSP_SLIM = 1
-KERNEL_MODE = 1
-SAVE_STATE = 1
-#ADHOC = 1
+#KERNEL_MODE = 1
 COMMAND_LIST = 1
+ADHOC = 1
+SAVE_STATE = 1
 #UI_32BPP = 1
 RELEASE = 1
 
 VERSION_MAJOR = 2
-VERSION_MINOR = 2
-VERSION_BUILD = 2
+VERSION_MINOR = 3
+VERSION_BUILD = 1
+
 
 #------------------------------------------------------------------------------
 # Defines
@@ -58,6 +59,7 @@ endif
 
 ifdef BUILD_NCDZPSP
 TARGET = NCDZPSP
+ADHOC =
 endif
 
 PBPNAME_STR = $(TARGET)
@@ -88,10 +90,13 @@ endif
 
 INCDIR = \
 	src \
-	src/SDK/include \
 	src/zip \
 	src/zlib \
 	src/libmad
+
+ifdef PSP_SLIM
+INCDIR += src/SDK/include
+endif
 
 
 #------------------------------------------------------------------------------
@@ -106,7 +111,6 @@ OBJDIRS = \
 	$(OBJ)/zip \
 	$(OBJ)/zlib \
 	$(OBJ)/libmad \
-	$(OBJ)/pollpad \
 	$(OBJ)/$(OS) \
 	$(OBJ)/$(OS)/font \
 	$(OBJ)/$(OS)/icon
@@ -123,6 +127,10 @@ MAINOBJS = \
 	$(OBJ)/sound/sndintrf.o \
 	$(OBJ)/common/cache.o \
 	$(OBJ)/common/loadrom.o
+
+ifdef ADHOC
+MAINOBJS += $(OBJ)/common/adhoc.o
+endif
 
 ifdef COMMAND_LIST
 MAINOBJS += $(OBJ)/common/cmdlist.o
@@ -163,9 +171,7 @@ ifdef ADHOC
 OSOBJS += $(OBJ)/$(OS)/adhoc.o
 endif
 
-ifdef PSP_SLIM
-OSOBJS += $(OBJ)/$(OS)/homehook.o
-endif
+OSOBJS += $(OBJ)/$(OS)/SystemButtons.o
 
 ifdef UI_32BPP
 OSOBJS += $(OBJ)/$(OS)/wallpaper.o
@@ -195,8 +201,13 @@ include src/makefiles/$(TARGET).mak
 #------------------------------------------------------------------------------
 
 CFLAGS = \
+	-O2 \
 	-fomit-frame-pointer \
 	-fstrict-aliasing \
+	-falign-functions=32 \
+	-falign-loops \
+	-falign-labels \
+	-falign-jumps \
 	-Wall \
 	-Wundef \
 	-Wpointer-arith  \
@@ -206,11 +217,6 @@ CFLAGS = \
 	-Wsign-compare \
 	-Werror
 
-ifdef ADHOC
-CFLAGS += -G0 -O2
-else
-CFLAGS += -O2
-endif
 
 #------------------------------------------------------------------------------
 # Compiler Defines
@@ -227,20 +233,21 @@ CDEFS = -DINLINE='static __inline' \
 	-DVERSION_BUILD=$(VERSION_BUILD) \
 	-DPSP
 
-ifdef KERNEL_MODE
-CDEFS += -DKERNEL_MODE=1
-endif
-
 ifdef PSP_SLIM
 CDEFS += -DPSP_SLIM=1
 endif
 
-ifdef SAVE_STATE
-CDEFS += -DSAVE_STATE=1
+ifdef KERNEL_MODE
+CDEFS += -DKERNEL_MODE=1
 endif
 
 ifdef ADHOC
 CDEFS += -DADHOC=1
+SAVE_STATE = 1
+endif
+
+ifdef SAVE_STATE
+CDEFS += -DSAVE_STATE=1
 endif
 
 ifdef COMMAND_LIST
@@ -259,11 +266,16 @@ else
 CDEFS += -DRELEASE=0
 endif
 
+
 #------------------------------------------------------------------------------
 # Linker Flags
 #------------------------------------------------------------------------------
 
+ifdef PSP_SLIM
 LIBDIR = src/SDK/lib
+else
+LIBDIR =
+endif
 LDFLAGS =
 
 
@@ -273,7 +285,11 @@ LDFLAGS =
 
 USE_PSPSDK_LIBC = 1
 
-LIBS = -lm -lc -lpspaudio -lpspgu -lpsppower -lpsprtc -lpspkubridge
+LIBS = -lm -lc -lpspaudio -lpspgu -lpsppower -lpsprtc
+
+ifdef PSP_SLIM
+LIBS += -lpspkubridge
+endif
 
 ifdef ADHOC
 LIBS += -lpspwlan -lpspnet_adhoc -lpspnet_adhocctl -lpspnet_adhocmatching
@@ -291,10 +307,6 @@ OBJS = $(MAINOBJS) $(COREOBJS) $(OSOBJS) $(FONTOBJS) $(ICONOBJS) $(ZLIB)
 
 include src/makefiles/build.mak
 
-ifdef BUILD_CPS1PSP
-CC = bin/psp-gcc-4.0.2
-endif
-
 
 #------------------------------------------------------------------------------
 # Rules to manage files
@@ -303,6 +315,12 @@ endif
 $(OBJ)/%.o: src/%.c
 	@echo Compiling $<...
 	@$(CC) $(CDEFS) $(CFLAGS) -c $< -o$@
+
+ifdef KERNEL_MODE
+$(OBJ)/psp/adhoc.o: src/psp/adhoc.c
+	@echo Compiling [-G0] $<...
+	@$(CC) -G0 $(CDEFS) $(CFLAGS) -c $< -o$@
+endif
 
 $(OBJ)/%.o: src/%.S
 	@echo Assembling $<...

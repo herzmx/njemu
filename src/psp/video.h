@@ -56,10 +56,13 @@
 #define SWIZZLED_16x16(tex, idx)	&tex[((idx & ~31) << 8) | ((idx & 31) << 7)]
 #define SWIZZLED_32x32(tex, idx)	&tex[((idx & ~15) << 10) | ((idx & 15) << 8)]
 
+#define NONE_SWIZZLED_8x8(tex, idx)		&tex[((idx & ~63) << 6) | ((idx & 63) << 3)]
+#define NONE_SWIZZLED_16x16(tex, idx)	&tex[((idx & ~31) << 8) | ((idx & 31) << 4)]
+#define NONE_SWIZZLED_32x32(tex, idx)	&tex[((idx & ~15) << 10) | ((idx & 15) << 5)]
+
 #define SWIZZLED8_8x8(tex, idx)		&tex[((idx & ~1) << 6) | ((idx & 1) << 3)]
 #define SWIZZLED8_16x16(tex, idx)	&tex[((idx & ~31) << 8) | ((idx & 31) << 7)]
 #define SWIZZLED8_32x32(tex, idx)	&tex[((idx & ~15) << 10) | ((idx & 15) << 8)]
-
 
 struct Vertex
 {

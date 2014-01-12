@@ -20,6 +20,11 @@
 #define NEOGEO_VSSTART						(0x000)
 #define NEOGEO_VBLANK_RELOAD_HPOS			(0x11f)
 
+/* VBLANK should fire on line 248 */
+#define RASTER_COUNTER_START				0x1f0	/* value assumed right after vblank */
+#define RASTER_COUNTER_RELOAD				0x0f8	/* value assumed after 0x1ff */
+#define RASTER_LINE_RELOAD					(0x200 - RASTER_COUNTER_START)
+
 #define FLAG_BRAZ	0x1000
 #define FLAG_PCB	0x2000
 
@@ -314,7 +319,6 @@ enum
 extern int neogeo_driver_type;
 extern int neogeo_raster_enable;
 extern UINT16 neogeo_ngh;
-extern UINT8 main_cpu_vector_table_source;
 
 extern UINT8 auto_animation_speed;
 extern UINT8 auto_animation_disabled;
@@ -337,8 +341,8 @@ void neogeo_driver_exit(void);
 void neogeo_driver_reset(void);
 void neogeo_reset_driver_type(void);
 
-TIMER_CALLBACK( display_position_vblank_callback );
-TIMER_CALLBACK( display_position_interrupt_callback );
+void neogeo_vblank_interrupt(void);
+void neogeo_raster_interrupt(int line);
 
 TIMER_CALLBACK( watchdog_callback );
 TIMER_CALLBACK( neogeo_sound_write );
@@ -368,13 +372,10 @@ WRITE16_HANDLER( neogeo_memcard16_w );
 
 WRITE16_HANDLER( neogeo_sram16_w );
 
-READ16_HANDLER( neogeo_unmapped_r );
-
 UINT8 neogeo_z80_port_r(UINT16 port);
 void neogeo_z80_port_w(UINT16 port, UINT8 value);
 
 void neogeo_sound_irq(int irq);
-
 
 
 //--------------------------------------------------------------
@@ -443,7 +444,6 @@ void garouo_decrypt_68k(void);
 void mslug3_decrypt_68k(void);
 void kof2000_decrypt_68k(void);
 int kof2002_decrypt_68k(void);
-int matrim_decrypt_68k(void);
 int samsho5_decrypt_68k(void);
 int samsh5p_decrypt_68k(void);
 int mslug5_decrypt_68k(void);

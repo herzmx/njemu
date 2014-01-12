@@ -21,6 +21,10 @@ static const char *text[2][UI_TEXT_MAX] =
 		/* psp/filer.c */
 		"Please wait...",
 		"Could not open zipname.%s",
+#ifdef ADHOC
+		"Please turn on the WLAN switch.",
+		"Failed to load AdHoc modules.",
+#endif
 
 		/* psp/sound.c */
 		"Could not reserve audio channel for sound.",
@@ -163,6 +167,7 @@ static const char *text[2][UI_TEXT_MAX] =
 		"PSP clock",
 		"222MHz",
 		"266MHz",
+		"300MHz",
 		"333MHz",
 #if (EMU_SYSTEM == MVS)
 		"Default",
@@ -369,10 +374,13 @@ static const char *text[2][UI_TEXT_MAX] =
 
 		/* psp/adhoc.c*/
 #ifdef ADHOC
+		"lobby",
+		"server",
+		"crient",
 		"Waiting for another PSP to join.\n",
-		"Connecting...",
+		"Connecting to the %s.",
 		"Connected.",
-		"Disconnecting...",
+		"Disconnecting from the %s.",
 		"Disconnected.",
 		"failed.",
 		"Select a server to connect to, or " FONT_TRIANGLE " to return.\n",
@@ -380,6 +388,7 @@ static const char *text[2][UI_TEXT_MAX] =
 		"To cancel press " FONT_CROSS ".\n",
 		"%s has requested a connection.\n",
 		"To accept the connection press " FONT_CIRCLE ", to cancel press " FONT_CROSS ".\n",
+		"Wainting for synchronization.",
 #endif
 
 		/* psp/png.c */
@@ -464,16 +473,14 @@ static const char *text[2][UI_TEXT_MAX] =
 #ifdef ADHOC
 		"Lost sync.\n",
 		"Paused by %s",
-		"Server",
-		"Client",
 		"Return to Game",
 		"Disconnect",
 #endif
 
 		/* memintrf.c */
-#if (EMU_SYSTEM != NCDZ)
 		"Loading \"%s\"\n",
 		"Load ROM",
+#if (EMU_SYSTEM != NCDZ)
 		"Checking ROM info...\n",
 		"This game not supported.\n",
 		"ROM not found. (zip file name incorrect)\n",
@@ -484,12 +491,6 @@ static const char *text[2][UI_TEXT_MAX] =
 
 #if (EMU_SYSTEM == CPS1)
 
-		/* driver.c */
-#ifdef ADHOC
-		"Sending EEPROM data.\n",
-		"Recieving EEPROM data.\n",
-#endif
-
 		/* memintrf.c */
 		"rominfo.cps1 not found.\n",
 		"Could not allocate memory. (0x8000 bytes)",
@@ -499,12 +500,6 @@ static const char *text[2][UI_TEXT_MAX] =
 		/* cps2crpt.c */
 		"Decrypting %d%%\r",
 		"Decrypting 100%%\n",
-
-		/* driver.c */
-#ifdef ADHOC
-		"Sending EEPROM data.\n",
-		"Recieving EEPROM data.\n",
-#endif
 
 		/* memintrf.c */
 		"rominfo.cps2 not found.\n",
@@ -519,13 +514,11 @@ static const char *text[2][UI_TEXT_MAX] =
 		/* biosmenu.c */
 		"BIOS select menu",
 		"BIOS not found.",
-		"\"sfix.sfx\" not found.",
 		"Select BIOS and press " FONT_CIRCLE " button.",
 		"All NVRAM files are removed.\n",
 
 		/* memintrf.c */
 		"rominfo.mvs not found.\n",
-		"Loading \"sfix.sfx\"\n",
 		"Loading \"%s (%s)\"\n",
 		"Loading decrypted GFX2 ROM...\n",
 		"Loading decrypted SOUND1 ROM...\n",
@@ -547,7 +540,11 @@ static const char *text[2][UI_TEXT_MAX] =
 		/* vidhrdw.c */
 		"CD-ROM speed limit: Off",
 		"CD-ROM speed limit: On",
+
+		/* memintrf.c */
+		"Checking game ID...\n",
 #endif
+		NULL
 	},
 	{
 		"\0",
@@ -556,6 +553,10 @@ static const char *text[2][UI_TEXT_MAX] =
 		/* psp/filer.c */
 		"しばらくお待ちください。",
 		"zipname.%sをオープンできません。",
+#ifdef ADHOC
+		"WLANスイッチをONにしてください。",
+		"AdHocモジュールをロード出来ませんでした。",
+#endif
 
 		/* psp/sound.c */
 		"オーディオチャネルを確保できません。",
@@ -642,7 +643,6 @@ static const char *text[2][UI_TEXT_MAX] =
 		"有効",
 		"無効",
 		"メインメニューに戻る",
-
 		"ゲーム設定メニュー",
 		"ラスタエフェクト",
 		"画面拡大",
@@ -699,6 +699,7 @@ static const char *text[2][UI_TEXT_MAX] =
 		"PSP CPUクロック",
 		"222MHz",
 		"266MHz",
+		"300MHz",
 		"333MHz",
 #if (EMU_SYSTEM == MVS)
 		"BIOS標準",
@@ -905,17 +906,21 @@ static const char *text[2][UI_TEXT_MAX] =
 
 		/* psp/adhoc.c*/
 #ifdef ADHOC
+		"ロビー",
+		"サーバー",
+		"クライアント",
 		"他のPSPの接続を待機中。\n",
-		"接続中...",
+		"%sに接続中...",
 		"接続しました。",
-		"切断中...",
+		"%sから切断中...",
 		"切断しました。",
 		"接続失敗",
-		"接続するサーバを選択。" FONT_TRIANGLE "を押すと中止します。\n",
+		"接続するサーバーを選択。" FONT_TRIANGLE "を押すと中止します。\n",
 		"%sの接続許可を待っています。\n",
 		FONT_CROSS "を押すと中止します。\n",
 		"%sが接続許可を要求しています。\n",
 		FONT_CIRCLE "で接続を許可、" FONT_CROSS "で接続を拒否します。\n",
+		"同期を待っています。",
 #endif
 
 		/* psp/png.c */
@@ -1000,16 +1005,14 @@ static const char *text[2][UI_TEXT_MAX] =
 #ifdef ADHOC
 		"同期を失いました。\n",
 		"%sによるポーズ",
-		"サーバー",
-		"クライアント",
 		"ゲームを再開",
 		"切断して終了",
 #endif
 
 		/* memintrf.c */
-#if (EMU_SYSTEM != NCDZ)
 		"ロード中 \"%s\"\n",
 		"ROMのロード",
+#if (EMU_SYSTEM != NCDZ)
 		"ROM情報をチェック中...\n",
 		"このゲームはサポートされていません。\n",
 		"ROMが見つかりません。(zipファイル名が正しくない)\n",
@@ -1019,12 +1022,6 @@ static const char *text[2][UI_TEXT_MAX] =
 #endif
 
 #if (EMU_SYSTEM == CPS1)
-
-		/* driver.c */
-#ifdef ADHOC
-		"EEPROMデータを送信中...\n",
-		"EEPROMデータを受信中...\n",
-#endif
 
 		/* memintrf.c */
 		"rominfo.cps1が見つかりません。\n",
@@ -1036,12 +1033,7 @@ static const char *text[2][UI_TEXT_MAX] =
 		"復号処理を実行中 %d%%\r",
 		"復号処理を実行中 100%%\n",
 
-		/* driver.c */
-#ifdef ADHOC
-		"EEPROMデータを送信中...\n",
-		"EEPROMデータを受信中...\n",
-#endif
-
+		/* memintrf.c */
 		"rominfo.cps2が見つかりません。\n",
 
 #ifdef PSP_SLIM
@@ -1054,13 +1046,11 @@ static const char *text[2][UI_TEXT_MAX] =
 		/* biosmenu.c */
 		"BIOS選択メニュー",
 		"BIOSが見つかりません。",
-		"\"sfix.sfx\"が見つかりません。",
 		"BIOSを選択し、" FONT_CIRCLE "ボタンを押してください。",
-		"NVRAMファイルは全て削除されました。",
+		"NVRAMファイルは全て削除されました。\n",
 
 		/* memintrf.c */
 		"rominfo.mvsが見つかりません。\n",
-		"ロード中 \"sfix.sfx\"\n",
 		"ロード中 \"%s (%s)\"\n",
 		"復号済みGFX2 ROMをロード中...\n",
 		"復号済みSOUND1 ROMをロード中...\n",
@@ -1082,7 +1072,11 @@ static const char *text[2][UI_TEXT_MAX] =
 		/* vidhrdw.c */
 		"CD-ROM速度制限: 無効",
 		"CD-ROM速度制限: 有効",
+
+		/* memintrf.c */
+		"ゲームIDをチェック中...\n",
 #endif
+		NULL
 	}
 };
 

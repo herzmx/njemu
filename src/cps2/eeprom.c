@@ -17,8 +17,8 @@
 ******************************************************************************/
 
 static int serial_count;
-static UINT8  serial_buffer[SERIAL_BUFFER_LENGTH];
-static UINT8  ALIGN_PSPDATA eeprom_data[EEPROM_SIZE];
+static UINT8 serial_buffer[SERIAL_BUFFER_LENGTH];
+static UINT8 ALIGN_PSPDATA eeprom_data[EEPROM_SIZE];
 static int eeprom_data_bits;
 static int eeprom_read_address;
 static int eeprom_clock_count;
@@ -290,35 +290,3 @@ STATE_LOAD( eeprom )
 }
 
 #endif /* SAVE_STATE */
-
-/*------------------------------------------------------
-	Adhocóp eepromëóéÛêM
-------------------------------------------------------*/
-
-#ifdef ADHOC
-
-#define TIMEOUT	60*1000*1000	// 60 seconds
-
-int adhoc_send_eeprom(void)
-{
-	if (adhocSendRecvAck(eeprom_data, EEPROM_SIZE, TIMEOUT) <= 0)
-	{
-		msg_printf(TEXT(LOST_SYNC));
-		Loop = LOOP_BROWSER;
-		return 0;
-	}
-	return 1;
-}
-
-int adhoc_recv_eeprom(void)
-{
-	if (adhocRecvSendAck(eeprom_data, EEPROM_SIZE, TIMEOUT) <= 0)
-	{
-		msg_printf(TEXT(LOST_SYNC));
-		Loop = LOOP_BROWSER;
-		return 0;
-	}
-	return 1;
-}
-
-#endif /* ADHOC */

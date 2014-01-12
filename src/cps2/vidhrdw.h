@@ -35,7 +35,9 @@ enum
 
 extern int cps_rotate_screen;
 extern int cps_flip_screen;
+#if ENABLE_RASTER_OPTION
 extern int cps_raster_enable;
+#endif
 extern int cps2_has_mask;
 extern UINT16 video_palette[2048];
 

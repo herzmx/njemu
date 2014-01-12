@@ -923,15 +923,16 @@ void file_browser(void)
 	small_icon_shadow(6, 3, UI_COLOR(UI_PAL_TITLE), ICON_SYSTEM);
 	logo(32, 5, UI_COLOR(UI_PAL_TITLE));
 
+	i = uifont_get_string_width(APPNAME_STR " " VERSION_STR) / 2;
 #ifdef PSP_SLIM
-	draw_dialog(240-176, 136-48, 240+176, 136+48);
-	uifont_print_shadow_center(136-28, 255,255,120, APPNAME_STR " " VERSION_STR);
-	uifont_print_shadow_center(136-10, 255,255,255, "for PSP Slim and Light");
-	uifont_print_shadow_center(136+18, 220,220,220, "NJ (http://nj-emu.hp.infoseek.co.jp)");
+	draw_dialog(240-(i+32), 136-48, 240+(i+32), 136+48);
+	uifont_print_shadow_center(136-30, 255,255,120, APPNAME_STR " " VERSION_STR);
+	uifont_print_shadow_center(136- 7, 255,255,255, "for PSP Slim");
+	uifont_print_shadow_center(136+16, 200,200,200, "NJ (http://nj-emu.tfact.jp)");
 #else
-	draw_dialog(240-176, 136-40, 240+176, 136+40);
+	draw_dialog(240-(i+32), 136-40, 240+(i+32), 136+40);
 	uifont_print_shadow_center(136-20, 255,255,120, APPNAME_STR " " VERSION_STR);
-	uifont_print_shadow_center(136+10, 220,220,220, "NJ (http://nj-emu.hp.infoseek.co.jp)");
+	uifont_print_shadow_center(136+10, 200,200,200, "NJ (http://nj-emu.tfact.jp)");
 #endif
 	video_flip_screen(1);
 
@@ -947,19 +948,15 @@ void file_browser(void)
 	checkStartupDir();
 	getDir(curr_dir);
 
-#ifdef PSP_SLIM
-	if (devkit_version < 0x03060010 || kuKernelGetModel() != PSP_MODEL_SLIM_AND_LITE)
+#if defined(PSP_SLIM) && ((EMU_SYSTEM == CPS2) || (EMU_SYSTEM == MVS))
+	if (devkit_version < 0x03070110 || kuKernelGetModel() != PSP_MODEL_SLIM_AND_LITE)
 	{
 		show_background();
 		small_icon_shadow(6, 3, UI_COLOR(UI_PAL_TITLE), ICON_SYSTEM);
 		logo(32, 5, UI_COLOR(UI_PAL_TITLE));
 		messagebox(MB_PSPVERSIONERROR);
 		show_exit_screen();
-#if (EMU_SYSTEM == NCDZ)
-		return;
-#else
 		goto error;
-#endif
 	}
 #endif
 
@@ -985,7 +982,7 @@ void file_browser(void)
 	}
 #endif
 
-	ui_popup_reset(POPUP_MENU);
+	ui_popup_reset();
 	load_background(WP_FILER);
 
 	while (Loop)
@@ -1019,9 +1016,16 @@ void file_browser(void)
 				files[i] = NULL;
 			}
 
-			set_cpu_clock(psp_cpuclock);
 			emu_main();
 			set_cpu_clock(PSPCLOCK_222);
+
+#ifdef ADHOC
+			if (adhoc_enable)
+			{
+				adhocUnloadModules();
+				adhoc_enable = 0;
+			}
+#endif
 
 			if (Loop)
 			{
@@ -1041,7 +1045,7 @@ void file_browser(void)
 			else break;
 		}
 
-		if (update & 1)
+		if (update & UI_FULL_REFRESH)
 		{
 			char path[MAX_PATH];
 
@@ -1140,10 +1144,11 @@ void file_browser(void)
 			draw_scrollbar(469, 26, 479, 270, rows, nfiles, sel);
 
 			update  = draw_battery_status(1);
+			update |= draw_volume_status(1);
 			update |= ui_show_popup(1);
 			video_flip_screen(1);
 		}
-		else if (update & 2)
+		else if (update & UI_PARTIAL_REFRESH)
 		{
 			int x, y, w, h;
 			RECT clip1, clip2;
@@ -1176,12 +1181,14 @@ void file_browser(void)
 			video_copy_rect(tex_frame, draw_frame, &clip2, &clip1);
 
 			update = draw_battery_status(0);
+			update |= draw_volume_status(0);
 			update |= ui_show_popup(0);
 			video_flip_screen(1);
 		}
 		else
 		{
 			update = draw_battery_status(0);
+			update |= draw_volume_status(0);
 			update |= ui_show_popup(0);
 			video_wait_vsync();
 		}
@@ -1213,6 +1220,11 @@ void file_browser(void)
 		else if (pad_pressed(PSP_CTRL_CIRCLE))
 #endif
 		{
+#ifdef ADHOC
+			if (files[sel]->type != FTYPE_ZIP)
+				adhoc_enable = 0;
+#endif
+
 			switch (files[sel]->type)
 			{
 			case FTYPE_UPPERDIR:
@@ -1249,22 +1261,10 @@ void file_browser(void)
 				{
 					int launch;
 
-#ifdef ADHOC
-					if (adhoc_enable)
-					{
-						if (has_mp3)
-							launch = messagebox(MB_STARTEMULATION_ADHOC);
-						else
-							launch = messagebox(MB_STARTEMULATION_ADHOC_NOMP3);
-					}
+					if (has_mp3)
+						launch = messagebox(MB_STARTEMULATION);
 					else
-#endif
-					{
-						if (has_mp3)
-							launch = messagebox(MB_STARTEMULATION);
-						else
-							launch = messagebox(MB_STARTEMULATION_NOMP3);
-					}
+						launch = messagebox(MB_STARTEMULATION_NOMP3);
 
 					if (launch)
 					{
@@ -1312,8 +1312,23 @@ void file_browser(void)
 #ifdef ADHOC
 					else if (adhoc_enable)
 					{
-						if (messagebox(MB_STARTEMULATION_ADHOC))
-							run_emulation = 1;
+						if (!readWLANSwitch())
+						{
+							ui_popup(TEXT(PLEASE_TURN_ON_THE_WLAN_SWITCH));
+							adhoc_enable = 0;
+						}
+						else if (messagebox(MB_STARTEMULATION_ADHOC))
+						{
+							if (adhocLoadModules() >= 0)
+							{
+								run_emulation = 1;
+							}
+							else
+							{
+								ui_popup(TEXT(FAILED_TO_LOAD_ADHOC_MODULES));
+								adhoc_enable = 0;
+							}
+						}
 					}
 #endif
 					else if (messagebox(MB_STARTEMULATION))
@@ -1413,12 +1428,11 @@ void file_browser(void)
 	save_settings();
 #if (EMU_SYSTEM != NCDZ)
 error:
-	free_zipname();
-
 	for (i = 0; i < MAX_ENTRY; i++)
 	{
 		if (files[i]) free(files[i]);
 	}
+	free_zipname();
 #endif
 #if PSP_VIDEO_32BPP
 	free_wallpaper();

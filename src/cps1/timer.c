@@ -277,7 +277,7 @@ void timer_set(int which, float duration, int param, void (*callback)(int param)
 	Œ»İ‚ÌƒtƒŒ[ƒ€‚ğæ“¾
 ------------------------------------------------------*/
 
-UINT32 timer_getcurrentframe(void)
+UINT32 timer_get_currentframe(void)
 {
 	return current_frame;
 }

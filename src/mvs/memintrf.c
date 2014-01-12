@@ -31,12 +31,14 @@ enum
 	REGION_GFX1,
 	REGION_GFX2,
 	REGION_GFX3,
+	REGION_GFX4,
 	REGION_SOUND1,
 	REGION_SOUND2,
 	REGION_USER1,
 #if !RELEASE
 	REGION_USER2,
 #endif
+	REGION_USER3,
 	REGION_SKIP
 };
 
@@ -59,24 +61,28 @@ UINT8 *memory_region_cpu2;
 UINT8 *memory_region_gfx1;
 UINT8 *memory_region_gfx2;
 UINT8 *memory_region_gfx3;
+UINT8 *memory_region_gfx4;
 UINT8 *memory_region_sound1;
 UINT8 *memory_region_sound2;
 UINT8 *memory_region_user1;
 #if !RELEASE
 UINT8 *memory_region_user2;
 #endif
+UINT8 *memory_region_user3;
 
 UINT32 memory_length_cpu1;
 UINT32 memory_length_cpu2;
 UINT32 memory_length_gfx1;
 UINT32 memory_length_gfx2;
 UINT32 memory_length_gfx3;
+UINT32 memory_length_gfx4;
 UINT32 memory_length_sound1;
 UINT32 memory_length_sound2;
 UINT32 memory_length_user1;
 #if !RELEASE
 UINT32 memory_length_user2;
 #endif
+UINT32 memory_length_user3;
 
 UINT8 ALIGN_DATA neogeo_memcard[0x800];
 UINT8 ALIGN_DATA neogeo_ram[0x10000];
@@ -84,9 +90,14 @@ UINT16 ALIGN_DATA neogeo_sram16[0x8000];
 
 int neogeo_machine_mode;
 
+int disable_sound;
+int use_parent_crom;
+int use_parent_srom;
+int use_parent_vrom;
+
 #ifdef PSP_SLIM
-UINT32 psp2k_mem_offset;
-UINT32 psp2k_mem_left;
+UINT32 psp2k_mem_offset = PSP2K_MEM_TOP;
+INT32 psp2k_mem_left = PSP2K_MEM_SIZE;
 #endif
 
 
@@ -127,11 +138,6 @@ static UINT32 bios_amask;
 
 static UINT8 *neogeo_sram;
 
-int disable_sound;
-int use_parent_crom;
-int use_parent_srom;
-int use_parent_vrom;
-
 
 /******************************************************************************
 	プロトタイプ
@@ -170,13 +176,13 @@ static void neogeo_decode_spr(UINT8 *mem, UINT32 length, UINT8 *usage)
 			UINT32 dw, data;
 
 			dw = 0;
-			for (x = 0;x < 8;x++)
+			for (x = 0; x < 8; x++)
 			{
 				pen  = ((swap[64 + 4*y + 3] >> x) & 1) << 3;
 				pen |= ((swap[64 + 4*y + 1] >> x) & 1) << 2;
 				pen |= ((swap[64 + 4*y + 2] >> x) & 1) << 1;
 				pen |= ((swap[64 + 4*y + 0] >> x) & 1) << 0;
-				opaque += (pen & 0x0f) != 0;
+				if (pen & 0x0f) opaque++;
 				dw |= pen << 4*x;
 			}
 
@@ -191,13 +197,13 @@ static void neogeo_decode_spr(UINT8 *mem, UINT32 length, UINT8 *usage)
 			*(gfxdata++) = data >> 24;
 
 			dw = 0;
-			for (x = 0;x < 8;x++)
+			for (x = 0; x < 8; x++)
 			{
 				pen  = ((swap[4*y + 3] >> x) & 1) << 3;
 				pen |= ((swap[4*y + 1] >> x) & 1) << 2;
 				pen |= ((swap[4*y + 2] >> x) & 1) << 1;
 				pen |= ((swap[4*y + 0] >> x) & 1) << 0;
-				opaque += (pen & 0x0f) != 0;
+				if (pen & 0x0f) opaque++;
 				dw |= pen << 4*x;
 			}
 
@@ -213,7 +219,7 @@ static void neogeo_decode_spr(UINT8 *mem, UINT32 length, UINT8 *usage)
 		}
 
 		if (opaque)
-			*usage = (opaque == 256) ? 1 : 2;
+			*usage = (opaque == 256) ? SPRITE_OPAQUE : SPRITE_TRANSPARENT;
 		else
 			*usage = 0;
 		usage++;
@@ -228,8 +234,8 @@ static void neogeo_decode_spr(UINT8 *mem, UINT32 length, UINT8 *usage)
 {									\
 	tile = buf[n];					\
 	*p++ = tile;					\
-	opaque += (tile & 0x0f) != 0;	\
-	opaque += (tile >> 4) != 0;		\
+	if (tile & 0x0f) opaque++;		\
+	if (tile >> 4) opaque++;		\
 }
 
 #if !RELEASE
@@ -259,7 +265,7 @@ static void neogeo_decode_fix(UINT8 *mem, UINT32 length, UINT8 *usage)
 		}
 
 		if (opaque)
-			*usage = (opaque == 64) ? 1 : 2;
+			*usage = (opaque == 64) ? SPRITE_OPAQUE : SPRITE_TRANSPARENT;
 		else
 			*usage = 0;
 		usage++;
@@ -277,6 +283,158 @@ static void neogeo_decode_fix(UINT8 *mem, UINT32 length, UINT8 *usage)
 }
 
 
+/*------------------------------------------------------
+	Build zoom tables
+------------------------------------------------------*/
+
+static int build_zoom_tables(void)
+{
+	UINT8 *zoomy_rom;
+	UINT8 *skip_table;
+	UINT8 *tile_table;
+	UINT8 *skip_fullmode0;
+	UINT8 *tile_fullmode0;
+	UINT8 *skip_fullmode1;
+	UINT8 *tile_fullmode1;
+	int zoom_y;
+
+	if ((memory_region_user3 = memalign(MEM_ALIGN, 0x10000)) == NULL)
+	{
+		error_memory("REGION_USER3");
+		return 0;
+	}
+	memset(memory_region_user3, 0, 0x10000);
+
+	skip_fullmode0 = &memory_region_user3[0x100*0x40*0];
+	tile_fullmode0 = &memory_region_user3[0x100*0x40*1];
+	skip_fullmode1 = &memory_region_user3[0x100*0x40*2];
+	tile_fullmode1 = &memory_region_user3[0x100*0x40*3];
+
+	for (zoom_y = 0; zoom_y < 0x100; zoom_y++)
+	{
+		int row = 0;
+		int prev_tile = 0;
+		int sprite_line = 0;
+		int tile_size = 0;
+
+		zoomy_rom  = &memory_region_gfx4[zoom_y << 8];
+		skip_table = &skip_fullmode0[zoom_y << 6];
+		tile_table = &tile_fullmode0[zoom_y << 6];
+
+		while (sprite_line <= 0x200)
+		{
+			int tile = 0;
+
+			if (sprite_line < 0x200)
+			{
+				int zoom_line = sprite_line & 0xff;
+				int invert = sprite_line & 0x100;
+
+				if (invert)
+					zoom_line ^= 0xff;
+
+				tile = zoomy_rom[zoom_line] >> 4;
+
+				if (invert)
+					tile ^= 0x1f;
+			}
+
+			if (sprite_line == 0)
+			{
+				prev_tile = tile;
+			}
+			if (prev_tile != tile || sprite_line == 0x200)
+			{
+				tile_table[row] = prev_tile << 1;
+				prev_tile = tile;
+				row++;
+			}
+			if (sprite_line != 0x200)
+			{
+				skip_table[row]++;
+			}
+
+			sprite_line++;
+		}
+
+		skip_table = &skip_fullmode0[zoom_y << 6];
+
+		for (row = 0; row < 0x0f; row++)
+		{
+			if (skip_table[row] > 0x10)
+				break;
+
+			tile_size += skip_table[row];
+		}
+
+		skip_table[0x3f] = (zoom_y + 1) - tile_size;
+	}
+
+	for (zoom_y = 0; zoom_y < 0x100; zoom_y++)
+	{
+		int row = 0;
+		int prev_tile = 0;
+		int sprite_line = 0;
+
+		zoomy_rom  = &memory_region_gfx4[zoom_y << 8];
+		skip_table = &skip_fullmode1[zoom_y << 6];
+		tile_table = &tile_fullmode1[zoom_y << 6];
+
+		while (sprite_line <= 0x200)
+		{
+			int tile = 0;
+
+			if (sprite_line < 0x200)
+			{
+				int zoom_line = sprite_line & 0xff;
+				int invert = sprite_line & 0x100;
+
+				if (invert)
+					zoom_line ^= 0xff;
+
+				zoom_line %= (zoom_y + 1) << 1;
+				if (zoom_line >= (zoom_y + 1))
+				{
+					zoom_line = ((zoom_y + 1) << 1) - 1 - zoom_line;
+					invert = !invert;
+				}
+
+				tile = zoomy_rom[zoom_line] >> 4;
+
+				if (invert)
+					tile ^= 0x1f;
+			}
+
+			if (sprite_line == 0)
+			{
+				prev_tile = tile;
+			}
+			if (prev_tile != tile || sprite_line == 0x200)
+			{
+				tile_table[row] = prev_tile << 1;
+				prev_tile = tile;
+
+				if (row != 0 && (tile == 0 || skip_table[row] == 0))
+					break;
+
+				if (zoom_y == 0 && row == 2)
+					break;
+
+				row++;
+			}
+			if (sprite_line != 0x200)
+			{
+				skip_table[row]++;
+			}
+
+			sprite_line++;
+		}
+	}
+
+	return 1;
+}
+
+
 /******************************************************************************
 	PSP-2000用メモリ管理
 ******************************************************************************/
@@ -289,14 +447,14 @@ static void neogeo_decode_fix(UINT8 *mem, UINT32 length, UINT8 *usage)
 	拡張された領域からメモリを確保
 --------------------------------------------------------*/
 
-static void *psp2k_mem_alloc(UINT32 size)
+static void *psp2k_mem_alloc(INT32 size)
 {
 	UINT8 *mem = NULL;
 
 	if (size <= psp2k_mem_left)
 	{
-		psp2k_mem_offset -= size;
 		mem = (UINT8 *)psp2k_mem_offset;
+		psp2k_mem_offset += size;
 		psp2k_mem_left -= size;
 	}
 	return mem;
@@ -307,19 +465,18 @@ static void *psp2k_mem_alloc(UINT32 size)
 	拡張された領域へメモリを移動
 --------------------------------------------------------*/
 
-static void *psp2k_mem_move(void *mem, UINT32 size)
+static void *psp2k_mem_move(void *mem, INT32 size)
 {
 	if (!mem) return NULL;
 
 	if (size <= psp2k_mem_left)
 	{
-		psp2k_mem_offset -= size;
-		psp2k_mem_left   -= size;
-
 		memcpy((UINT8 *)psp2k_mem_offset, mem, size);
 		free(mem);
 
 		mem = (UINT8 *)psp2k_mem_offset;
+		psp2k_mem_offset += size;
+		psp2k_mem_left   -= size;
 	}
 	return mem;
 }
@@ -400,7 +557,7 @@ static int load_rom_cpu1(void)
 		case INIT_samsho5:  res = samsho5_decrypt_68k();  break;
 		case INIT_kof2003:  res = kof2003_decrypt_68k();  break;
 		case INIT_samsh5sp: res = samsh5p_decrypt_68k();  break;
-		case INIT_matrim:   res = matrim_decrypt_68k();   break;
+		case INIT_matrim:   res = kof2002_decrypt_68k();  break;
 
 		case INIT_ms5pcb:   res = mslug5_decrypt_68k();   break;
 		case INIT_svcpcb:   res = svcchaos_px_decrypt();  break;
@@ -523,16 +680,17 @@ static int load_rom_gfx1(void)
 	}
 	memset(memory_region_gfx1, 0, memory_length_gfx1);
 
-	msg_printf(TEXT(LOADING_SFIX));
-	strcpy(fname, "sfix.sfx");
-	if ((res = file_open(game_name, "neogeo", sfix_crc, fname)) < 0)
+	strcpy(fname, sfix_name);
+	if ((res = file_open(game_name, bios_zip, sfix_crc, fname)) < 0)
 	{
 		if (res == -1)
-			error_crc(fname);
+			error_file(fname);
 		else
 			error_crc(fname);
 		return 0;
 	}
+
+	msg_printf(TEXT(LOADING), fname);
 	file_read(memory_region_gfx1, memory_length_gfx1);
 	file_close();
 
@@ -558,12 +716,13 @@ static int load_rom_gfx2(void)
 	{
 		SceUID fd;
 
-		msg_printf(TEXT(LOADING_DECRYPTED_GFX2_ROM));
 		if ((fd = cachefile_open(CACHE_SROM)) < 0)
 		{
 			error_file("cache/srom");
 			return 0;
 		}
+
+		msg_printf(TEXT(LOADING_DECRYPTED_GFX2_ROM));
 		sceIoRead(fd, memory_region_gfx2, memory_length_gfx2);
 		sceIoClose(fd);
 	}
@@ -572,7 +731,7 @@ static int load_rom_gfx2(void)
 		int i, res;
 		char fname[32], *parent;
 
-		parent = strlen(parent_name) ? parent_name : (char *)"neogeo";
+		parent = strlen(parent_name) ? parent_name : (char *)bios_zip;
 
 		for (i = 0; i < num_gfx2rom; )
 		{
@@ -678,6 +837,40 @@ static int load_rom_gfx3(void)
 }
 
 /*--------------------------------------------------------
+	GFX4 (lo ROM)
+--------------------------------------------------------*/
+
+static int load_rom_gfx4(void)
+{
+	int res;
+	char fname[32];
+
+	if ((memory_region_gfx4 = memalign(MEM_ALIGN, memory_length_gfx4)) == NULL)
+	{
+		error_memory("REGION_GFX4");
+		return 0;
+	}
+	memset(memory_region_gfx4, 0, memory_length_gfx4);
+
+	strcpy(fname, lorom_name);
+	if ((res = file_open(game_name, bios_zip, lorom_crc, fname)) < 0)
+	{
+		if (res == -1)
+			error_file(fname);
+		else
+			error_crc(fname);
+		return 0;
+	}
+
+	msg_printf(TEXT(LOADING), fname);
+	file_read(memory_region_gfx4, memory_length_gfx4);
+	file_close();
+
+	return build_zoom_tables();
+}
+
+
+/*--------------------------------------------------------
 	SOUND1 (YM2610 ADPCM-A ROM)
 --------------------------------------------------------*/
 
@@ -725,12 +918,13 @@ static int load_rom_sound1(void)
 	{
 		SceUID fd;
 
-		msg_printf(TEXT(LOADING_DECRYPTED_SOUND1_ROM));
 		if ((fd = cachefile_open(CACHE_VROM)) < 0)
 		{
 			error_file("cache/vrom");
 			return 0;
 		}
+
+		msg_printf(TEXT(LOADING_DECRYPTED_SOUND1_ROM));
 		sceIoRead(fd, memory_region_sound1, memory_length_sound1);
 		sceIoClose(fd);
 	}
@@ -838,7 +1032,7 @@ static int load_rom_user1(int reload)
 		patch = bios_patch_address[neogeo_bios];
 
 		strcpy(fname, bios_name[neogeo_bios]);
-		if ((res = file_open(game_name, "neogeo", bios_crc[neogeo_bios], fname)) < 0)
+		if ((res = file_open(game_name, bios_zip, bios_crc[neogeo_bios], fname)) < 0)
 		{
 			if (res == -1)
 				error_file(fname);
@@ -964,9 +1158,11 @@ static int load_rom_user2(void)
 
 static int load_rom_info(const char *game_name)
 {
-	FILE *fp;
+	SceUID fd;
 	char path[MAX_PATH];
-	char buf[256];
+	char *buf;
+	char linebuf[256];
+	int i, size;
 	int rom_start = 0;
 	int region = 0;
 
@@ -992,26 +1188,49 @@ static int load_rom_info(const char *game_name)
 
 	sprintf(path, "%srominfo.mvs", launchDir);
 
-	if ((fp = fopen(path, "r")) != NULL)
+	if ((fd = sceIoOpen(path, PSP_O_RDONLY, 0777)) >= 0)
 	{
-		while (fgets(buf, 255, fp))
+		size = sceIoLseek(fd, 0, SEEK_END);
+		sceIoLseek(fd, 0, SEEK_SET);
+
+		if ((buf = (char *)malloc(size)) == NULL)
 		{
-			if (buf[0] == '/' && buf[1] == '/')
+			sceIoClose(fd);
+			return 3;	// 手抜き
+		}
+
+		sceIoRead(fd, buf, size);
+		sceIoClose(fd);
+
+		i = 0;
+		while (i < size)
+		{
+			char *p = &buf[i];
+
+			while (buf[i] != '\n' && buf[i] != EOF)
+				i++;
+
+			buf[i++] = '\0';
+
+			strcpy(linebuf, p);
+			strcat(linebuf, "\n");
+
+			if (linebuf[0] == '/' && linebuf[1] == '/')
 				continue;
 
-			if (buf[0] != '\t')
+			if (linebuf[0] != '\t')
 			{
-				if (buf[0] == '\r' || buf[0] == '\n')
+				if (linebuf[0] == '\r' || linebuf[0] == '\n')
 				{
 					// 改行
 					continue;
 				}
-				else if (str_cmp(buf, "FILENAME(") == 0)
+				else if (str_cmp(linebuf, "FILENAME(") == 0)
 				{
 					char *name, *parent;
 					char *machine, *input, *init, *rotate;
 
-					strtok(buf, " ");
+					strtok(linebuf, " ");
 					name    = strtok(NULL, " ,");
 					parent  = strtok(NULL, " ,");
 					machine = strtok(NULL, " ,");
@@ -1041,20 +1260,20 @@ static int load_rom_info(const char *game_name)
 						rom_start = 1;
 					}
 				}
-				else if (rom_start && str_cmp(buf, "END") == 0)
+				else if (rom_start && str_cmp(linebuf, "END") == 0)
 				{
-					fclose(fp);
+					free(buf);
 					return 0;
 				}
 			}
 			else if (rom_start)
 			{
-				if (str_cmp(&buf[1], "REGION(") == 0)
+				if (str_cmp(&linebuf[1], "REGION(") == 0)
 				{
 					char *size, *type, *flag;
 					int encrypted = 0;
 
-					strtok(&buf[1], " ");
+					strtok(&linebuf[1], " ");
 					size = strtok(NULL, " ,");
 					type = strtok(NULL, " ,");
 					flag = strtok(NULL, " ");
@@ -1115,11 +1334,11 @@ static int load_rom_info(const char *game_name)
 						region = REGION_SKIP;
 					}
 				}
-				else if (str_cmp(&buf[1], "ROM(") == 0)
+				else if (str_cmp(&linebuf[1], "ROM(") == 0)
 				{
 					char *type, *name, *offset, *length, *crc;
 
-					strtok(&buf[1], " ");
+					strtok(&linebuf[1], " ");
 					type   = strtok(NULL, " ,");
 					if (type[0] != '1')
 						name = strtok(NULL, " ,");
@@ -1222,12 +1441,12 @@ static int load_rom_info(const char *game_name)
 #endif
 					}
 				}
-				else if (str_cmp(&buf[1], "ROMX(") == 0)
+				else if (str_cmp(&linebuf[1], "ROMX(") == 0)
 				{
 					char *type, *name, *offset, *length, *crc;
 					char *group, *skip;
 
-					strtok(&buf[1], " ");
+					strtok(&linebuf[1], " ");
 					type   = strtok(NULL, " ,");
 					if (type[0] != '1')
 						name = strtok(NULL, " ,");
@@ -1266,7 +1485,7 @@ static int load_rom_info(const char *game_name)
 				}
 			}
 		}
-		fclose(fp);
+		free(buf);
 		return 2;
 	}
 	return 3;
@@ -1290,32 +1509,46 @@ int memory_init(void)
 	memory_region_gfx1   = NULL;
 	memory_region_gfx2   = NULL;
 	memory_region_gfx3   = NULL;
+	memory_region_gfx4   = NULL;
 	memory_region_sound1 = NULL;
 	memory_region_sound2 = NULL;
 	memory_region_user1  = NULL;
 #if !RELEASE
 	memory_region_user2  = NULL;
 #endif
+	memory_region_user3  = NULL;
 
 	memory_length_cpu1   = 0;
 	memory_length_cpu2   = 0;
 	memory_length_gfx1   = 0x20000;
 	memory_length_gfx2   = 0;
 	memory_length_gfx3   = 0;
+	memory_length_gfx4   = 0x10000;
 	memory_length_sound1 = 0;
 	memory_length_sound2 = 0;
 	memory_length_user1  = 0x20000;
 #if !RELEASE
 	memory_length_user2  = 0;
 #endif
+	memory_length_user3  = 0x10000;
 
 	gfx_pen_usage[0] = NULL;
 	gfx_pen_usage[1] = NULL;
 	gfx_pen_usage[2] = NULL;
 
 #ifdef PSP_SLIM
-	psp2k_mem_offset = PSP2K_MEM_TOP + PSP2K_MEM_SIZE;
+	psp2k_mem_offset = PSP2K_MEM_TOP;
 	psp2k_mem_left   = PSP2K_MEM_SIZE;
+#endif
+
+#ifdef ADHOC
+	if (adhoc_enable)
+	{
+		bios_select(2);
+
+		if (neogeo_bios == -1)
+			return 0;
+	}
 #endif
 
 	cache_init();
@@ -1334,6 +1567,7 @@ int memory_init(void)
 	{
 		/* AdHoc通信時は一部オプションで固定の設定を使用 */
 		neogeo_raster_enable = 0;
+		psp_cpuclock         = PSPCLOCK_333;
 		option_vsync         = 0;
 		option_autoframeskip = 0;
 		option_frameskip     = 0;
@@ -1342,23 +1576,19 @@ int memory_init(void)
 		option_sound_enable  = 1;
 		option_samplerate    = 1;
 		neogeo_dipswitch     = 0xff;
-
-		if (adhoc_server)
-			option_controller = INPUT_PLAYER1;
-		else
-			option_controller = INPUT_PLAYER2;
 	}
 #endif
 
+	set_cpu_clock(psp_cpuclock);
+
 	msg_printf(TEXT(CHECKING_BIOS));
 
-	res = neogeo_bios;
-	if (res != -1)
+	if ((res = neogeo_bios) != -1)
 	{
-		res = file_open("neogeo", NULL, bios_crc[neogeo_bios], NULL);
+		res = file_open(bios_zip, NULL, bios_crc[neogeo_bios], NULL);
 		file_close();
 	}
-	if (res == -1)
+	if (res < 0)
 	{
 		pad_wait_clear();
 		video_clear_screen();
@@ -1391,7 +1621,6 @@ int memory_init(void)
 		Loop = LOOP_BROWSER;
 		return 0;
 	}
-
 
 	if (parent_name[0])
 	{
@@ -1436,13 +1665,6 @@ int memory_init(void)
 #endif
 	}
 
-#if !RELEASE
-	if (load_rom_user2() == 0) return 0;
-#endif
-	if (load_rom_cpu1() == 0) return 0;
-	if (load_rom_user1(0) == 0) return 0;
-	if (load_rom_cpu2() == 0) return 0;
-
 	if ((gfx_pen_usage[0] = memalign(MEM_ALIGN, memory_length_gfx1 / 32)) == NULL)
 	{
 		error_memory("GFX_PEN_USAGE (sfix)");
@@ -1459,8 +1681,15 @@ int memory_init(void)
 		return 0;
 	}
 
+#if !RELEASE
+	if (load_rom_user2() == 0) return 0;
+#endif
+	if (load_rom_cpu1() == 0) return 0;
+	if (load_rom_user1(0) == 0) return 0;
+	if (load_rom_cpu2() == 0) return 0;
 	if (load_rom_gfx1() == 0) return 0;
 	if (load_rom_gfx2() == 0) return 0;
+	if (load_rom_gfx4() == 0) return 0;
 
 	if (load_rom_sound1() == 0) return 0;
 
@@ -1473,6 +1702,8 @@ int memory_init(void)
 		// 拡張メモリに移動する。
 		// 極力連続した大きな領域を空けたいので、確保したのと逆の順で移動。
 
+		memory_region_user3 = psp2k_mem_move(memory_region_user3, memory_length_user3);
+		memory_region_gfx4  = psp2k_mem_move(memory_region_gfx4,  memory_length_gfx4);
 		memory_region_gfx2  = psp2k_mem_move(memory_region_gfx2,  memory_length_gfx2);
 		memory_region_gfx1  = psp2k_mem_move(memory_region_gfx1,  memory_length_gfx1);
 		memory_region_cpu2  = psp2k_mem_move(memory_region_cpu2,  memory_length_cpu2);
@@ -1720,12 +1951,17 @@ void memory_shutdown(void)
 	psp2k_mem_free(memory_region_gfx1);
 	psp2k_mem_free(memory_region_gfx2);
 	psp2k_mem_free(memory_region_gfx3);
+	psp2k_mem_free(memory_region_gfx4);
 	psp2k_mem_free(memory_region_sound1);
 	psp2k_mem_free(memory_region_sound2);
 	psp2k_mem_free(memory_region_user1);
 #if !RELEASE
 	psp2k_mem_free(memory_region_user2);
 #endif
+	psp2k_mem_free(memory_region_user3);
+
+	psp2k_mem_offset = PSP2K_MEM_TOP + PSP2K_MEM_SIZE;
+	psp2k_mem_left   = PSP2K_MEM_SIZE;
 #else
 	for (i = 0; i < 3; i++)
 	{
@@ -1738,12 +1974,14 @@ void memory_shutdown(void)
 	if (memory_region_gfx1)   free(memory_region_gfx1);
 	if (memory_region_gfx2)   free(memory_region_gfx2);
 	if (memory_region_gfx3)   free(memory_region_gfx3);
+	if (memory_region_gfx4)   free(memory_region_gfx4);
 	if (memory_region_sound1) free(memory_region_sound1);
 	if (memory_region_sound2) free(memory_region_sound2);
 	if (memory_region_user1)  free(memory_region_user1);
 #if !RELEASE
 	if (memory_region_user2)  free(memory_region_user2);
 #endif
+	if (memory_region_user3)  free(memory_region_user3);
 #endif
 
 #if PSP_VIDEO_32BPP
@@ -1789,7 +2027,7 @@ UINT8 m68000_read_memory_8(UINT32 offset)
 		}
 		break;
 	}
-	return neogeo_unmapped_r(offset >> 1, mem_mask) >> shift;
+	return 0xff;
 }
 
 
@@ -1823,7 +2061,7 @@ UINT16 m68000_read_memory_16(UINT32 offset)
 		}
 		break;
 	}
-	return neogeo_unmapped_r(offset >> 1, 0);
+	return 0xffff;
 }
 
 

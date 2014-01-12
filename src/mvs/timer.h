@@ -11,13 +11,11 @@
 
 #define YM2610_TIMERA			0
 #define YM2610_TIMERB			1
-#define SCANLINE_TIMER			2
-#define VBLANK_TIMER			3
-#define SOUNDLATCH_TIMER		4
-#define SOUNDUPDATE_TIMER		5
-#define CPUSPIN_TIMER			6
-#define WATCHDOG_TIMER			7
-#define MAX_TIMER				8
+#define SOUNDLATCH_TIMER		2
+#define SOUNDUPDATE_TIMER		3
+#define CPUSPIN_TIMER			4
+#define WATCHDOG_TIMER			5
+#define MAX_TIMER				6
 
 #define TIME_NOW				(0)
 #define TIME_NEVER				(0x7fffffff)
@@ -44,7 +42,8 @@ void timer_adjust(int which, int duration, int param, void (*callback)(int raram
 void timer_set(int which, int duration, int param, void (*callback)(int param));
 float timer_get_time(void);
 int timer_getscanline(void);
-void timer_update_cpu(void);
+
+extern void (*timer_update_cpu)(void);
 
 #ifdef SAVE_STATE
 STATE_SAVE( timer );

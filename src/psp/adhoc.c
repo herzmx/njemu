@@ -8,17 +8,22 @@
 
 #include "emumain.h"
 #include <pspsdk.h>
-#include <psputilsforkernel.h>
 #include <pspnet.h>
 #include <pspwlan.h>
+#ifdef KERNEL_MODE
+#include <psputilsforkernel.h>
+#else
+#include <psputility_netmodules.h>	// AHMAN
+#endif
 #include "adhoc_include/pspnet_adhoc.h"
 #include "adhoc_include/pspnet_adhocctl.h"
 #include "adhoc_include/pspnet_adhocmatching.h"
-#ifndef KERNEL_MODE
-#include "psputility_netmodules.h"	// AHMAN
-#endif
 
-#define MAX_ENTRIES			16
+
+#define NUM_ENTRIES			16
+
+#define MODE_LOBBY			0
+#define MODE_P2P			1
 
 #define PSP_LISTING			1
 #define PSP_SELECTED		2
@@ -26,10 +31,9 @@
 #define PSP_WAIT_EST		4
 #define PSP_ESTABLISHED		5
 
-#define ADHOC_TIMEOUT		10*1000000
-#define ADHOC_BLOCKSIZE		0x400
-
-#define MAC_LEN				6
+#define ADHOC_BUFFER_SIZE	0x400
+#define PDP_BUFFER_SIZE		(ADHOC_BUFFER_SIZE * 2)
+#define PDP_PORT			(0x309)
 
 
 /***************************************************************************
@@ -38,7 +42,7 @@
 
 #define MATCHING_CREATE_PARAMS	\
 	3,							\
-	MAX_ENTRIES,				\
+	0xa,						\
 	0x22b,						\
 	0x800,						\
 	0x2dc6c0,					\
@@ -54,40 +58,44 @@
 	0x10,						\
 	0x2000,						\
 	strlen(matchingData) + 1,	\
-	(char *)matchingData
+	(void *)matchingData
 
 
 /***************************************************************************
 	ローカル変数
 ***************************************************************************/
 
-static int Server;
+#ifdef KERNEL_MODE
+static int adhoc_modules_loaded;
+#endif
 
+static int mode;
+static int Server;
 static int pdpId;
 
-static UINT8 server_mac[MAC_LEN];
-static UINT8 my_mac[MAC_LEN];
-
+static unsigned char g_mac[6];
+static unsigned char g_mymac[6];
+static unsigned char g_ssid[8];
 static int  g_unk1;
 static int  g_matchEvent;
 static int  g_matchOptLen;
-static char g_matchOptData[1000];
+static char g_matchOptData[256];
 static char g_matchingData[32];
 static int  matchChanged;
 static int  matchingId;
 
-static unsigned short send_port = 0x0309;
-static unsigned short recv_port = 0x0000;
-
-
 static struct psplist_t
 {
 	char name[48];
-	char mac[MAC_LEN];
-} psplist[MAX_ENTRIES];
+	unsigned char mac[6];
+} psplist[NUM_ENTRIES];
 
-static int entries;
+static int max;
 static int pos;
+
+static int adhoc_initialized = 0;
+static unsigned char adhoc_buffer[ADHOC_BUFFER_SIZE];
+static unsigned char adhoc_work[ADHOC_BUFFER_SIZE];
 
 
 /***************************************************************************
@@ -121,7 +129,7 @@ static void adhoc_init_progress(int total, const char *text)
 
 static void ClearPspList(void)
 {
-	entries = 0;
+	max = 0;
 	pos = 0;
 	memset(&psplist, 0, sizeof(psplist));
 }
@@ -135,28 +143,28 @@ static int AddPsp(unsigned char *mac, char *name, int length)
 {
 	int i;
 
-	if (entries == MAX_ENTRIES) return 0;
+	if (max == NUM_ENTRIES) return 0;
 	if (length == 1) return 0;
 
-	for (i = 0; i < entries; i++)
+	for (i = 0; i < max; i++)
 	{
-		if (memcmp(psplist[i].mac, mac, MAC_LEN) == 0)
+		if (memcmp(psplist[i].mac, mac, 6) == 0)
 			return 0;
 	}
 
-	memcpy(psplist[entries].mac, mac, MAC_LEN);
+	memcpy(psplist[max].mac, mac, 6);
 
 	if (length)
 	{
 		if (length < 47)
-			strcpy(psplist[entries].name, name);
+			strcpy(psplist[max].name, name);
 		else
-			strncpy(psplist[entries].name, name, 47);
+			strncpy(psplist[max].name, name, 47);
 	}
 	else
-		psplist[entries].name[0] = '\0';
+		psplist[max].name[0] = '\0';
 
-	entries++;
+	max++;
 
 	return 1;
 }
@@ -170,22 +178,22 @@ static int DelPsp(unsigned char *mac)
 {
 	int i, j;
 
-	for (i = 0; i < entries; i++)
+	for (i = 0; i < max; i++)
 	{
-		if (memcmp(psplist[i].mac, mac, MAC_LEN) == 0)
+		if (memcmp(psplist[i].mac, mac, 6) == 0)
 		{
-			if (i != entries - 1)
+			if (i != max - 1)
 			{
-				for (j = i + 1; j < entries; j++)
+				for (j = i + 1; j < max; j++)
 				{
-					memcpy(psplist[j - 1].mac, psplist[j].mac, MAC_LEN);
+					memcpy(psplist[j - 1].mac, psplist[j].mac, 6);
 					strcpy(psplist[j - 1].name, psplist[j].name);
 				}
 			}
 
 			if (pos == i) pos = 0;
 			if (pos > i) pos--;
-			entries--;
+			max--;
 
 			return 0;
 		}
@@ -201,7 +209,7 @@ static int DelPsp(unsigned char *mac)
 
 static void DisplayPspList(int top, int rows)
 {
-	if (entries == 0)
+	if (max == 0)
 	{
 		msg_printf(TEXT(WAITING_FOR_ANOTHER_PSP_TO_JOIN));
 	}
@@ -212,13 +220,13 @@ static void DisplayPspList(int top, int rows)
 
 		video_copy_rect(show_frame, draw_frame, &full_rect, &full_rect);
 
-		draw_scrollbar(470, 26, 479, 270, rows, entries, pos);
+		draw_scrollbar(470, 26, 479, 270, rows, max, pos);
 
 		for (i = 0; i < rows; i++)
 		{
-			if ((top + i) >= entries) break;
+			if ((top + i) >= max) break;
 
-			sceNetEtherNtostr((UINT8 *)psplist[top + i].mac, temp);
+			sceNetEtherNtostr(psplist[top + i].mac, temp);
 
 			if ((top + i) == pos)
 			{
@@ -243,9 +251,9 @@ static void DisplayPspList(int top, int rows)
 
 static int GetPspEntry(unsigned char *mac, char *name)
 {
-	if (entries == 0) return -1;
+	if (max == 0) return -1;
 
-	memcpy(mac, psplist[pos].mac, MAC_LEN);
+	memcpy(mac, psplist[pos].mac, 6);
 	strcpy(name, psplist[pos].name);
 
 	return 1;
@@ -273,7 +281,7 @@ static void matchingCallback(int unk1, int event, unsigned char *mac, int optLen
 		g_matchEvent  = event;
 		g_matchOptLen = optLen;
 		strncpy(g_matchOptData, optData, optLen);
-		memcpy(server_mac, mac, MAC_LEN);
+		memcpy(g_mac, mac, 6);
 		matchChanged = 1;
 		break;
 	}
@@ -285,13 +293,15 @@ static void matchingCallback(int unk1, int event, unsigned char *mac, int optLen
 ***************************************************************************/
 
 /*--------------------------------------------------------
-	モジュールのロード
+	AdHocモジュールのロード (Kernelモード用)
 --------------------------------------------------------*/
 
+#ifdef KERNEL_MODE
 int pspSdkLoadAdhocModules(void)
 {
-#ifdef KERNEL_MODE
 	int modID;
+
+	adhoc_modules_loaded = -1;
 
 	modID = pspSdkLoadStartModule("flash0:/kd/ifhandle.prx", PSP_MEMORY_PARTITION_KERNEL);
 	if (modID < 0)
@@ -329,14 +339,62 @@ int pspSdkLoadAdhocModules(void)
 	else
 		pspSdkFixupImports(modID);
 
-	sceKernelDcacheWritebackAll();
-	sceKernelIcacheInvalidateAll();
-#else
-	sceUtilityLoadNetModule(PSP_NET_MODULE_COMMON);	// AHMAN
-	sceUtilityLoadNetModule(PSP_NET_MODULE_ADHOC);	// AHMAN
-#endif
+	adhoc_modules_loaded = 0;
 
 	return 0;
+}
+#endif
+
+
+/*--------------------------------------------------------
+	AdHocモジュールのロード
+--------------------------------------------------------*/
+
+int adhocLoadModules(void)
+{
+#ifdef KERNEL_MODE
+	return adhoc_modules_loaded;
+#else
+	if (devkit_version >= 0x02000010)
+	{
+		int error;
+
+		if ((error = sceUtilityLoadNetModule(PSP_NET_MODULE_COMMON)) < 0)
+			return error;
+
+		if ((error = sceUtilityLoadNetModule(PSP_NET_MODULE_ADHOC)) < 0)
+			return error;
+
+		return 0;
+	}
+	return -1;
+#endif
+}
+
+
+/*--------------------------------------------------------
+	AdHocモジュールのアンロード
+--------------------------------------------------------*/
+
+int adhocUnloadModules(void)
+{
+#ifdef KERNEL_MODE
+	return 0;
+#else
+	if (devkit_version >= 0x02000010)
+	{
+		int error;
+
+		if ((error = sceUtilityUnloadNetModule(PSP_NET_MODULE_ADHOC)) < 0)
+			return error;
+
+		if ((error = sceUtilityUnloadNetModule(PSP_NET_MODULE_COMMON)) < 0)
+			return error;
+
+		return 0;
+	}
+	return -1;
+#endif
 }
 
 
@@ -345,41 +403,35 @@ int pspSdkLoadAdhocModules(void)
 --------------------------------------------------------*/
 
 #if (EMU_SYSTEM == CPS1)
-#define PRODUCT	"CP1"
+#define PRODUCT	"CPS1"
 #elif (EMU_SYSTEM == CPS2)
-#define PRODUCT	"CP2"
+#define PRODUCT	"CPS2"
 #elif (EMU_SYSTEM == MVS)
-#define PRODUCT	"MVS"
+#define PRODUCT	"MVS_"
 #elif (EMU_SYSTEM == NCDZ)
-#define PRODUCT	"NCD"
+#define PRODUCT	"NCDZ"
 #endif
 
 int adhocInit(const char *matchingData)
 {
 	struct productStruct product;
 	int error = 0, state = 0;
-	unsigned char mac[MAC_LEN];
-	char buf[256];
-#if (EMU_SYSTEM == CPS1)
-	const unsigned char app_name[8] = { 'C','P','S','1','P','S','P','\0' };
-#elif (EMU_SYSTEM == CPS2)
-	const unsigned char app_name[8] = { 'C','P','S','2','P','S','P','\0' };
-#elif (EMU_SYSTEM == MVS)
-	const unsigned char app_name[8] = { 'M','V','S','P','S','P','\0','\0' };
-#elif (EMU_SYSTEM == NCDZ)
-	const unsigned char app_name[8] = { 'N','C','D','Z','P','S','P','\0' };
-#endif
+	unsigned char mac[6];
+	const char *unknown = "";
+	char message[256];
 
 	video_set_mode(32);
 
+	mode = MODE_LOBBY;
 	Server = 0;
+	adhoc_initialized = 0;
 
 	g_unk1        = 0;
 	g_matchEvent  = 0;
 	g_matchOptLen = 0;
 	matchChanged  = 0;
-	memset(server_mac, 0, MAC_LEN);
-	memset(my_mac, 0, MAC_LEN);
+	memset(g_mac, 0, sizeof(g_mac));
+	memset(g_mymac, 0, sizeof(g_mymac));
 
 	sprintf((char *)product.product, PRODUCT "00%d%d%d", VERSION_MAJOR, VERSION_MINOR, VERSION_BUILD);
 	product.unknown = 0;
@@ -391,7 +443,8 @@ int adhocInit(const char *matchingData)
 
 	strcpy(g_matchingData, matchingData);
 
-	adhoc_init_progress(10, TEXT(CONNECTING));
+	sprintf(message, TEXT(CONNECTING_TO_x), TEXT(LOBBY));
+	adhoc_init_progress(10, message);
 
 	if ((error = sceNetInit(0x20000, 0x20, 0x1000, 0x20, 0x1000)) == 0)
 	{
@@ -402,7 +455,7 @@ int adhocInit(const char *matchingData)
 			if ((error = sceNetAdhocctlInit(0x2000, 0x20, &product)) == 0)
 			{
 				update_progress();
-				if ((error = sceNetAdhocctlConnect(app_name)) == 0)
+				if ((error = sceNetAdhocctlConnect(unknown)) == 0)
 				{
 					update_progress();
 					do
@@ -419,7 +472,7 @@ int adhocInit(const char *matchingData)
 						sceWlanGetEtherAddr(mac);
 						update_progress();
 
-						if ((pdpId = sceNetAdhocPdpCreate(mac, send_port, 0x400, 0)) > 0)
+						if ((pdpId = sceNetAdhocPdpCreate(mac, PDP_PORT, PDP_BUFFER_SIZE, 0)) > 0)
 						{
 							update_progress();
 							if ((error = sceNetAdhocMatchingInit(0x20000)) == 0)
@@ -432,6 +485,8 @@ int adhocInit(const char *matchingData)
 									{
 										update_progress();
 										show_progress(TEXT(CONNECTED));
+										sceKernelDelayThread(1000000);
+										adhoc_initialized = 1;
 										return 0;
 									}
 									sceNetAdhocMatchingDelete(matchingId);
@@ -454,12 +509,12 @@ int adhocInit(const char *matchingData)
 
 	switch (error)
 	{
-	case 1:  sprintf(buf, "%s (PDP ID = %08x)", TEXT(FAILED), pdpId); break;
-	case 2:  sprintf(buf, "%s (Matching ID = %08x)", TEXT(FAILED), matchingId); break;
-	default: sprintf(buf, "%s (Error Code = %08x)", TEXT(FAILED), error); break;
+	case 1:  sprintf(message, "%s (PDP ID = %08x)", TEXT(FAILED), pdpId); break;
+	case 2:  sprintf(message, "%s (Matching ID = %08x)", TEXT(FAILED), matchingId); break;
+	default: sprintf(message, "%s (Error Code = %08x)", TEXT(FAILED), error); break;
 	}
 
-	show_progress(buf);
+	show_progress(message);
 
 	pad_wait_clear();
 	pad_wait_press(PAD_WAIT_INFINITY);
@@ -474,35 +529,46 @@ int adhocInit(const char *matchingData)
 
 int adhocTerm(void)
 {
-	adhoc_init_progress(5, TEXT(DISCONNECTING));
+	if (adhoc_initialized > 0)
+	{
+		char message[256];
 
-	sceNetAdhocctlDisconnect();
-	update_progress();
+		sprintf(message, TEXT(DISCONNECTING_FROM_x), Server ? TEXT(CLIENT) : TEXT(SERVER));
+		adhoc_init_progress(5, message);
 
-	sceNetAdhocPdpDelete(pdpId, 0);
-	update_progress();
+		sceNetAdhocctlDisconnect();
+		update_progress();
 
-	sceNetAdhocctlTerm();
-	update_progress();
+		sceNetAdhocPdpDelete(pdpId, 0);
+		update_progress();
 
-	sceNetAdhocTerm();
-	update_progress();
+		sceNetAdhocctlTerm();
+		update_progress();
 
-	sceNetTerm();
-	update_progress();
+		sceNetAdhocTerm();
+		update_progress();
 
-	show_progress(TEXT(DISCONNECTED));
+		sceNetTerm();
+		update_progress();
+
+		show_progress(TEXT(DISCONNECTED));
+
+		adhoc_initialized = 0;
+	}
 
 	return 0;
 }
 
 /*--------------------------------------------------------
-	切断
+	ロビーから切断
 --------------------------------------------------------*/
 
 static void adhocDisconnect(void)
 {
-	adhoc_init_progress(8, TEXT(DISCONNECTING));
+	char message[256];
+
+	sprintf(message, TEXT(DISCONNECTING_FROM_x), TEXT(LOBBY));
+	adhoc_init_progress(8, message);
 
 	sceNetAdhocMatchingStop(matchingId);
 	update_progress();
@@ -529,19 +595,23 @@ static void adhocDisconnect(void)
 	update_progress();
 
 	show_progress(TEXT(DISCONNECTED));
+
+	adhoc_initialized = 0;
 }
 
+
 /*--------------------------------------------------------
-	SSIDを指定して再接続
+	ロビーから切断し、P2P開始
 --------------------------------------------------------*/
 
-int adhocReconnect(const unsigned char *ssid)
+static int adhocStartP2P(void)
 {
 	int error = 0, state = 1;
-	unsigned char mac[MAC_LEN];
-	char buf[256];
+	unsigned char mac[6];
+	char message[256];
 
-	adhoc_init_progress(6, TEXT(DISCONNECTING));
+	sprintf(message, TEXT(DISCONNECTING_FROM_x), TEXT(LOBBY));
+	adhoc_init_progress(6, message);
 
 	sceNetAdhocMatchingStop(matchingId);
 	update_progress();
@@ -567,9 +637,12 @@ int adhocReconnect(const unsigned char *ssid)
 	update_progress();
 	show_progress(TEXT(DISCONNECTED));
 
-	adhoc_init_progress(4, TEXT(CONNECTING));
 
-	if ((error = sceNetAdhocctlConnect(ssid)) == 0)
+	mode = MODE_P2P;
+	sprintf(message, TEXT(CONNECTING_TO_x), Server ? TEXT(CLIENT) : TEXT(SERVER));
+	adhoc_init_progress(4, message);
+
+	if ((error = sceNetAdhocctlConnect((int *)g_ssid)) == 0)
 	{
 		update_progress();
 		do
@@ -583,22 +656,22 @@ int adhocReconnect(const unsigned char *ssid)
 			update_progress();
 
 			sceWlanGetEtherAddr(mac);
-			memcpy(my_mac, mac, MAC_LEN);
+			memcpy(g_mymac, mac, 6);
 			update_progress();
 
-			if ((pdpId = sceNetAdhocPdpCreate(mac, send_port, 0x800, 0)) > 0)
+			if ((pdpId = sceNetAdhocPdpCreate(mac, PDP_PORT, PDP_BUFFER_SIZE, 0)) > 0)
 			{
 				update_progress();
-				show_progress(TEXT(CONNECTED));
-//				if (Server)
-//				{
-//					// ほぼ同時に送受信が発生するとフリーズするため、
-//					// サーバ側を少し遅らせてタイミングをずらす
-//					sceKernelDelayThread(1*1000000);
-//				}
-				return 0;
+				adhoc_initialized = 2;
+
+				show_progress(TEXT(WAITING_FOR_SYNCHRONIZATION));
+				if ((error = adhocSync()) == 0)
+					return Server;
 			}
-			error = 1;
+			else
+			{
+				error = 1;
+			}
 		}
 		sceNetAdhocctlDisconnect();
 
@@ -616,13 +689,15 @@ int adhocReconnect(const unsigned char *ssid)
 	sceNetAdhocTerm();
 	sceNetTerm();
 
+	adhoc_initialized = 0;
+
 	switch (error)
 	{
-	case 1:  sprintf(buf, "%s (PDP ID = %08x)", TEXT(FAILED), pdpId); break;
-	default: sprintf(buf, "%s (Error Code = %08x)", TEXT(FAILED), error); break;
+	case 1:  sprintf(message, "%s (PDP ID = %08x)", TEXT(FAILED), pdpId); break;
+	default: sprintf(message, "%s (Error Code = %08x)", TEXT(FAILED), error); break;
 	}
 
-	show_progress(buf);
+	show_progress(message);
 
 	pad_wait_clear();
 	pad_wait_press(PAD_WAIT_INFINITY);
@@ -640,10 +715,9 @@ int adhocSelect(void)
 	int top = 0;
 	int rows = 11;
 	int currentState = PSP_LISTING;
-	int prev_entries = 0;
+	int prev_max = 0;
 	int update = 1;
-	unsigned char mac[MAC_LEN];
-	unsigned char ssid[8];
+	unsigned char mac[6];
 	char name[64];
 	char temp[64];
 	char title[32];
@@ -676,7 +750,7 @@ int adhocSelect(void)
 			}
 			else if (pad_pressed(PSP_CTRL_DOWN))
 			{
-				if (pos < entries - 1) pos++;
+				if (pos < max - 1) pos++;
 				update = 1;
 			}
 			else if (pad_pressed(PSP_CTRL_CIRCLE))
@@ -686,7 +760,7 @@ int adhocSelect(void)
 					if (strcmp(name, g_matchingData) == 0)
 					{
 						currentState = PSP_SELECTING;
-						sceNetAdhocMatchingSelectTarget(matchingId, mac, 0, 0);
+						sceNetAdhocMatchingSelectTarget(matchingId, mac, 0, NULL);
 						update = 1;
 					}
 				}
@@ -702,7 +776,7 @@ int adhocSelect(void)
 			{
 				if (g_matchEvent == MATCHING_SELECTED)
 				{
-					memcpy(mac, server_mac, MAC_LEN);
+					memcpy(mac, g_mac, 6);
 					strcpy(name, g_matchOptData);
 					currentState = PSP_SELECTED;
 				}
@@ -750,7 +824,7 @@ int adhocSelect(void)
 			if (update)
 			{
 				msg_screen_init(WP_LOGO, ICON_SYSTEM, title);
-				sceNetEtherNtostr((UINT8 *)mac, temp);
+				sceNetEtherNtostr(mac, temp);
 				msg_printf(TEXT(x_HAS_REQUESTED_A_CONNECTION), temp);
 				msg_printf(TEXT(TO_ACCEPT_THE_CONNECTION_PRESS_CIRCLE_TO_CANCEL_PRESS_CIRCLE));
 				update = 0;
@@ -793,14 +867,14 @@ int adhocSelect(void)
 		if (currentState == PSP_ESTABLISHED)
 			break;
 
-		if (top > entries - rows) top = entries - rows;
+		if (top > max - rows) top = max - rows;
 		if (top < 0) top = 0;
 		if (pos >= top + rows) top = pos - rows + 1;
 		if (pos < top) top = pos;
 
-		if (entries != prev_entries)
+		if (max != prev_max)
 		{
-			prev_entries = entries;
+			prev_max = max;
 			update = 1;
 		}
 
@@ -813,47 +887,61 @@ int adhocSelect(void)
 
 	sceNetEtherNtostr(mac, temp);
 
-	ssid[0] = temp[ 9];
-	ssid[1] = temp[10];
-	ssid[2] = temp[12];
-	ssid[3] = temp[13];
-	ssid[4] = temp[15];
-	ssid[5] = temp[16];
-	ssid[6] = '\0';
-	ssid[7] = '\0';
+	g_ssid[0] = temp[ 9];
+	g_ssid[1] = temp[10];
+	g_ssid[2] = temp[12];
+	g_ssid[3] = temp[13];
+	g_ssid[4] = temp[15];
+	g_ssid[5] = temp[16];
+	g_ssid[6] = '\0';
 
-	if (adhocReconnect(ssid) < 0)
-		return -1;
-
-	return (Server ? 1 : 0);
+	return adhocStartP2P();
 }
 
 
 /*--------------------------------------------------------
-	データ送信
+	データを送信
 --------------------------------------------------------*/
 
-int adhocSend(void *buffer, int length, int timeout)
+int adhocSend(void *buffer, int length, int type)
 {
-	if (sceNetAdhocPdpSend(pdpId, server_mac, send_port, buffer, length, timeout, 0) < 0)
-		return 0;
+	int error;
+
+	memset(adhoc_buffer, 0, ADHOC_BUFFER_SIZE);
+
+	adhoc_buffer[0] = type;
+	memcpy(&adhoc_buffer[1], buffer, length);
+
+	if ((error = sceNetAdhocPdpSend(pdpId, g_mac, PDP_PORT, adhoc_buffer, length + 1, 0, 1)) < 0)
+		return error;
 
 	return length;
 }
 
 
 /*--------------------------------------------------------
-	データ受信を待つ
+	データを受信
 --------------------------------------------------------*/
 
-int adhocRecv(void *buffer, int length, int timeout)
+int adhocRecv(void *buffer, int timeout, int type)
 {
-	unsigned char mac[MAC_LEN];
+	int error;
+	int length = ADHOC_BUFFER_SIZE;
+	unsigned short port = 0;
+	unsigned char mac[6];
 
-	if (sceNetAdhocPdpRecv(pdpId, mac, &recv_port, buffer, &length, timeout, 0) < 0)
-		return 0;
+	memset(adhoc_buffer, 0, ADHOC_BUFFER_SIZE);
 
-	return length;
+	if ((error = sceNetAdhocPdpRecv(pdpId, mac, &port, adhoc_buffer, &length, timeout, 0)) < 0)
+		return error;
+
+	if (adhoc_buffer[0] & type)
+	{
+		memcpy(buffer, &adhoc_buffer[1], length - 1);
+		return length - 1;
+	}
+
+	return -1;
 }
 
 
@@ -861,31 +949,33 @@ int adhocRecv(void *buffer, int length, int timeout)
 	データを送信し、ackを受信するまで待つ
 --------------------------------------------------------*/
 
-int adhocSendRecvAck(void *buffer, int length, int timeout)
+int adhocSendRecvAck(void *buffer, int length, int timeout, int type)
 {
-	int ack_data  = 0;
-	int tempLen   = length;
-	int sentCount = 0;
+	int temp_length = length;
+	int sent_length = 0;
+	int error = 0;
 	unsigned char *buf = (unsigned char *)buffer;
 
 	do
 	{
-		if (tempLen > ADHOC_BLOCKSIZE) tempLen = ADHOC_BLOCKSIZE;
+		if (temp_length > ADHOC_BUFFER_SIZE - 1)
+			temp_length = ADHOC_BUFFER_SIZE - 1;
 
-		adhocSend(buf, tempLen, timeout);
+		adhocSend(buf, temp_length, type);
 
-		if (adhocRecv(&ack_data, sizeof(int), timeout) == 0)
-			return 0;
+		if ((error = adhocRecv(adhoc_work, timeout, ADHOC_DATATYPE_ACK)) != 4)
+			return error;
 
-		if (ack_data != tempLen)
-			return 0;
+		if (*(int *)adhoc_work != sent_length + temp_length)
+			return -1;
 
-		buf += ADHOC_BLOCKSIZE;
-		sentCount += ADHOC_BLOCKSIZE;
-		tempLen = length - sentCount;
-	} while (sentCount < length);
+		buf += temp_length;
+		sent_length += temp_length;
+		temp_length = length - sent_length;
 
-	return length;
+	} while (sent_length < length);
+
+	return sent_length;
 }
 
 
@@ -893,25 +983,117 @@ int adhocSendRecvAck(void *buffer, int length, int timeout)
 	データの受信を待ち、ackを送信する
 --------------------------------------------------------*/
 
-int adhocRecvSendAck(void *buffer, int length, int timeout)
+int adhocRecvSendAck(void *buffer, int length, int timeout, int type)
 {
-	int tempLen   = length;
-	int rcvdCount = 0;
+	int temp_length = length;
+	int rcvd_length = 0;
+	int error = 0;
 	unsigned char *buf = (unsigned char *)buffer;
 
 	do
 	{
-		if (tempLen > ADHOC_BLOCKSIZE) tempLen = ADHOC_BLOCKSIZE;
+		if (temp_length > ADHOC_BUFFER_SIZE - 1)
+			temp_length = ADHOC_BUFFER_SIZE - 1;
 
-		if (adhocRecv(buf, tempLen, timeout) == 0)
-			return 0;
+		if ((error = adhocRecv(buf, timeout, type)) != temp_length)
+			return error;
 
-		adhocSend(&tempLen, sizeof(int), timeout);
+		*(int *)adhoc_work = rcvd_length + temp_length;
+		adhocSend(adhoc_work, 4, ADHOC_DATATYPE_ACK);
 
-		buf += ADHOC_BLOCKSIZE;
-		rcvdCount += ADHOC_BLOCKSIZE;
-		tempLen = length - rcvdCount;
-	} while (rcvdCount < length);
+		buf += temp_length;
+		rcvd_length += temp_length;
+		temp_length = length - rcvd_length;
 
-	return length;
+	} while (rcvd_length < length);
+
+	return rcvd_length;
+}
+
+
+/*--------------------------------------------------------
+	相手との同期を待つ
+--------------------------------------------------------*/
+
+int adhocSync(void)
+{
+	int size = 0;
+	int retry = 60;
+
+	if (Server)
+	{
+		while (retry--)
+		{
+			adhocSend(adhoc_work, 1, ADHOC_DATATYPE_SYNC);
+
+			if (adhocRecv(adhoc_work, 1000000, ADHOC_DATATYPE_SYNC) == 1)
+				goto check_packet;
+		}
+	}
+	else
+	{
+		while (retry--)
+		{
+			if (adhocRecv(adhoc_work, 1000000, ADHOC_DATATYPE_SYNC) == 1)
+			{
+				adhocSend(adhoc_work, 1, ADHOC_DATATYPE_SYNC);
+				goto check_packet;
+			}
+		}
+	}
+
+	return -1;
+
+check_packet:
+	while (1)
+	{
+		pdpStatStruct pdpStat;
+
+		size = sizeof(pdpStat);
+
+		if (sceNetAdhocGetPdpStat(&size, &pdpStat) >= 0)
+		{
+			// 余分なパケットを破棄
+			if (pdpStat.rcvdData == ADHOC_DATASIZE_SYNC)
+				adhocRecv(adhoc_work, 0, ADHOC_DATATYPE_SYNC);
+			else
+				break;
+		}
+
+		if (Loop != LOOP_EXEC) return 0;
+
+		sceKernelDelayThread(100);
+	}
+
+	return 0;
+}
+
+
+/*--------------------------------------------------------
+	指定サイズのデータを受信するか、バッファが空に
+	なるまで待つ
+--------------------------------------------------------*/
+
+void adhocWait(int data_size)
+{
+	pdpStatStruct pdpStat;
+	int size = sizeof(pdpStat);
+
+	if (data_size > ADHOC_BUFFER_SIZE)
+		data_size = ADHOC_BUFFER_SIZE;
+
+	while (1)
+	{
+		if (sceNetAdhocGetPdpStat(&size, &pdpStat) >= 0)
+		{
+			if (pdpStat.rcvdData == 0 || (int)pdpStat.rcvdData == data_size)
+				break;
+			else
+				adhocRecv(adhoc_work, 0, ADHOC_DATATYPE_ANY);
+		}
+
+		if (Loop != LOOP_EXEC) break;
+
+		sceKernelDelayThread(100);
+	}
 }

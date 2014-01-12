@@ -1,5 +1,6 @@
-TARGET = homehook
-OBJS = main.o sceCtrl_driver.o
+TARGET = SystemButtons
+OBJS = main.o sceCtrl_driver_371.o
+PSP_FW_VERSION = 150
 
 INCDIR =
 CFLAGS = -O2 -G0 -Wall

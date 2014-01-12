@@ -66,7 +66,7 @@ static void timer_set_vblank_interrupt(void)
 static TIMER_CALLBACK( qsound_interrupt )
 {
 	z80_set_irq_line(0, HOLD_LINE);
-	timer_set(QSOUND_INTERRUPT, (int)TIME_IN_HZ(251), 0, qsound_interrupt);
+	timer_set(QSOUND_INTERRUPT, TIME_IN_HZ(251), 0, qsound_interrupt);
 }
 
 
@@ -107,7 +107,7 @@ void timer_reset(void)
 
 	time_slice = 1000000.0 / FPS;
 
-	timer_set(QSOUND_INTERRUPT, (int)TIME_IN_HZ(251), 0, qsound_interrupt);
+	timer_set(QSOUND_INTERRUPT, TIME_IN_HZ(251), 0, qsound_interrupt);
 }
 
 

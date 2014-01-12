@@ -1053,7 +1053,7 @@ void blit_start(int start, int end)
 		sceGuDepthBuffer(draw_frame, BUF_WIDTH);
 		sceGuScissor(0, 0, SCR_WIDTH, SCR_HEIGHT);
 		sceGuEnable(GU_ALPHA_TEST);
-		sceGuClear(GU_COLOR_BUFFER_BIT | GU_DEPTH_BUFFER_BIT);
+		sceGuClear(GU_COLOR_BUFFER_BIT | GU_DEPTH_BUFFER_BIT | GU_FAST_CLEAR_BIT);
 		sceGuTexMode(GU_PSM_T8, 0, 0, GU_TRUE);
 		sceGuTexFilter(GU_NEAREST, GU_NEAREST);
 		sceGuFinish();
@@ -1294,10 +1294,9 @@ static void blit_render_object_zb0(void)
 
 	sceGuDisable(GU_DEPTH_TEST);
 	sceGuDepthMask(GU_TRUE);
+	sceGuClear(GU_COLOR_BUFFER_BIT | GU_FAST_CLEAR_BIT);
 	sceGuFinish();
 	sceGuSync(0, GU_SYNC_FINISH);
-
-	video_clear_frame(work_frame);
 }
 
 

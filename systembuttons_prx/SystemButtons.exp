@@ -8,9 +8,18 @@ PSP_EXPORT_FUNC_HASH(module_start)
 PSP_EXPORT_VAR_HASH(module_info)
 PSP_EXPORT_END
 
-PSP_EXPORT_START(homehook, 0, 0x4001)
-PSP_EXPORT_FUNC(initHomeButton)
+PSP_EXPORT_START(SystemButtons, 0, 0x4001)
+PSP_EXPORT_FUNC(initSystemButtons)
+PSP_EXPORT_FUNC(readSystemButtons)
 PSP_EXPORT_FUNC(readHomeButton)
+PSP_EXPORT_FUNC(readVolumeButtons)
+PSP_EXPORT_FUNC(readVolUpButton)
+PSP_EXPORT_FUNC(readVolDownButton)
+PSP_EXPORT_FUNC(readNoteButton)
+PSP_EXPORT_FUNC(readScreenButton)
+PSP_EXPORT_FUNC(readHoldSwitch)
+PSP_EXPORT_FUNC(readWLANSwitch)
+PSP_EXPORT_FUNC(readMainVolume)
 PSP_EXPORT_END
 
 PSP_END_EXPORTS

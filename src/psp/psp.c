@@ -7,7 +7,6 @@
 ******************************************************************************/
 
 #include "psp.h"
-#include "homehook.h"
 
 
 #ifdef KERNEL_MODE
@@ -26,8 +25,9 @@ PSP_MAIN_THREAD_ATTR(THREAD_ATTR_USER);
 volatile int Loop;
 volatile int Sleep;
 char launchDir[MAX_PATH];
-int psp_cpuclock;
+int psp_cpuclock = PSPCLOCK_333;
 int devkit_version;
+int njemu_debug;
 
 
 /******************************************************************************
@@ -43,6 +43,7 @@ void set_cpu_clock(int value)
 	switch (value)
 	{
 	case PSPCLOCK_266: scePowerSetClockFrequency(266, 266, 133); break;
+	case PSPCLOCK_300: scePowerSetClockFrequency(300, 300, 150); break;
 	case PSPCLOCK_333: scePowerSetClockFrequency(333, 333, 166); break;
 	default: scePowerSetClockFrequency(222, 222, 111); break;
 	}
@@ -54,19 +55,6 @@ void set_cpu_clock(int value)
 ******************************************************************************/
 
 /*--------------------------------------------------------
-	Exit Callback
---------------------------------------------------------*/
-
-#if !defined(KERNEL_MODE) && !defined(PSP_SLIM)
-static SceKernelCallbackFunction ExitCallback(int arg1, int arg2, void *arg)
-{
-	Loop = LOOP_EXIT;
-	return 0;
-}
-#endif
-
-
-/*--------------------------------------------------------
 	Power Callback
 --------------------------------------------------------*/
 
@@ -76,38 +64,44 @@ static SceKernelCallbackFunction PowerCallback(int unknown, int pwrflags, void *
 
 	if (pwrflags & PSP_POWER_CB_POWER_SWITCH)
 	{
-#ifdef PSP_SLIM
-#if (EMU_SYSTEM == CPS2) || (EMU_SYSTEM == MVS)
-		char path[MAX_PATH];
-		SceUID fd;
+#if defined(PSP_SLIM) && ((EMU_SYSTEM == CPS2) || (EMU_SYSTEM == MVS))
+		extern INT32 psp2k_mem_left;
 
-		sprintf(path, "%sresume.bin", launchDir);
-
-		if ((fd = sceIoOpen(path, PSP_O_WRONLY|PSP_O_CREAT, 0777)) >= 0)
+		if (psp2k_mem_left < 0x400000)
 		{
-			sceIoWrite(fd, (void *)(PSP2K_MEM_TOP + 0x1c00000), 0x400000);
-			sceIoClose(fd);
+			char path[MAX_PATH];
+			SceUID fd;
+
+			sprintf(path, "%sresume.bin", launchDir);
+
+			if ((fd = sceIoOpen(path, PSP_O_WRONLY|PSP_O_CREAT, 0777)) >= 0)
+			{
+				sceIoWrite(fd, (void *)(PSP2K_MEM_TOP + 0x1c00000), 0x400000);
+				sceIoClose(fd);
+			}
 		}
-#endif
 #endif
 		Sleep = 1;
 	}
 	else if (pwrflags & PSP_POWER_CB_RESUME_COMPLETE)
 	{
-#ifdef PSP_SLIM
-#if (EMU_SYSTEM == CPS2) || (EMU_SYSTEM == MVS)
-		char path[MAX_PATH];
-		SceUID fd;
+#if defined(PSP_SLIM) && ((EMU_SYSTEM == CPS2) || (EMU_SYSTEM == MVS))
+		extern INT32 psp2k_mem_left;
 
-		sprintf(path, "%sresume.bin", launchDir);
-
-		if ((fd = sceIoOpen(path, PSP_O_RDONLY, 0777)) >= 0)
+		if (psp2k_mem_left < 0x400000)
 		{
-			sceIoRead(fd, (void *)(PSP2K_MEM_TOP + 0x1c00000), 0x400000);
-			sceIoClose(fd);
+			char path[MAX_PATH];
+			SceUID fd;
+
+			sprintf(path, "%sresume.bin", launchDir);
+
+			if ((fd = sceIoOpen(path, PSP_O_RDONLY, 0777)) >= 0)
+			{
+				sceIoRead(fd, (void *)(PSP2K_MEM_TOP + 0x1c00000), 0x400000);
+				sceIoClose(fd);
+			}
 			sceIoRemove(path);
 		}
-#endif
 #endif
 		Sleep = 0;
 	}
@@ -126,11 +120,6 @@ static SceKernelCallbackFunction PowerCallback(int unknown, int pwrflags, void *
 static int CallbackThread(SceSize args, void *argp)
 {
 	int cbid;
-
-#if !defined(KERNEL_MODE) && !defined(PSP_SLIM)
-	cbid = sceKernelCreateCallback("Exit Callback", (void *)ExitCallback, NULL);
-	sceKernelRegisterExitCallback(cbid);
-#endif
 
 	cbid = sceKernelCreateCallback("Power Callback", (void *)PowerCallback, NULL);
 	scePowerRegisterCallback(0, cbid);
@@ -167,39 +156,19 @@ static int SetupCallbacks(void)
 --------------------------------------------------------*/
 
 #ifdef KERNEL_MODE
-
-static volatile int home_active;
-static UINT32 home_button;
-
-
-u32 readHomeButton(void)
-{
-	return home_button;
-}
-
-
-static int home_button_thread(SceSize args, void *argp)
-{
-	SceCtrlData paddata;
-
-	home_active = 1;
-
-	while (home_active)
-	{
-		sceCtrlPeekBufferPositive(&paddata, 1);
-		home_button = paddata.Buttons & PSP_CTRL_HOME;
-		sceKernelDelayThread(200);
-	}
-
-	sceKernelExitThread(0);
-
-	return 0;
-}
-
-
 static int user_main(SceSize args, void *argp)
+#else
+int main(int argc, char *argv[])
+#endif
 {
+	SceUID modID;
+	char prx_path[MAX_PATH];
+
+	getcwd(launchDir, MAX_PATH - 1);
+	strcat(launchDir, "/");
+
 	devkit_version = sceKernelDevkitVersion();
+	njemu_debug = 0;
 
 	SetupCallbacks();
 
@@ -208,133 +177,69 @@ static int user_main(SceSize args, void *argp)
 	ui_text_init();
 	pad_init();
 
+#if PSP_VIDEO_32BPP
 	video_set_mode(32);
+#else
 	video_init();
+#endif
 
-	file_browser();
+	sprintf(prx_path, "%sSystemButtons.prx", launchDir);
+
+	if ((modID = pspSdkLoadStartModule(prx_path, PSP_MEMORY_PARTITION_KERNEL)) >= 0)
+	{
+		initSystemButtons(devkit_version);
+
+		file_browser();
+	}
+	else
+	{
+		small_font_printf(0, 0, "Error 0x%08X start SystemButtons.prx.", modID);
+		video_flip_screen(1);
+		sceKernelDelayThread(5*1000*1000);
+	}
 
 	video_exit();
 
+#ifdef KERNEL_MODE
 	sceKernelExitThread(0);
+#else
+	sceKernelExitGame();
+#endif
 
 	return 0;
 }
 
+
+/*--------------------------------------------------------
+	Kernelƒ‚[ƒh main()
+--------------------------------------------------------*/
+
+#ifdef KERNEL_MODE
 int main(int argc, char *argv[])
 {
 	SceUID main_thread;
-	SceUID home_thread;
-	char *p;
 
-	memset(launchDir, 0, sizeof(launchDir));
-	strncpy(launchDir, argv[0], MAX_PATH - 1);
-	if ((p = strrchr(launchDir, '/')) != NULL)
-	{
-		*(p + 1) = '\0';
-	}
+	pspSdkInstallNoPlainModuleCheckPatch();
+	pspSdkInstallKernelLoadModulePatch();
 
 #ifdef ADHOC
 	pspSdkLoadAdhocModules();
 #endif
 
-	home_thread = sceKernelCreateThread("Home Button Thread",
-								home_button_thread,
-								0x11,
-								0x200,
-								0,
-								NULL);
-
-	main_thread = sceKernelCreateThread("User Mode Thread",
-								user_main,
-								0x11,
-								256 * 1024,
-								PSP_THREAD_ATTR_USER,
-								NULL);
-
-	sceKernelStartThread(home_thread, 0, 0);
+	main_thread = sceKernelCreateThread(
+						"User Mode Thread",
+						user_main,
+						0x11,
+						256 * 1024,
+						PSP_THREAD_ATTR_USER,
+						NULL
+					);
 
 	sceKernelStartThread(main_thread, 0, 0);
 	sceKernelWaitThreadEnd(main_thread, NULL);
 
-	home_active = 0;
-	sceKernelWaitThreadEnd(home_thread, NULL);
-
 	sceKernelExitGame();
 
 	return 0;
 }
-
-#else
-
-#ifndef PSP_SLIM
-u32 readHomeButton(void)
-{
-	SceCtrlData paddata;
-
-	sceCtrlPeekBufferPositive(&paddata, 1);
-
-	if ((paddata.Buttons & (PSP_CTRL_START | PSP_CTRL_SELECT)) == (PSP_CTRL_START | PSP_CTRL_SELECT))
-	{
-		return PSP_CTRL_HOME;
-	}
-	return 0;
-}
 #endif
-
-
-int main(int argc, char *argv[])
-{
-	char *p;
-#ifdef PSP_SLIM
-	SceUID modID;
-#endif
-
-	memset(launchDir, 0, sizeof(launchDir));
-	strncpy(launchDir, argv[0], MAX_PATH - 1);
-	if ((p = strrchr(launchDir, '/')) != NULL)
-	{
-		*(p + 1) = '\0';
-	}
-
-	devkit_version = sceKernelDevkitVersion();
-
-	SetupCallbacks();
-
-	set_cpu_clock(PSPCLOCK_222);
-
-	// AHMAN
-#ifdef ADHOC
-	pspSdkLoadAdhocModules();
-#endif
-
-	ui_text_init();
-	pad_init();
-
-	video_set_mode(32);
-	video_init();
-
-#ifdef PSP_SLIM
-	if ((modID = pspSdkLoadStartModule("homehook.prx", PSP_MEMORY_PARTITION_KERNEL)) >= 0)
-	{
-		initHomeButton(devkit_version);
-
-		file_browser();
-		video_exit();
-	}
-	else
-	{
-		small_font_printf(0, 0, "Error 0x%08X start homehook.prx.", modID);
-		video_flip_screen(1);
-		sceKernelDelayThread(5*1000*1000);
-	}
-#else
-	file_browser();
-	video_exit();
-#endif
-
-	sceKernelExitGame();
-
-	return 0;
-}
-
-#endif /* KERNEL_MODE */

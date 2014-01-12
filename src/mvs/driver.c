@@ -19,9 +19,9 @@
 	グローバル変数
 ******************************************************************************/
 
+int neogeo_driver_type;
 int neogeo_raster_enable;
 UINT16 neogeo_ngh;
-UINT8 main_cpu_vector_table_source;
 
 UINT8 auto_animation_speed;
 UINT8 auto_animation_disabled;
@@ -102,12 +102,16 @@ struct cacheinfo_t MVS_cacheinfo[] =
 
 static int raster_enable;
 
+static UINT16 raster_counter;
+static int scanline_read;
+static int busy;
+
+static int display_position_interrupt_counter;
 static int display_position_interrupt_control;
-static int display_position_interrupt_pending;
 static UINT32 display_counter;
 
+static int display_position_interrupt_pending;
 static int vblank_interrupt_pending;
-static int irq3_pending;
 
 static UINT8 auto_animation_frame_counter;
 
@@ -115,6 +119,7 @@ static int sound_code;
 static int result_code;
 static int pending_command;
 
+static UINT8 main_cpu_vector_table_source;
 static UINT8 controller_select;
 static UINT8 save_ram_unlocked;
 
@@ -126,7 +131,14 @@ static UINT16 *neogeo_cpu1_second_bank;
 static UINT8 ALIGN_DATA neogeo_game_vectors[0x80];
 static UINT8 *neogeo_vectors[2];
 
-static INT32 neogeo_rng = 0x2345;
+static UINT16 neogeo_rng = 0x2345;
+
+
+/******************************************************************************
+	プロトタイプ
+******************************************************************************/
+
+static void update_interrupts(void);
 
 
 /*------------------------------------------------------
@@ -243,19 +255,22 @@ void neogeo_driver_reset(void)
 
 	watchdog_reset_w(0, 0, 0);
 
+	raster_counter = RASTER_COUNTER_START;
+	scanline_read = 0;
+
+	display_position_interrupt_counter = 0;
 	display_position_interrupt_control = 0;
 	display_counter = 0;
 
 	vblank_interrupt_pending = 0;
 	display_position_interrupt_pending = 0;
-	irq3_pending = 0;
 
 	sound_code = 0;
 	result_code = 0;
 	pending_command = 0;
 
 	auto_animation_frame_counter = 0;
-	auto_animation_speed = 4;
+	auto_animation_speed = 0;
 	auto_animation_disabled = 0;
 	auto_animation_counter = 0;
 
@@ -289,6 +304,8 @@ void neogeo_driver_reset(void)
 
 void neogeo_reset_driver_type(void)
 {
+	busy = 0;
+
 	if (neogeo_ngh == NGH_tpgolf
 	||	neogeo_ngh == NGH_trally
 	||	neogeo_ngh == NGH_spinmast
@@ -299,44 +316,38 @@ void neogeo_reset_driver_type(void)
 
 	if (neogeo_bios >= UNI_V20 && neogeo_bios <= UNI_V22)
 		raster_enable = 1;
+
+	if (raster_enable)
+	{
+		if (neogeo_ngh == NGH_mosyougi) busy = 1;
+
+		neogeo_driver_type = RASTER;
+	}
+	else
+	{
+		neogeo_driver_type = NORMAL;
+	}
+
+	timer_set_update_handler();
 }
 
 
-/*************************************
- *
- *  Main CPU interrupt generation
- *
- *************************************/
+/*------------------------------------------------------
+	Adjust display position interrupt
+------------------------------------------------------*/
 
-static void adjust_display_position_interrupt_timer(void)
+INLINE void adjust_display_position_interrupt(void)
 {
-	if (!raster_enable) return;
-
 	if ((display_counter + 1) != 0)
 	{
-		int duration = (int)(TIME_IN_HZ(NEOGEO_PIXEL_CLOCK) * (display_counter + 1));
-
-		timer_set(SCANLINE_TIMER, duration, 0, display_position_interrupt_callback);
+		display_position_interrupt_counter = (display_counter + 1) / 0x180;
 	}
 }
 
 
-INLINE void neogeo_set_display_counter_msb(UINT16 data)
-{
-	display_counter = (display_counter & 0x0000ffff) | ((UINT32)data << 16);
-}
-
-
-INLINE void neogeo_set_display_counter_lsb(UINT16 data)
-{
-	display_counter = (display_counter & 0xffff0000) | data;
-
-	if (display_position_interrupt_control & IRQ2CTRL_LOAD_RELATIVE)
-	{
-		adjust_display_position_interrupt_timer();
-	}
-}
-
+/*------------------------------------------------------
+	Update interrupt
+------------------------------------------------------*/
 
 static void update_interrupts(void)
 {
@@ -345,7 +356,6 @@ static void update_interrupts(void)
 	/* determine which interrupt is active */
 	if (vblank_interrupt_pending) level = 1;
 	if (display_position_interrupt_pending) level = 2;
-	if (irq3_pending) level = 3;
 
 	/* either set or clear the appropriate lines */
 	if (level)
@@ -355,9 +365,280 @@ static void update_interrupts(void)
 }
 
 
+/*------------------------------------------------------
+	MC68000 VBLANK interrupt (IRQ1)
+------------------------------------------------------*/
+
+void neogeo_vblank_interrupt(void)
+{
+	raster_counter = RASTER_COUNTER_START;
+
+	pd4990a_addretrace();
+
+	if (!auto_animation_disabled)
+	{
+		if (auto_animation_frame_counter == 0)
+		{
+			auto_animation_frame_counter = auto_animation_speed;
+			auto_animation_counter++;
+		}
+		else auto_animation_frame_counter--;
+	}
+
+	vblank_interrupt_pending = 1;
+
+	update_interrupts();
+}
+
+
+/*------------------------------------------------------
+	MC68000 scanline interrupt (IRQ2)
+------------------------------------------------------*/
+
+void neogeo_raster_interrupt(int line)
+{
+	int do_refresh = 0;
+	UINT16 raster_line = line;
+
+	if (raster_line == RASTER_LINES) raster_line = 0;
+
+	if (raster_line < RASTER_LINE_RELOAD)
+		raster_counter = RASTER_COUNTER_START + raster_line;
+	else
+		raster_counter = RASTER_COUNTER_RELOAD + raster_line - RASTER_LINE_RELOAD;
+
+	if (busy)
+	{
+		if (scanline_read)
+		{
+			do_refresh = neogeo_raster_enable;
+			scanline_read = 0;
+		}
+	}
+
+	if (display_position_interrupt_counter > 0)
+	{
+		display_position_interrupt_counter--;
+
+		if (display_position_interrupt_counter == 0)
+		{
+			if (display_position_interrupt_control & IRQ2CTRL_ENABLE)
+			{
+				if (!busy) do_refresh = neogeo_raster_enable;
+
+				display_position_interrupt_pending = 1;
+			}
+
+			if (display_position_interrupt_control & IRQ2CTRL_AUTOLOAD_REPEAT)
+				adjust_display_position_interrupt();
+		}
+	}
+
+	if (line == RASTER_LINES)
+	{
+		if (display_position_interrupt_control & IRQ2CTRL_AUTOLOAD_VBLANK)
+			adjust_display_position_interrupt();
+
+		pd4990a_addretrace();
+
+		if (!auto_animation_disabled)
+		{
+			if (auto_animation_frame_counter == 0)
+			{
+				auto_animation_frame_counter = auto_animation_speed;
+				auto_animation_counter++;
+			}
+			else auto_animation_frame_counter--;
+		}
+
+		vblank_interrupt_pending = 1;
+	}
+
+	if (do_refresh && !skip_this_frame())
+		neogeo_partial_screenrefresh((raster_counter - 0x100) - 1);
+
+	update_interrupts();
+}
+
+
+/****************************************************************************
+	MC68K memory access
+****************************************************************************/
+
+/*------------------------------------------------------
+	Select BIOS vector (0x3a0003 / 0x3a0013)
+------------------------------------------------------*/
+
+INLINE void set_main_cpu_vector_table_source(UINT8 data)
+{
+	memcpy(memory_region_cpu1, neogeo_vectors[data], 0x80);
+	main_cpu_vector_table_source = data;
+	display_position_interrupt_counter = 0;
+	blit_set_fix_clear_flag();
+	blit_set_spr_clear_flag();
+	autoframeskip_reset();
+
+	// hack for PSP
+	if (data)
+	{
+		max_sprite_number = MAX_SPRITES_PER_SCREEN;
+	}
+	else
+	{
+		if (neogeo_bios >= UNI_V10 && neogeo_bios < DEBUG_BIOS)
+			max_sprite_number = 32;
+		else if (neogeo_bios == ASIA_AES || neogeo_bios == DEBUG_BIOS)
+			max_sprite_number = MAX_SPRITES_PER_SCREEN;
+		else
+			max_sprite_number = 0;
+	}
+}
+
+
+/*------------------------------------------------------
+	Select palette RAM bank  (0x3a000f / 0x3a001f)
+------------------------------------------------------*/
+
+INLINE void neogeo_set_palette_bank(UINT8 data)
+{
+	if (palette_bank != data)
+	{
+		palette_bank = data;
+
+		video_palette = video_palettebank[data];
+	}
+}
+
+
+/*------------------------------------------------------
+	Write VRAM offset ($3c0001)
+------------------------------------------------------*/
+
+INLINE void set_videoram_offset(UINT16 data)
+{
+	videoram_offset = data;
+
+	/* the read happens right away */
+	videoram_read_buffer = neogeo_videoram[videoram_offset];
+}
+
+
+/*------------------------------------------------------
+	Read data from VRAM ($3c0001 / $3c0003)
+------------------------------------------------------*/
+
+INLINE UINT16 get_videoram_data(void)
+{
+	return videoram_read_buffer;
+}
+
+
+/*------------------------------------------------------
+	Write data to VRAM ($3c0003)
+------------------------------------------------------*/
+
+INLINE void set_videoram_data(UINT16 data)
+{
+	neogeo_videoram[videoram_offset] = data;
+
+	/* auto increment/decrement the current offset - A15 is NOT effected */
+	videoram_offset = (videoram_offset & 0x8000) | ((videoram_offset + videoram_modulo) & 0x7fff);
+
+	/* read next value right away */
+	videoram_read_buffer = neogeo_videoram[videoram_offset];
+}
+
+
+/*------------------------------------------------------
+	Read VRAM modulo ($3c0005)
+------------------------------------------------------*/
+
+INLINE UINT16 get_videoram_modulo(void)
+{
+	return videoram_modulo;
+}
+
+
+/*------------------------------------------------------
+	Write VRAM modulo ($3c0005)
+------------------------------------------------------*/
+
+INLINE void set_videoram_modulo(UINT16 data)
+{
+	videoram_modulo = data;
+}
+
+
+/*---------------------------------------------------------
+	Read video control data ($3c0007)
+---------------------------------------------------------*/
+
+INLINE UINT16 get_video_control(void)
+{
+	scanline_read = 1;
+
+	if (neogeo_driver_type == NORMAL)
+	{
+		UINT16 raster_line = timer_getscanline();
+
+		if (raster_line == RASTER_LINES) raster_line = 0;
+
+		if (raster_line < RASTER_LINE_RELOAD)
+			raster_counter = RASTER_COUNTER_START + raster_line;
+		else
+			raster_counter = RASTER_COUNTER_RELOAD + raster_line - RASTER_LINE_RELOAD;
+	}
+
+	return (raster_counter << 7) | (auto_animation_counter & 0x0007);
+}
+
+
+/*---------------------------------------------------------
+	Write video control data ($3c0007)
+---------------------------------------------------------*/
+
+INLINE void set_video_control(UINT16 data)
+{
+	auto_animation_speed = data >> 8;
+	auto_animation_disabled = data & 0x0008;
+
+	display_position_interrupt_control = data & 0x00f0;
+}
+
+
+/*------------------------------------------------------
+	Set display counter (MSB) (0x3c0008)
+------------------------------------------------------*/
+
+INLINE void neogeo_set_display_counter_msb(UINT16 data)
+{
+	if (neogeo_driver_type == NORMAL) return;
+
+	display_counter = (display_counter & 0x0000ffff) | ((UINT32)data << 16);
+}
+
+
+/*------------------------------------------------------
+	Set display counter (LSB) (0x3c000a)
+------------------------------------------------------*/
+
+INLINE void neogeo_set_display_counter_lsb(UINT16 data)
+{
+	if (neogeo_driver_type == NORMAL) return;
+
+	display_counter = (display_counter & 0xffff0000) | data;
+
+	if (display_position_interrupt_control & IRQ2CTRL_LOAD_RELATIVE)
+		adjust_display_position_interrupt();
+}
+
+
+/*------------------------------------------------------
+	Write IRQ acknowledge ($3c000c)
+------------------------------------------------------*/
+
 INLINE void neogeo_acknowledge_interrupt(UINT16 data)
 {
-	if (data & 0x01) irq3_pending = 0;
 	if (data & 0x02) display_position_interrupt_pending = 0;
 	if (data & 0x04) vblank_interrupt_pending = 0;
 
@@ -365,70 +646,13 @@ INLINE void neogeo_acknowledge_interrupt(UINT16 data)
 }
 
 
-TIMER_CALLBACK( display_position_vblank_callback )
-{
-	if (display_position_interrupt_control & IRQ2CTRL_AUTOLOAD_VBLANK)
-	{
-		adjust_display_position_interrupt_timer();
-	}
+/****************************************************************************
+	M68000 memory handlers
+****************************************************************************/
 
-	pd4990a_addretrace();
-
-	if (!auto_animation_disabled)
-	{
-		if (auto_animation_frame_counter-- == 0)
-		{
-			auto_animation_frame_counter = auto_animation_speed;
-			auto_animation_counter++;
-		}
-	}
-
-	vblank_interrupt_pending = 1; /* vertical blank */
-
-	update_interrupts();
-
-	if (!skip_this_frame())
-	{
-		neogeo_screenrefresh();
-	}
-}
-
-
-TIMER_CALLBACK( display_position_interrupt_callback )
-{
-	if (display_position_interrupt_control & IRQ2CTRL_ENABLE)
-	{
-		display_position_interrupt_pending = 1;
-
-		update_interrupts();
-
-		if (neogeo_raster_enable && !skip_this_frame())
-		{
-			neogeo_partial_screenrefresh(timer_getscanline());
-		}
-	}
-
-	if (display_position_interrupt_control & IRQ2CTRL_AUTOLOAD_REPEAT)
-	{
-		adjust_display_position_interrupt_timer();
-	}
-}
-
-
-/*************************************
- *
- *  Main CPU banking
- *
- *************************************/
-
-INLINE void set_main_cpu_vector_table_source(UINT8 data)
-{
-	memcpy(memory_region_cpu1, neogeo_vectors[data], 0x80);
-	main_cpu_vector_table_source = data;
-	blit_set_fix_clear_flag();
-	blit_set_spr_clear_flag();
-	autoframeskip_reset();
-}
+/*------------------------------------------------------
+	Set second ROM bank ($2ffff0 - $2fffff)
+------------------------------------------------------*/
 
 WRITE16_HANDLER( neogeo_bankswitch_w )
 {
@@ -449,203 +673,25 @@ WRITE16_HANDLER( neogeo_bankswitch_w )
 }
 
 
-/*************************************
- *
- *  Fixed layer banking
- *
- *************************************/
+/*------------------------------------------------------
+	Reset watchdog counter ($300000 - $300001)
+------------------------------------------------------*/
 
-INLINE void neogeo_set_fixed_layer_source(UINT8 data)
+TIMER_CALLBACK( watchdog_callback )
 {
-	fix_bank   = data;
-	fix_usage  = gfx_pen_usage[data];
-	fix_memory = data ? memory_region_gfx2 : memory_region_gfx1;
-	blit_set_fix_clear_flag();
+	if (Loop == LOOP_EXEC) Loop = LOOP_RESET;
 }
 
 
-/*************************************
- *
- *  Unmapped memory access
- *
- *************************************/
-
-READ16_HANDLER( neogeo_unmapped_r )
+WRITE16_HANDLER( watchdog_reset_w )
 {
-	static UINT8 recurse = 0;
-	UINT16 ret;
-
-	/* unmapped memory returns the last word on the data bus, which is almost always the opcode
-       of the next instruction due to prefetch */
-
-	/* prevent recursion */
-	if (recurse)
-		ret = 0xffff;
-	else
-	{
-		recurse = 1;
-		ret = m68000_read_memory_16(m68000_get_reg(M68K_PC));
-		recurse = 0;
-	}
-
-	return ret;
+	timer_set(WATCHDOG_TIMER, 128762, 0, watchdog_callback);
 }
 
 
-/*************************************
- *
- *  Video RAM access
- *
- *************************************/
-
-INLINE void set_videoram_offset(UINT16 data)
-{
-	videoram_offset = data;
-
-	/* the read happens right away */
-	videoram_read_buffer = neogeo_videoram[videoram_offset];
-}
-
-
-INLINE UINT16 get_videoram_data(void)
-{
-	return videoram_read_buffer;
-}
-
-
-INLINE void set_videoram_data(UINT16 data)
-{
-	neogeo_videoram[videoram_offset] = data;
-
-	/* auto increment/decrement the current offset - A15 is NOT effected */
-	videoram_offset = (videoram_offset & 0x8000) | ((videoram_offset + videoram_modulo) & 0x7fff);
-
-	/* read next value right away */
-	videoram_read_buffer = neogeo_videoram[videoram_offset];
-}
-
-
-INLINE void set_videoram_modulo(UINT16 data)
-{
-	videoram_modulo = data;
-}
-
-
-INLINE UINT16 get_videoram_modulo(void)
-{
-	return videoram_modulo;
-}
-
-
-/*************************************
- *
- *  Palette handling
- *
- *************************************/
-
-INLINE void neogeo_set_palette_bank(UINT8 data)
-{
-	if (palette_bank != data)
-	{
-		palette_bank = data;
-
-		video_palette = video_palettebank[data];
-	}
-}
-
-
-READ16_HANDLER( neogeo_paletteram_r )
-{
-	offset &= 0xfff;
-	return palettes[palette_bank][offset];
-}
-
-
-WRITE16_HANDLER( neogeo_paletteram_w )
-{
-	UINT16 *addr;
-
-	offset &= 0xfff;
-	addr = &palettes[palette_bank][offset];
-
-	COMBINE_DATA(addr);
-
-	if (offset & 0x0f)
-		video_palette[offset] = video_clut16[*addr & 0x7fff];
-}
-
-
-/*************************************
- *
- *  Video control
- *
- *************************************/
-
-INLINE UINT16 get_video_control(void)
-{
-	UINT16 v_counter = timer_getscanline() + 0x100;
-
-	if (v_counter >= 0x200)
-		v_counter -= NEOGEO_VTOTAL;
-
-	return (v_counter << 7) | (auto_animation_counter & 0x0007);
-}
-
-
-INLINE void set_video_control(UINT16 data)
-{
-	auto_animation_speed = data >> 8;
-	auto_animation_disabled = data & 0x0008;
-
-	display_position_interrupt_control = data & 0x00f0;
-}
-
-
-READ16_HANDLER( neogeo_video_register_r )
-{
-	if (mem_mask == 0xff00)
-		return neogeo_unmapped_r(0, 0) & 0xff;
-
-	switch (offset & 3)
-	{
-	case 0x00:
-	case 0x01: return get_videoram_data();
-	case 0x02: return get_videoram_modulo();
-	case 0x03: return get_video_control();
-	}
-	return 0xffff;
-}
-
-
-WRITE16_HANDLER( neogeo_video_register_w )
-{
-	/* accessing the LSB only is not mapped */
-	if (mem_mask != 0xff00)
-	{
-		/* accessing the MSB only stores same data in MSB and LSB */
-		if (mem_mask == 0x00ff)
-			data = (data & 0xff00) | (data >> 8);
-
-		switch (offset & 7)
-		{
-		case 0x00: set_videoram_offset(data); break;
-		case 0x01: set_videoram_data(data); break;
-		case 0x02: set_videoram_modulo(data); break;
-		case 0x03: set_video_control(data); break;
-		case 0x04: neogeo_set_display_counter_msb(data); break;
-		case 0x05: neogeo_set_display_counter_lsb(data); break;
-		case 0x06: neogeo_acknowledge_interrupt(data); break;
-		case 0x07: break; /* unknown, see get_video_control */
-		}
-	}
-}
-
-
-/*************************************
- *
- *  Input ports / Controllers
- *
- *************************************/
+/*------------------------------------------------------
+	Read controller 2 ($340000 - $340001)
+------------------------------------------------------*/
 
 READ16_HANDLER( neogeo_controller2_r )
 {
@@ -659,6 +705,10 @@ READ16_HANDLER( neogeo_controller2_r )
 }
 
 
+/*------------------------------------------------------
+	Read controller 3 ($380000 - $380001)
+------------------------------------------------------*/
+
 READ16_HANDLER( neogeo_controller3_r )
 {
 #ifdef ADHOC
@@ -669,6 +719,11 @@ READ16_HANDLER( neogeo_controller3_r )
 		return (neogeo_port_value[2] << 8) & 0x8fff;
 }
 
+
+/*------------------------------------------------------
+	Read controller 1 and 4 ($380000 - $380001)
+	                        ($380008 - $380009)
+------------------------------------------------------*/
 
 READ16_HANDLER( neogeo_controller1and4_r )
 {
@@ -696,6 +751,48 @@ READ16_HANDLER( neogeo_controller1and4_r )
 }
 
 
+/*------------------------------------------------------
+	Read timer ($320001)
+------------------------------------------------------*/
+
+READ16_HANDLER( neogeo_timer_r )
+{
+	UINT16 res;
+	int coinflip = pd4990a_testbit_r(0);
+	int databit = pd4990a_databit_r(0);
+
+	res = (neogeo_ngh == NGH_vliner) ? 0x3f : neogeo_port_value[4];
+	res ^= (coinflip << 6) ^ (databit << 7);
+
+	res |= result_code << 8;
+	if (pending_command) res &= 0x7fff;
+
+	return res;
+}
+
+
+/*------------------------------------------------------
+	Write Z80 communication data ($320001)
+------------------------------------------------------*/
+
+TIMER_CALLBACK( neogeo_sound_write )
+{
+	sound_code = param;
+	z80_set_irq_line(IRQ_LINE_NMI, PULSE_LINE);
+}
+
+
+WRITE16_HANDLER( neogeo_z80_w )
+{
+	pending_command = 1;
+	timer_set(SOUNDLATCH_TIMER, TIME_NOW, (data >> 8) & 0xff, neogeo_sound_write);
+}
+
+
+/*------------------------------------------------------
+	Write I/O control switch ($380000 - $3800ff)
+------------------------------------------------------*/
+
 WRITE16_HANDLER( io_control_w )
 {
 	switch (offset & 0xff/2)
@@ -708,26 +805,9 @@ WRITE16_HANDLER( io_control_w )
 }
 
 
-/*************************************
- *
- *  NVRAM (Save RAM)
- *
- *************************************/
-
-WRITE16_HANDLER( neogeo_sram16_w )
-{
-	if (save_ram_unlocked)
-	{
-		COMBINE_DATA(&neogeo_sram16[offset & 0x7fff]);
-	}
-}
-
-
-/*************************************
- *
- *  System control register
- *
- *************************************/
+/*------------------------------------------------------
+	Write system control switch ($3a0000 - $3a001f)
+------------------------------------------------------*/
 
 WRITE16_HANDLER( system_control_w )
 {
@@ -747,29 +827,84 @@ WRITE16_HANDLER( system_control_w )
 }
 
 
-/*************************************
- *
- *  Watchdog
- *
- *************************************/
+/*------------------------------------------------------
+	Read VRAM register (0x3c0000 - 0x3c000f)
+------------------------------------------------------*/
 
-TIMER_CALLBACK( watchdog_callback )
+READ16_HANDLER( neogeo_video_register_r )
 {
-	if (Loop == LOOP_EXEC) Loop = LOOP_RESET;
+	if (mem_mask == 0xff00)
+		return 0xff;
+
+	switch (offset & 3)
+	{
+	case 0x00:
+	case 0x01: return get_videoram_data();
+	case 0x02: return get_videoram_modulo();
+	case 0x03: return get_video_control();
+	}
+	return 0xffff;
 }
 
 
-WRITE16_HANDLER( watchdog_reset_w )
+/*------------------------------------------------------
+	Write VRAM register (0x3c0000 - 0x3c000f)
+------------------------------------------------------*/
+
+WRITE16_HANDLER( neogeo_video_register_w )
 {
-	timer_set(WATCHDOG_TIMER, 128762, 0, watchdog_callback);
+	/* accessing the LSB only is not mapped */
+	if (mem_mask != 0xff00)
+	{
+		/* accessing the MSB only stores same data in MSB and LSB */
+		if (mem_mask == 0x00ff)
+			data = (data & 0xff00) | (data >> 8);
+
+		switch (offset & 7)
+		{
+		case 0x00: set_videoram_offset(data); break;
+		case 0x01: set_videoram_data(data); break;
+		case 0x02: set_videoram_modulo(data); break;
+		case 0x03: set_video_control(data); break;
+		case 0x04: neogeo_set_display_counter_msb(data); break;
+		case 0x05: neogeo_set_display_counter_lsb(data); break;
+		case 0x06: neogeo_acknowledge_interrupt(data); break;
+		case 0x07: break; /* unknown, see get_video_control */
+		}
+	}
 }
 
 
-/*************************************
- *
- *  Memory card
- *
- *************************************/
+/*------------------------------------------------------
+	Read from palette RAM (0x400000 - 0x40ffff)
+------------------------------------------------------*/
+
+READ16_HANDLER( neogeo_paletteram_r )
+{
+	offset &= 0xfff;
+	return palettes[palette_bank][offset];
+}
+
+
+/*------------------------------------------------------
+	Write to palette RAM (0x400000 - 0x40ffff)
+------------------------------------------------------*/
+
+WRITE16_HANDLER( neogeo_paletteram_w )
+{
+	UINT16 color;
+
+	offset &= 0xfff;
+	color = COMBINE_DATA(&palettes[palette_bank][offset]);
+
+	if (offset & 0x0f)
+		video_palette[offset] = video_clut16[color & 0x7fff];
+}
+
+
+/*------------------------------------------------------
+	Read from memory card ($800000 - $8007ff)
+------------------------------------------------------*/
 
 READ16_HANDLER( neogeo_memcard16_r )
 {
@@ -782,53 +917,32 @@ READ16_HANDLER( neogeo_memcard16_r )
 }
 
 
+/*------------------------------------------------------
+	Write to memory card ($800000 - $8007ff)
+------------------------------------------------------*/
+
 WRITE16_HANDLER( neogeo_memcard16_w )
 {
-#ifdef ADHOC
-	if (!adhoc_enable)
-#endif
+	if (ACCESSING_LSB)
 	{
-		if (ACCESSING_LSB)
-		{
+#ifdef ADHOC
+		if (!adhoc_enable)
+#endif
 			neogeo_memcard[offset & 0x7ff] = data & 0xff;
-		}
 	}
 }
 
 
-/*************************************
- *
- *  Inter-CPU communications
- *
- *************************************/
+/*------------------------------------------------------
+	Write to 64K SRAM ($d00000 - $d0ffff)
+------------------------------------------------------*/
 
-READ16_HANDLER( neogeo_timer_r )
+WRITE16_HANDLER( neogeo_sram16_w )
 {
-	UINT16 res;
-	int coinflip = pd4990a_testbit_r(0);
-	int databit = pd4990a_databit_r(0);
-
-	res = (neogeo_ngh == NGH_vliner) ? 0x3f : neogeo_port_value[4];
-	res ^= (coinflip << 6) ^ (databit << 7);
-
-	res |= result_code << 8;
-	if (pending_command) res &= 0x7fff;
-
-	return res;
-}
-
-
-TIMER_CALLBACK( neogeo_sound_write )
-{
-	sound_code = param;
-	z80_set_irq_line(IRQ_LINE_NMI, PULSE_LINE);
-}
-
-
-WRITE16_HANDLER( neogeo_z80_w )
-{
-	pending_command = 1;
-	timer_set(SOUNDLATCH_TIMER, TIME_NOW, (data >> 8) & 0xff, neogeo_sound_write);
+	if (save_ram_unlocked)
+	{
+		COMBINE_DATA(&neogeo_sram16[offset & 0x7fff]);
+	}
 }
 
 
@@ -1085,9 +1199,9 @@ WRITE16_HANDLER( kof98_protection_w )
 
 static UINT16 sma_random_r(void)
 {
-	int old = neogeo_rng;
+	UINT16 old = neogeo_rng;
 
-	int newbit = (
+	UINT16 newbit = (
 			(neogeo_rng >>  2) ^
 			(neogeo_rng >>  3) ^
 			(neogeo_rng >>  5) ^
@@ -1097,7 +1211,7 @@ static UINT16 sma_random_r(void)
 			(neogeo_rng >> 12) ^
 			(neogeo_rng >> 15)) & 1;
 
-	neogeo_rng = ((neogeo_rng << 1) | newbit) & 0xffff;
+	neogeo_rng = (neogeo_rng << 1) | newbit;
 
 	return old;
 }
@@ -1695,14 +1809,17 @@ void cthd2003_AES_protection(void)
 
 STATE_SAVE( driver )
 {
+	state_save_long(&neogeo_driver_type, 1);
 	state_save_long(&raster_enable, 1);
 
-	state_save_long(&display_counter, 1);
-	state_save_long(&display_position_interrupt_control, 1);
+	state_save_long(&scanline_read, 1);
+	state_save_word(&raster_counter, 1);
 
+	state_save_long(&display_counter, 1);
+	state_save_long(&display_position_interrupt_counter, 1);
+	state_save_long(&display_position_interrupt_control, 1);
 	state_save_long(&display_position_interrupt_pending, 1);
 	state_save_long(&vblank_interrupt_pending, 1);
-	state_save_long(&irq3_pending, 1);
 
 	state_save_long(&sound_code, 1);
 	state_save_long(&result_code, 1);
@@ -1720,8 +1837,8 @@ STATE_SAVE( driver )
 	state_save_long(&m68k_second_bank, 1);
 	state_save_long(z80_bank, 4);
 
-	state_save_long(&neogeo_rng, 1);
 	state_save_long(&neogeo_prot_data, 1);
+	state_save_word(&neogeo_rng, 1);
 	state_save_word(&CartRAM, 0x1000);
 }
 
@@ -1730,14 +1847,17 @@ STATE_LOAD( driver )
 	UINT32 _m68k_second_bank;
 	UINT32 _z80_bank[4];
 
+	state_load_long(&neogeo_driver_type, 1);
 	state_load_long(&raster_enable, 1);
 
-	state_load_long(&display_counter, 1);
-	state_load_long(&display_position_interrupt_control, 1);
+	state_load_long(&scanline_read, 1);
+	state_load_word(&raster_counter, 1);
 
-	state_load_long(&vblank_interrupt_pending, 1);
+	state_load_long(&display_counter, 1);
+	state_load_long(&display_position_interrupt_counter, 1);
+	state_load_long(&display_position_interrupt_control, 1);
 	state_load_long(&display_position_interrupt_pending, 1);
-	state_load_long(&irq3_pending, 1);
+	state_load_long(&vblank_interrupt_pending, 1);
 
 	state_load_long(&sound_code, 1);
 	state_load_long(&result_code, 1);
@@ -1755,8 +1875,8 @@ STATE_LOAD( driver )
 	state_load_long(&_m68k_second_bank, 1);
 	state_load_long(_z80_bank, 4);
 
-	state_load_long(&neogeo_rng, 1);
 	state_load_long(&neogeo_prot_data, 1);
+	state_load_word(&neogeo_rng, 1);
 	state_load_word(&CartRAM, 0x1000);
 
 	neogeo_set_cpu1_second_bank(_m68k_second_bank);

@@ -1258,33 +1258,12 @@ int cps1_driver_init(void)
 	if (machine_driver_type == MACHINE_qsound)
 	{
 		EEPROM_init(&qsound_eeprom_interface);
+		cps1_nvram_read_write(0);
 	}
-	else
+	else if (machine_driver_type == MACHINE_pang3)
 	{
 		EEPROM_init(&pang3_eeprom_interface);
-	}
-	if (machine_driver_type == MACHINE_qsound
-	||	machine_driver_type == MACHINE_pang3)
-	{
-#ifdef ADHOC
-		if (adhoc_enable)
-		{
-			if (adhoc_server)
-			{
-				msg_printf(TEXT(SENDING_EEPROM_DATA));
-				return adhoc_send_eeprom();
-			}
-			else
-			{
-				msg_printf(TEXT(RECIEVING_EEPROM_DATA));
-				return adhoc_recv_eeprom();
-			}
-		}
-		else
-#endif
-		{
-			cps1_nvram_read_write(0);
-		}
+		cps1_nvram_read_write(0);
 	}
 
 	return 1;

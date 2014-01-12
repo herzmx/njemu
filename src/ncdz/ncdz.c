@@ -152,21 +152,16 @@ static void neogeo_exit(void)
 	video_set_mode(32);
 	video_clear_screen();
 
-	ui_popup_reset(POPUP_MENU);
+	ui_popup_reset();
 
 	msg_screen_init(WP_LOGO, ICON_SYSTEM, TEXT(EXIT_EMULATION2));
 
 	msg_printf(TEXT(PLEASE_WAIT2));
 
-#ifdef ADHOC
-	if (!adhoc_enable)
-#endif
-	{
 #ifdef COMMAND_LIST
-		free_commandlist();
+	free_commandlist();
 #endif
-		save_gamecfg(game_name);
-	}
+	save_gamecfg(game_name);
 
 	msg_printf(TEXT(DONE2));
 
@@ -258,7 +253,7 @@ void neogeo_main(void)
 {
 	while (Loop >= LOOP_RESTART)
 	{
-		ui_popup_reset(POPUP_GAME);
+		ui_popup_reset();
 
 		fatal_error = 0;
 
@@ -271,16 +266,16 @@ void neogeo_main(void)
 				if (cdda_init())
 				{
 					cdrom_init();
-					input_init();
-
-					Loop = LOOP_EXEC;
-
-					if (neogeo_init())
+					if (input_init())
 					{
-						neogeo_run();
-					}
-					neogeo_exit();
+						Loop = LOOP_EXEC;
 
+						if (neogeo_init())
+						{
+							neogeo_run();
+						}
+						neogeo_exit();
+					}
 					input_shutdown();
 					cdrom_shutdown();
 				}
@@ -291,5 +286,5 @@ void neogeo_main(void)
 		memory_shutdown();
 		show_fatal_error();
 	}
-	ui_popup_reset(POPUP_MENU);
+	ui_popup_reset();
 }

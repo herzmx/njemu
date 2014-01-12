@@ -183,7 +183,7 @@ static int menu_gamecfg(void)
 
 	pad_wait_clear();
 	load_background(WP_GAMECFG);
-	ui_popup_reset(POPUP_MENU);
+	ui_popup_reset();
 
 	do
 	{
@@ -262,12 +262,14 @@ static int menu_gamecfg(void)
 			}
 
 			update  = draw_battery_status(1);
+			update |= draw_volume_status(1);
 			update |= ui_show_popup(1);
 			video_flip_screen(1);
 		}
 		else
 		{
 			update  = draw_battery_status(0);
+			update |= draw_volume_status(0);
 			update |= ui_show_popup(0);
 			video_wait_vsync();
 		}
@@ -517,7 +519,7 @@ static int menu_keycfg(void)
 
 	pad_wait_clear();
 	load_background(WP_KEYCFG);
-	ui_popup_reset(POPUP_MENU);
+	ui_popup_reset();
 
 	do
 	{
@@ -611,12 +613,14 @@ static int menu_keycfg(void)
 			}
 
 			update  = draw_battery_status(1);
+			update |= draw_volume_status(1);
 			update |= ui_show_popup(1);
 			video_flip_screen(1);
 		}
 		else
 		{
 			update  = draw_battery_status(0);
+			update |= draw_volume_status(0);
 			update |= ui_show_popup(0);
 			video_wait_vsync();
 		}
@@ -801,7 +805,7 @@ static int menu_dipswitch(void)
 
 	pad_wait_clear();
 	load_background(WP_DIPSW);
-	ui_popup_reset(POPUP_MENU);
+	ui_popup_reset();
 
 	do
 	{
@@ -882,12 +886,14 @@ static int menu_dipswitch(void)
 			}
 
 			update  = draw_battery_status(1);
+			update |= draw_volume_status(1);
 			update |= ui_show_popup(1);
 			video_flip_screen(1);
 		}
 		else
 		{
 			update  = draw_battery_status(0);
+			update |= draw_volume_status(0);
 			update |= ui_show_popup(0);
 			video_wait_vsync();
 		}
@@ -1053,7 +1059,7 @@ static void state_refresh_screen(int reload_thumbnail)
 	uifont_print_shadow(i + 24, 5, UI_COLOR(UI_PAL_TITLE), buf);
 
 	if (ui_text_get_language() == LANG_JAPANESE)
-		x = 10;
+		x = 12;
 	else
 		x = 0;
 
@@ -1240,7 +1246,7 @@ static int menu_state(void)
 
 	pad_wait_clear();
 	load_background(WP_STATE);
-	ui_popup_reset(POPUP_MENU);
+	ui_popup_reset();
 
 	memset(slot, 0, sizeof(slot));
 	state_clear_thumbnail();
@@ -1249,15 +1255,16 @@ static int menu_state(void)
 
 	do
 	{
-		if (update & 1)
+		if (update & UI_FULL_REFRESH)
 		{
 			state_refresh_screen((prev_sel == state_sel) ? 0 : 1);
 
 			update  = draw_battery_status(1);
+			update |= draw_volume_status(1);
 			update |= ui_show_popup(1);
 			video_flip_screen(1);
 		}
-		else if (update & 2)
+		else if (update & UI_PARTIAL_REFRESH)
 		{
 			int x, y, w, h;
 			RECT clip1, clip2;
@@ -1286,12 +1293,14 @@ static int menu_state(void)
 			video_copy_rect(tex_frame, draw_frame, &clip2, &clip1);
 
 			update  = draw_battery_status(0);
+			update |= draw_volume_status(0);
 			update |= ui_show_popup(0);
 			video_flip_screen(1);
 		}
 		else
 		{
 			update  = draw_battery_status(0);
+			update |= draw_volume_status(0);
 			update |= ui_show_popup(0);
 			video_wait_vsync();
 		}
@@ -1459,12 +1468,12 @@ void showmenu(void)
 	set_cpu_clock(PSPCLOCK_222);
 	video_clear_screen();
 	load_background(WP_LOGO);
-	ui_popup_reset(POPUP_MENU);
+	ui_popup_reset();
 	pad_wait_clear();
 
 	do
 	{
-		if (update & 1)
+		if (update & UI_FULL_REFRESH)
 		{
 			show_background();
 
@@ -1506,10 +1515,11 @@ void showmenu(void)
 			}
 
 			update  = draw_battery_status(1);
+			update |= draw_volume_status(1);
 			update |= ui_show_popup(1);
 			video_flip_screen(1);
 		}
-		else if (update & 2)
+		else if (update & UI_PARTIAL_REFRESH)
 		{
 			int x, y, w, h;
 			RECT clip1, clip2;
@@ -1541,12 +1551,14 @@ void showmenu(void)
 			video_copy_rect(tex_frame, draw_frame, &clip2, &clip1);
 
 			update  = draw_battery_status(0);
+			update |= draw_volume_status(0);
 			update |= ui_show_popup(0);
 			video_flip_screen(1);
 		}
 		else
 		{
 			update  = draw_battery_status(0);
+			update |= draw_volume_status(0);
 			update |= ui_show_popup(0);
 			video_wait_vsync();
 		}
@@ -1609,25 +1621,20 @@ void showmenu(void)
 	blit_clear_all_sprite();
 
 	pad_wait_clear();
-	ui_popup_reset(POPUP_GAME);
+	ui_popup_reset();
 	video_set_mode(16);
 	video_clear_screen();
 	video_clear_frame(work_frame);
+#if (EMU_SYSTEM != CPS2)
+	sound_set_samplerate();
+#endif
 	set_cpu_clock(psp_cpuclock);
 
 #if USE_CACHE
 	cache_sleep(0);
 #endif
 
-#if (EMU_SYSTEM == CPS1)
-	if (machine_sound_type == SOUND_QSOUND)
-		qsound_set_samplerate();
-	else
-		YM2151_set_samplerate();
-#elif (EMU_SYSTEM == CPS2)
-	qsound_set_samplerate();
-#elif (EMU_SYSTEM == MVS || EMU_SYSTEM == NCDZ)
-	YM2610_set_samplerate();
+#if (EMU_SYSTEM == MVS || EMU_SYSTEM == NCDZ)
 	neogeo_reset_driver_type();
 #endif
 
@@ -1702,7 +1709,7 @@ void show_color_menu(void)
 
 	pad_wait_clear();
 	load_background(WP_COLORCFG);
-	ui_popup_reset(POPUP_MENU);
+	ui_popup_reset();
 
 	do
 	{
@@ -1994,7 +2001,7 @@ void show_color_menu(void)
 
 	pad_wait_clear();
 	load_background(WP_FILER);
-	ui_popup_reset(POPUP_MENU);
+	ui_popup_reset();
 }
 
 #endif

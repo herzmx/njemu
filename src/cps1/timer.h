@@ -41,7 +41,7 @@ int timer_get_cpu_status(int cpunum);
 int timer_enable(int which, int enable);
 void timer_adjust(int which, float duration, int param, void (*callback)(int raram));
 void timer_set(int which, float duration, int param, void (*callback)(int param));
-UINT32 timer_getcurrentframe(void);
+UINT32 timer_get_currentframe(void);
 void timer_update_cpu(void);
 
 #ifdef SAVE_STATE

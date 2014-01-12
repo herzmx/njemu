@@ -22,12 +22,7 @@ static const ScePspIMatrix4 dither_matrix =
 	{ 15,  7, 13,  5 }
 };
 
-
-#if PSP_VIDEO_32BPP
-static int pixel_format = GU_PSM_8888;
-#else
-#define pixel_format	GU_PSM_5551
-#endif
+static int pixel_format;
 
 
 /******************************************************************************
@@ -47,25 +42,6 @@ RECT full_rect = { 0, 0, SCR_WIDTH, SCR_HEIGHT };
 
 
 /******************************************************************************
-	ローカル関数
-******************************************************************************/
-
-/*--------------------------------------------------------
-	VRAMクリア
---------------------------------------------------------*/
-
-static void clear_vram(void)
-{
-	int i;
-	UINT32 *vptr = (UINT32 *)(UINT8 *)0x44000000;
-
-	i = (SCR_HEIGHT * 3) * BUF_WIDTH;	// 3画面分
-
-	while (i--) *vptr++ = 0;
-}
-
-
-/******************************************************************************
 	グローバル関数
 ******************************************************************************/
 
@@ -78,14 +54,7 @@ void video_set_mode(int mode)
 {
 	if (video_mode != mode)
 	{
-		sceGuDisplay(GU_FALSE);
-		clear_vram();
-
-		if (!video_mode)
-		{
-			sceGuInit();
-			ui_init();
-		}
+		if (video_mode) video_exit();
 
 		video_mode = mode;
 
@@ -101,36 +70,29 @@ void video_set_mode(int mode)
 
 void video_init(void)
 {
-#if !PSP_VIDEO_32BPP
-	sceGuDisplay(GU_FALSE);
-	clear_vram();
-
-	sceGuInit();
-	ui_init();
-#endif
-
 #if PSP_VIDEO_32BPP
 	if (video_mode == 32)
 	{
 		pixel_format = GU_PSM_8888;
 
-		draw_frame = (void *)(FRAMESIZE32 * 0);
-		show_frame = (void *)(FRAMESIZE32 * 1);
+		show_frame = (void *)(FRAMESIZE32 * 0);
+		draw_frame = (void *)(FRAMESIZE32 * 1);
 		work_frame = (void *)(FRAMESIZE32 * 2);
 		tex_frame  = (void *)(FRAMESIZE32 * 3);
 	}
 	else
 #endif
 	{
-#if PSP_VIDEO_32BPP
 		pixel_format = GU_PSM_5551;
-#endif
 
-		draw_frame = (void *)(FRAMESIZE * 0);
-		show_frame = (void *)(FRAMESIZE * 1);
+		show_frame = (void *)(FRAMESIZE * 0);
+		draw_frame = (void *)(FRAMESIZE * 1);
 		work_frame = (void *)(FRAMESIZE * 2);
 		tex_frame  = (void *)(FRAMESIZE * 3);
 	}
+
+	sceGuDisplay(GU_FALSE);
+	sceGuInit();
 
 	sceGuStart(GU_DIRECT, gulist);
 	sceGuDrawBuffer(pixel_format, draw_frame, BUF_WIDTH);
@@ -169,8 +131,14 @@ void video_init(void)
 	sceGuFinish();
 	sceGuSync(0, GU_SYNC_FINISH);
 
+	video_clear_frame(show_frame);
+	video_clear_frame(draw_frame);
+	video_clear_frame(work_frame);
+
 	sceDisplayWaitVblankStart();
 	sceGuDisplay(GU_TRUE);
+
+	ui_init();
 }
 
 
@@ -182,7 +150,6 @@ void video_exit(void)
 {
 	sceGuDisplay(GU_FALSE);
 	sceGuTerm();
-	clear_vram();
 }
 
 
@@ -233,7 +200,7 @@ void video_clear_frame(void *frame)
 	sceGuDrawBufferList(pixel_format, frame, BUF_WIDTH);
 	sceGuScissor(0, 0, BUF_WIDTH, SCR_HEIGHT);
 	sceGuClearColor(0);
-	sceGuClear(GU_COLOR_BUFFER_BIT);
+	sceGuClear(GU_COLOR_BUFFER_BIT | GU_FAST_CLEAR_BIT);
 	sceGuFinish();
 	sceGuSync(0, GU_SYNC_FINISH);
 }
@@ -260,7 +227,7 @@ void video_clear_rect(void *frame, RECT *rect)
 	sceGuDrawBufferList(pixel_format, frame, BUF_WIDTH);
 	sceGuScissor(rect->left, rect->top, rect->right, rect->bottom);
 	sceGuClearColor(0);
-	sceGuClear(GU_COLOR_BUFFER_BIT);
+	sceGuClear(GU_COLOR_BUFFER_BIT | GU_FAST_CLEAR_BIT);
 	sceGuFinish();
 	sceGuSync(0, GU_SYNC_FINISH);
 }
@@ -276,7 +243,7 @@ void video_fill_frame(void *frame, UINT32 color)
 	sceGuDrawBufferList(pixel_format, frame, BUF_WIDTH);
 	sceGuScissor(0, 0, SCR_WIDTH, SCR_HEIGHT);
 	sceGuClearColor(color);
-	sceGuClear(GU_COLOR_BUFFER_BIT);
+	sceGuClear(GU_COLOR_BUFFER_BIT | GU_FAST_CLEAR_BIT);
 	sceGuFinish();
 	sceGuSync(0, GU_SYNC_FINISH);
 }
@@ -292,7 +259,7 @@ void video_fill_rect(void *frame, UINT32 color, RECT *rect)
 	sceGuDrawBufferList(pixel_format, frame, BUF_WIDTH);
 	sceGuScissor(rect->left, rect->top, rect->right, rect->bottom);
 	sceGuClearColor(color);
-	sceGuClear(GU_COLOR_BUFFER_BIT);
+	sceGuClear(GU_COLOR_BUFFER_BIT | GU_FAST_CLEAR_BIT);
 	sceGuFinish();
 	sceGuSync(0, GU_SYNC_FINISH);
 }
@@ -327,19 +294,17 @@ void video_copy_rect(void *src, void *dst, RECT *src_rect, RECT *dst_rect)
 
 	for (j = 0; (j + SLICE_SIZE) < sw; j = j + SLICE_SIZE)
 	{
-    	vertices = (struct Vertex *)sceGuGetMemory(2 * sizeof(struct Vertex));
+		vertices = (struct Vertex *)sceGuGetMemory(2 * sizeof(struct Vertex));
 
 		vertices[0].u = src_rect->left + j;
 		vertices[0].v = src_rect->top;
 		vertices[0].x = dst_rect->left + j * dw / sw;
 		vertices[0].y = dst_rect->top;
-		vertices[0].z = 0;
 
 		vertices[1].u = src_rect->left + j + SLICE_SIZE;
 		vertices[1].v = src_rect->bottom;
 		vertices[1].x = dst_rect->left + (j + SLICE_SIZE) * dw / sw;
 		vertices[1].y = dst_rect->bottom;
-		vertices[1].z = 0;
 
 		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, 2, NULL, vertices);
 	}
@@ -352,13 +317,11 @@ void video_copy_rect(void *src, void *dst, RECT *src_rect, RECT *dst_rect)
 		vertices[0].v = src_rect->top;
 		vertices[0].x = dst_rect->left + j * dw / sw;
 		vertices[0].y = dst_rect->top;
-		vertices[0].z = 0;
 
 		vertices[1].u = src_rect->right;
 		vertices[1].v = src_rect->bottom;
 		vertices[1].x = dst_rect->right;
 		vertices[1].y = dst_rect->bottom;
-		vertices[1].z = 0;
 
 		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, 2, NULL, vertices);
 	}
@@ -440,7 +403,7 @@ void video_copy_rect_flip(void *src, void *dst, RECT *src_rect, RECT *dst_rect)
 
 void video_copy_rect_rotate(void *src, void *dst, RECT *src_rect, RECT *dst_rect)
 {
-	INT16 sw, dw, sh, dh;
+	INT16 j, sw, dw, sh, dh;
 	struct Vertex *vertices;
 
 	sw = src_rect->right - src_rect->left;
@@ -463,17 +426,39 @@ void video_copy_rect_rotate(void *src, void *dst, RECT *src_rect, RECT *dst_rect
 
 	vertices = (struct Vertex *)sceGuGetMemory(2 * sizeof(struct Vertex));
 
-	vertices[0].u = src_rect->right;
-	vertices[1].v = src_rect->top;
-	vertices[0].x = dst_rect->right;
-	vertices[0].y = dst_rect->top;
+	for (j = 0; (j + SLICE_SIZE) < sw; j = j + SLICE_SIZE)
+	{
+		vertices = (struct Vertex *)sceGuGetMemory(2 * sizeof(struct Vertex));
 
-	vertices[1].u = src_rect->left;
-	vertices[0].v = src_rect->bottom;
-	vertices[1].x = dst_rect->left;
-	vertices[1].y = dst_rect->bottom;
+		vertices[0].u = src_rect->right - j;
+		vertices[0].v = src_rect->bottom;
+		vertices[0].x = dst_rect->right;
+		vertices[0].y = dst_rect->top - j * dh / sw;
 
-	sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, 2, NULL, vertices);
+		vertices[1].u = src_rect->right - j + SLICE_SIZE;
+		vertices[1].v = src_rect->top;
+		vertices[1].x = dst_rect->right;
+		vertices[1].y = dst_rect->bottom - (j + SLICE_SIZE) * dh / sw;
+
+		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, 2, NULL, vertices);
+	}
+
+	if (j < sw)
+	{
+		vertices = (struct Vertex *)sceGuGetMemory(2 * sizeof(struct Vertex));
+
+		vertices[0].u = src_rect->right + j;
+		vertices[0].v = src_rect->bottom;
+		vertices[0].x = dst_rect->right;
+		vertices[0].y = dst_rect->top - j * dh / sw;
+
+		vertices[1].u = src_rect->left;
+		vertices[1].v = src_rect->top;
+		vertices[1].x = dst_rect->left;
+		vertices[1].y = dst_rect->bottom;
+
+		sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, 2, NULL, vertices);
+	}
 
 	sceGuFinish();
 	sceGuSync(0, GU_SYNC_FINISH);
@@ -495,7 +480,6 @@ void video_draw_texture(UINT32 src_fmt, UINT32 dst_fmt, void *src, void *dst, RE
 	dh = dst_rect->bottom - dst_rect->top;
 
 	sceGuStart(GU_DIRECT, gulist);
-
 	sceGuDrawBufferList(dst_fmt, dst, BUF_WIDTH);
 	sceGuScissor(dst_rect->left, dst_rect->top, dst_rect->right, dst_rect->bottom);
 

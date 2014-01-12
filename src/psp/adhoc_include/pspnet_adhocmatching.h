@@ -34,7 +34,7 @@ extern "C" {
  * 
  * @return 0 on success, < 0 on error
  */
-int sceNetAdhocMatchingInit(unsigned int unk1);       // 0x20000 in lumines
+int sceNetAdhocMatchingInit(SceSize unk1);       // 0x20000 in lumines
 
 /**
  * Terminate the Adhoc matching library
@@ -86,7 +86,7 @@ int sceNetAdhocMatchingDelete(int matchingId);
  *
  * @return 0 on success, < 0 on error
  */
-int sceNetAdhocMatchingStart(int matchingId, int unk1, int unk2, int unk3, int unk4, int usrDataSize, const void *usrData);
+int sceNetAdhocMatchingStart(int matchingId, int unk1, int unk2, int unk3, int unk4, int usrDataSize, void *usrData);
 
 /** 
  * Stop a matching object
@@ -107,7 +107,7 @@ int sceNetAdhocMatchingStop(int matchingId);
  *
  * @return 0 on success, < 0 on error.
  */
-int sceNetAdhocMatchingSelectTarget(int matchingId, unsigned char *mac, int unk3, const void *unk4);
+int sceNetAdhocMatchingSelectTarget(int matchingId, unsigned char *mac, int unk3, void *unk4);
 
 /**
  * Cancel a matching target

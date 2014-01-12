@@ -7,7 +7,6 @@
 ******************************************************************************/
 
 #include "psp.h"
-#include "homehook.h"
 
 
 /******************************************************************************
@@ -52,12 +51,14 @@ UINT32 poll_gamepad(void)
 
 	sceCtrlPeekBufferPositive(&paddata, 1);
 
+	paddata.Buttons &= PSP_CTRL_ANY;
+
 	if (paddata.Ly >= 0xd0) paddata.Buttons |= PSP_CTRL_DOWN;
 	if (paddata.Ly <= 0x30) paddata.Buttons |= PSP_CTRL_UP;
 	if (paddata.Lx <= 0x30) paddata.Buttons |= PSP_CTRL_LEFT;
 	if (paddata.Lx >= 0xd0) paddata.Buttons |= PSP_CTRL_RIGHT;
 
-	return paddata.Buttons | readHomeButton();
+	return paddata.Buttons;
 }
 
 
@@ -72,12 +73,14 @@ UINT32 poll_gamepad_fatfursp(void)
 
 	sceCtrlPeekBufferPositive(&paddata, 1);
 
+	paddata.Buttons &= PSP_CTRL_ANY;
+
 	if (!(paddata.Buttons & PSP_CTRL_UP)    && paddata.Ly >= 0xd0) paddata.Buttons |= PSP_CTRL_DOWN;
 	if (!(paddata.Buttons & PSP_CTRL_DOWN)  && paddata.Ly <= 0x30) paddata.Buttons |= PSP_CTRL_UP;
 	if (!(paddata.Buttons & PSP_CTRL_RIGHT) && paddata.Lx <= 0x30) paddata.Buttons |= PSP_CTRL_LEFT;
 	if (!(paddata.Buttons & PSP_CTRL_LEFT)  && paddata.Lx >= 0xd0) paddata.Buttons |= PSP_CTRL_RIGHT;
 
-	return paddata.Buttons | readHomeButton();
+	return paddata.Buttons;
 }
 #endif
 
@@ -94,6 +97,8 @@ UINT32 poll_gamepad_analog(void)
 
 	sceCtrlPeekBufferPositive(&paddata, 1);
 
+	paddata.Buttons &= PSP_CTRL_ANY;
+
 	if (paddata.Ly >= 0xd0) paddata.Buttons |= PSP_CTRL_DOWN;
 	if (paddata.Ly <= 0x30) paddata.Buttons |= PSP_CTRL_UP;
 	if (paddata.Lx <= 0x30) paddata.Buttons |= PSP_CTRL_LEFT;
@@ -103,7 +108,7 @@ UINT32 poll_gamepad_analog(void)
 	data |= paddata.Lx << 16;
 	data |= paddata.Ly << 24;
 
-	return data | readHomeButton();
+	return data;
 }
 #endif
 
@@ -116,7 +121,7 @@ void pad_update(void)
 {
 	UINT32 data;
 
-	data = poll_gamepad() & PSP_CTRL_ANY;
+	data = poll_gamepad();
 
 	if (data)
 	{

@@ -619,6 +619,9 @@ static void loading_screen_stop(void)
 			m68000_write_memory_32(0x11c80c, 0x8854);
 		}
 	}
+
+	raster_line = 0;
+	raster_counter = RASTER_COUNTER_RELOAD;
 }
 
 
@@ -956,7 +959,7 @@ void neogeo_decode_spr(UINT8 *mem, UINT32 offset, UINT32 length)
 {
 	UINT32 tileno, numtiles = length / 128;
 	UINT8 *base  = mem + offset;
-	UINT8 *usage = video_spr_usage + (offset >> 7);
+	UINT8 *usage = spr_pen_usage + (offset >> 7);
 
 	for (tileno = 0; tileno < numtiles; tileno++)
 	{
@@ -1018,7 +1021,7 @@ void neogeo_decode_spr(UINT8 *mem, UINT32 offset, UINT32 length)
 		}
 
 		if (opaque)
-			*usage = (opaque == 256) ? 1 : 2;
+			*usage = (opaque == 256) ? SPRITE_OPAQUE : SPRITE_TRANSPARENT;
 		else
 			*usage = 0;
 		usage++;
@@ -1045,7 +1048,7 @@ void neogeo_decode_fix(UINT8 *mem, UINT32 offset, UINT32 length)
 	UINT32 i, j;
 	UINT8 tile, opaque;
 	UINT8 *p, buf[32];
-	UINT8 *usage = &video_fix_usage[offset >> 6];
+	UINT8 *usage = &fix_pen_usage[offset >> 6];
 	UINT8 *base  = &mem[offset >> 1];
 
 	for (i = 0; i < length; i += 32)
@@ -1064,7 +1067,7 @@ void neogeo_decode_fix(UINT8 *mem, UINT32 offset, UINT32 length)
 		}
 
 		if (opaque)
-			*usage = (opaque == 64) ? 1 : 2;
+			*usage = (opaque == 64) ? SPRITE_OPAQUE : SPRITE_TRANSPARENT;
 		else
 			*usage = 0;
 		usage++;
