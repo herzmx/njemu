@@ -17,7 +17,7 @@
 #include "common/loadrom.h"
 #include "common/state.h"
 #include "common/cache.h"
-#if (EMU_SYSTEM == CPS1 || EMU_SYSTEM == CPS2)
+#if (EMU_SYSTEM != MVS)
 #include "common/coin.h"
 #endif
 

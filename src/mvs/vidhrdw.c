@@ -144,25 +144,25 @@ static void draw_fix(void)
 	SPRスプライト描画
 ------------------------------------------------------*/
 
-#define DRAW_SPRITE()											\
-	if (sy2 + zy > min_y && sy2 <= max_y)						\
-	{															\
-		code = sprite_base[0];									\
-		attr = sprite_base[1];									\
-																\
-		if (attr & 0x10) code |= high_tile;						\
-		if (attr & 0x20) code |= vhigh_tile;					\
-		if (attr & 0x40) code |= vvhigh_tile;					\
-																\
-		if (attr & 0x08)										\
-			code = (code & ~7) | (neogeo_frame_counter & 7);	\
-		else if (attr & 0x04)									\
-			code = (code & ~3) | (neogeo_frame_counter & 3);	\
-																\
-		code %= no_of_tiles;									\
-																\
-		if (spr_pen_usage[code])								\
-			blit_draw_spr(sx, sy2, zx + 1, zy, code, attr);		\
+#define DRAW_SPRITE()												\
+	if (sy2 + zy > min_y && sy2 <= max_y)							\
+	{																\
+		code = sprite_base[0];										\
+		attr = sprite_base[1];										\
+																	\
+		if (attr & 0x10) code |= high_tile;							\
+		if (attr & 0x20) code |= vhigh_tile;						\
+		if (attr & 0x40) code |= vvhigh_tile;						\
+																	\
+		if (attr & 0x08)											\
+			code = (code & ~7) | (neogeo_frame_counter & 7);		\
+		else if (attr & 0x04)										\
+			code = (code & ~3) | (neogeo_frame_counter & 3);		\
+																	\
+		code %= no_of_tiles;										\
+																	\
+		if (spr_pen_usage[code])									\
+			blit_draw_spr(sx, sy2, zx + 1, zy, code, attr);			\
 	}
 
 static void draw_spr(int min_y, int max_y)
@@ -330,7 +330,7 @@ void neogeo_video_reset(void)
 
 	next_update_first_line = FIRST_VISIBLE_LINE;
 
-	if (neogeo_bios == ASIA_AES || neogeo_bios == DEBUG_BIOS)
+	if (neogeo_bios == ASIA_AES)
 	{
 		fix_bank   = 1;
 		fix_usage  = gfx_pen_usage[1];

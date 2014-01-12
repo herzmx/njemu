@@ -12,17 +12,23 @@
 
 #define MIN_CACHE_SIZE		0x40		// 下限  4MB
 #define MAX_CACHE_SIZE		0x140		// 上限 20MB
+#define CACHE_SAFETY		0x20000		// キャッシュ確保後の空きメモリサイズ
 #define BLOCK_SIZE			0x10000		// 1ブロックのサイズ = 64KB
-#define BLOCK_NOT_CACHED	-1
-#define CACHE_SAFETY		0x20000
+#define BLOCK_MASK			0xffff
+#define BLOCK_SHIFT			16
+#define BLOCK_NOT_CACHED	0xffff
+#define BLOCK_EMPTY			0xffffffff
 
 #if (EMU_SYSTEM == CPS2)
-#define GFX_MEMORY		memory_region_gfx1
-#define GFX_SIZE		memory_length_gfx1
-#define CHECK_FNAME		"block_empty"
+#define GFX_MEMORY			memory_region_gfx1
+#define GFX_SIZE			memory_length_gfx1
+#define CHECK_FNAME			"block_empty"
 #elif (EMU_SYSTEM == MVS)
-#define GFX_MEMORY		memory_region_gfx3
-#define GFX_SIZE		memory_length_gfx3
+#define GFX_MEMORY			memory_region_gfx3
+#define GFX_SIZE			memory_length_gfx3
+#define PCM_CACHE_SIZE		0x10000
+#define PCM_CACHE_MASK		0xffff
+#define PCM_CACHE_SHIFT		16
 #endif
 
 
@@ -57,7 +63,7 @@ static cache_t *head;
 static cache_t *tail;
 
 static int num_cache;
-static s16 ALIGN_DATA blocks[MAX_CACHE_BLOCKS];
+static u16 ALIGN_DATA blocks[MAX_CACHE_BLOCKS];
 static char spr_cache_name[MAX_PATH];
 static int cache_fd;
 
@@ -92,15 +98,15 @@ u8 *pcm_get_cache(int ch)
 
 u8 pcm_cache_read(int ch, u32 offset)
 {
-	u16 block = (offset >> 16);
+	u16 block = offset >> PCM_CACHE_SHIFT;
 
 	if (pcm_cache_block[ch] != block)
 	{
-		sceIoLseek(pcm_fd, offset & ~0xffff, PSP_SEEK_SET);
+		sceIoLseek(pcm_fd, offset & ~PCM_CACHE_MASK, PSP_SEEK_SET);
 		sceIoRead(pcm_fd, pcm_cache[ch], PCM_CACHE_SIZE);
 		pcm_cache_block[ch] = block;
 	}
-	return pcm_cache[ch][offset & 0xffff];
+	return pcm_cache[ch][offset & PCM_CACHE_MASK];
 }
 
 
@@ -169,8 +175,8 @@ static int fill_cache(void)
 		p->block = block;
 		blocks[block] = p->idx;
 
-		sceIoLseek(cache_fd, block << 16, SEEK_SET);
-		sceIoRead(cache_fd, &GFX_MEMORY[p->idx << 16], 0x10000);
+		sceIoLseek(cache_fd, block << BLOCK_SHIFT, PSP_SEEK_SET);
+		sceIoRead(cache_fd, &GFX_MEMORY[p->idx << BLOCK_SHIFT], BLOCK_SIZE);
 
 		head = p->next;
 		head->prev = NULL;
@@ -190,14 +196,14 @@ static int fill_cache(void)
 	{
 		while (i < num_cache)
 		{
-			if (block_offset[block] != 0xffffffff)
+			if (block_offset[block] != BLOCK_EMPTY)
 			{
 				p = head;
 				p->block = block;
 				blocks[block] = p->idx;
 
-				sceIoLseek(cache_fd, block_offset[block], SEEK_SET);
-				sceIoRead(cache_fd, &GFX_MEMORY[p->idx << 16], 0x10000);
+				sceIoLseek(cache_fd, block_offset[block], PSP_SEEK_SET);
+				sceIoRead(cache_fd, &GFX_MEMORY[p->idx << BLOCK_SHIFT], BLOCK_SIZE);
 
 				head = p->next;
 				head->prev = NULL;
@@ -270,16 +276,16 @@ static u32 read_cache_disable(u32 offset)
 /*------------------------------------------------------
 	アドレス変換のみ行う
 
-	空き領域を削除した状態でし、全てメモリに格納されて
+	空き領域を削除した状態で、全てメモリに格納されて
 	いる場合
 ------------------------------------------------------*/
 
 #if (EMU_SYSTEM == CPS2)
 static u32 read_cache_static(u32 offset)
 {
-	int idx = blocks[offset >> 16];
+	int idx = blocks[offset >> BLOCK_SHIFT];
 
-	return ((idx << 16) | (offset & 0xffff));
+	return ((idx << BLOCK_SHIFT) | (offset & BLOCK_MASK));
 }
 #endif
 
@@ -292,8 +298,8 @@ static u32 read_cache_static(u32 offset)
 
 static u32 read_cache_rawfile(u32 offset)
 {
-	s16 new_block = offset >> 16;
-	int idx = blocks[new_block];
+	s16 new_block = offset >> BLOCK_SHIFT;
+	u32 idx = blocks[new_block];
 	cache_t *p;
 
 	if (idx == BLOCK_NOT_CACHED)
@@ -305,11 +311,11 @@ static u32 read_cache_rawfile(u32 offset)
 		blocks[new_block] = p->idx;
 
 #if (EMU_SYSTEM == MVS)
-		sceIoLseek(cache_fd, new_block << 16, SEEK_SET);
+		sceIoLseek(cache_fd, new_block << BLOCK_SHIFT, PSP_SEEK_SET);
 #else
-		sceIoLseek(cache_fd, block_offset[new_block], SEEK_SET);
+		sceIoLseek(cache_fd, block_offset[new_block], PSP_SEEK_SET);
 #endif
-		sceIoRead(cache_fd, &GFX_MEMORY[p->idx << 16], 0x10000);
+		sceIoRead(cache_fd, &GFX_MEMORY[p->idx << BLOCK_SHIFT], BLOCK_SIZE);
 	}
 	else p = &cache_data[idx];
 
@@ -333,7 +339,7 @@ static u32 read_cache_rawfile(u32 offset)
 		tail = p;
 	}
 
-	return ((tail->idx << 16) | (offset & 0xffff));
+	return ((tail->idx << BLOCK_SHIFT) | (offset & BLOCK_MASK));
 }
 
 
@@ -346,8 +352,8 @@ static u32 read_cache_rawfile(u32 offset)
 #if (EMU_SYSTEM == CPS2)
 static u32 read_cache_zipfile(u32 offset)
 {
-	s16 new_block = offset >> 16;
-	int idx = blocks[new_block];
+	s16 new_block = offset >> BLOCK_SHIFT;
+	u32 idx = blocks[new_block];
 	cache_t *p;
 
 	if (idx == BLOCK_NOT_CACHED)
@@ -386,7 +392,7 @@ static u32 read_cache_zipfile(u32 offset)
 		tail = p;
 	}
 
-	return ((tail->idx << 16) | (offset & 0xffff));
+	return ((tail->idx << BLOCK_SHIFT) | (offset & BLOCK_MASK));
 }
 #endif
 
@@ -411,7 +417,7 @@ static void update_cache_disable(u32 offset)
 
 static void update_cache_dynamic(u32 offset)
 {
-	s16 new_block = offset >> 16;
+	s16 new_block = offset >> BLOCK_SHIFT;
 	int idx = blocks[new_block];
 
 	if (idx != BLOCK_NOT_CACHED)
@@ -502,7 +508,7 @@ int cache_start(void)
 
 			for (i = 0; i < 7; i++)
 			{
-				if ((pcm_cache[i] = memalign(MEM_ALIGN, 0x10000)) == NULL)
+				if ((pcm_cache[i] = memalign(MEM_ALIGN, BLOCK_SIZE)) == NULL)
 				{
 					int j;
 
@@ -516,7 +522,7 @@ int cache_start(void)
 					pcm_fd = -1;
 					break;
 				}
-				memset(pcm_cache[i], 0, 0x10000);
+				memset(pcm_cache[i], 0, BLOCK_SIZE);
 			}
 			if (pcm_cache_enable)
 			{
@@ -587,11 +593,11 @@ int cache_start(void)
 		update_cache = update_cache_dynamic;
 
 		// 確保可能なサイズをチェック
-		for (i = GFX_SIZE >> 16; i >= MIN_CACHE_SIZE; i--)
+		for (i = GFX_SIZE >> BLOCK_SHIFT; i >= MIN_CACHE_SIZE; i--)
 		{
-			if ((GFX_MEMORY = (u8 *)memalign(MEM_ALIGN, (i << 16) + CACHE_SAFETY)) != NULL)
+			if ((GFX_MEMORY = (u8 *)memalign(MEM_ALIGN, (i << BLOCK_SHIFT) + CACHE_SAFETY)) != NULL)
 			{
-				size = i << 16;
+				size = i << BLOCK_SHIFT;
 				free(GFX_MEMORY);
 				GFX_MEMORY = NULL;
 				break;
@@ -614,7 +620,7 @@ int cache_start(void)
 		num_cache = i;
 	}
 
-	msg_printf("%dKB cache allocated.\n", (num_cache << 16) / 1024);
+	msg_printf("%dKB cache allocated.\n", (num_cache << BLOCK_SHIFT) / 1024);
 
 	for (i = 0; i < num_cache; i++)
 		cache_data[i].idx = i;

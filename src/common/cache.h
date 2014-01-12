@@ -15,7 +15,6 @@
 #define MAX_CACHE_BLOCKS	0x200
 #elif (EMU_SYSTEM == MVS)
 #define MAX_CACHE_BLOCKS	0x400
-#define PCM_CACHE_SIZE		0x10000
 #endif
 
 enum

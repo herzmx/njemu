@@ -47,7 +47,6 @@ static u32 irq2pos_value;
 static int vblank_int;
 static int scanline_int;
 static int scanline_read;
-static int raster_enable;
 
 static u32 frame_counter;
 
@@ -190,12 +189,7 @@ void neogeo_driver_reset(void)
 	neogeo_rng = 0x2345;
 	neogeo_sram_unlocked = 0;
 
-	raster_enable = neogeo_raster_enable;
-
-	if (neogeo_bios >= UNI_V20 && neogeo_bios <= UNI_V22)
-		raster_enable = 1;
-
-	if (raster_enable)
+	if (neogeo_raster_enable)
 	{
 		if (neogeo_ngh == NGH_mosyougi)
 			neogeo_driver_type = BUSY;
@@ -1367,7 +1361,6 @@ READ16_HANDLER( vliner_16_r )
 STATE_SAVE( driver )
 {
 	state_save_long(&neogeo_driver_type, 1);
-	state_save_long(&raster_enable, 1);
 	state_save_long(&irq2start, 1);
 	state_save_long(&irq2control, 1);
 	state_save_long(&irq2pos_value, 1);
@@ -1398,7 +1391,6 @@ STATE_LOAD( driver )
 	u32 _z80_bank[4];
 
 	state_load_long(&neogeo_driver_type, 1);
-	state_load_long(&raster_enable, 1);
 	state_load_long(&irq2start, 1);
 	state_load_long(&irq2control, 1);
 	state_load_long(&irq2pos_value, 1);

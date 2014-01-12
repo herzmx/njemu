@@ -54,7 +54,11 @@
 #define READ_ARG16()		(*(u8 *)(PC + 1) | (*(u8 *)PC << 8)); PC += 2
 #endif
 
+#if defined(BUILD_CPS2PSP) || defined(BUILD_MVSPSP)
+#define READ_MEM8(A)		memory_region_cpu2[(A)]
+#else
 #define READ_MEM8(A)		CPU->Read_Byte(A)
+#endif
 #if CZ80_LITTLE_ENDIAN
 #define READ_MEM16(A)		(READ_MEM8(A) | (READ_MEM8((A) + 1) << 8))
 #else

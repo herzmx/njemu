@@ -12,7 +12,7 @@
 	ÉoÅ[ÉWÉáÉì
 ******************************************************************************/
 
-#define INIVERSION	6
+#define INIVERSION	7
 static const char *inifile_name = "mvspsp.ini";
 
 #elif defined(INCLUDE_CONFIG_STRUCT)

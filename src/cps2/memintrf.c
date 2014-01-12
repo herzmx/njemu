@@ -84,7 +84,8 @@ static u8 *static_ram1;
 static u8 *static_ram2;
 static u8 *static_ram3;
 static u8 *static_ram4;
-static u8 *static_ram5[2];
+static u8 *static_ram5;
+static u8 *static_ram6;
 
 
 /******************************************************************************
@@ -731,15 +732,17 @@ int memory_init(void)
 	}
 	if (load_rom_gfx1() == 0) return 0;
 
-	static_ram1    = (u8 *)cps1_ram    - 0xff0000;
-	static_ram2    = (u8 *)cps1_gfxram - 0x900000;
-	static_ram3    = (u8 *)cps2_ram    - 0x660000;
-	static_ram4    = (u8 *)cps2_output - 0x400000;
-	static_ram5[0] = (u8 *)cps2_objram[0];
-	static_ram5[1] = (u8 *)cps2_objram[1];
+	static_ram1 = (u8 *)cps1_ram    - 0xff0000;
+	static_ram2 = (u8 *)cps1_gfxram - 0x900000;
+	static_ram3 = (u8 *)cps2_ram    - 0x660000;
+	static_ram4 = (u8 *)cps2_output - 0x400000;
+	static_ram5 = (u8 *)cps2_objram[0];
+	static_ram6 = (u8 *)cps2_objram[1];
 
 	qsound_sharedram1 = &memory_region_cpu2[0xc000];
 	qsound_sharedram2 = &memory_region_cpu2[0xf000];
+
+	memory_region_cpu2[0xd007] = 0x80;
 
 	msg_printf("Done.\n");
 
@@ -805,11 +808,10 @@ u8 m68000_read_memory_8(u32 offset)
 		return READ_BYTE(static_ram3, offset);
 
 	case 0x700000:
-		{
-			int bank = (offset & 0x8000) >> 15;
-			offset &= 0x1fff;
-			return READ_BYTE(static_ram5[bank], offset);
-		}
+		if (offset & 0x8000)
+			return READ_BYTE(static_ram6, (offset & 0x1fff));
+		else
+			return READ_BYTE(static_ram5, (offset & 0x1fff));
 		break;
 
 	case 0x800000:
@@ -869,11 +871,10 @@ u16 m68000_read_memory_16(u32 offset)
 		return READ_WORD(static_ram3, offset);
 
 	case 0x700000:
-		{
-			int bank = (offset & 0x8000) >> 15;
-			offset &= 0x1fff;
-			return READ_WORD(static_ram5[bank], offset);
-		}
+		if (offset & 0x8000)
+			return READ_WORD(static_ram6, (offset & 0x1fff));
+		else
+			return READ_WORD(static_ram5, (offset & 0x1fff));
 		break;
 
 	case 0x800000:
@@ -937,11 +938,10 @@ void m68000_write_memory_8(u32 offset, u8 data)
 		return;
 
 	case 0x700000:
-		{
-			int bank = (offset & 0x8000) >> 15;
-			offset &= 0x1fff;
-			WRITE_BYTE(static_ram5[bank], offset, data);
-		}
+		if (offset & 0x8000)
+			WRITE_BYTE(static_ram6, (offset & 0x1fff), data);
+		else
+			WRITE_BYTE(static_ram5, (offset & 0x1fff), data);
 		return;
 
 	case 0x800000:
@@ -963,7 +963,7 @@ void m68000_write_memory_8(u32 offset, u8 data)
 				if (offset & 1)
 				{
 					cps2_objram_bank = data & 1;
-					static_ram5[1] = (u8 *)cps2_objram[cps2_objram_bank ^ 1];
+					static_ram6 = (u8 *)cps2_objram[cps2_objram_bank ^ 1];
 				}
 				return;
 			}
@@ -1021,12 +1021,10 @@ void m68000_write_memory_16(u32 offset, u16 data)
 		return;
 
 	case 0x700000:
-		{
-			int bank = (offset & 0x8000) >> 15;
-			offset &= 0x1fff;
-			WRITE_WORD(static_ram5[bank], offset, data);
-			return;
-		}
+		if (offset & 0x8000)
+			WRITE_WORD(static_ram6, (offset & 0x1fff), data);
+		else
+			WRITE_WORD(static_ram5, (offset & 0x1fff), data);
 		break;
 
 	case 0x800000:
@@ -1046,7 +1044,7 @@ void m68000_write_memory_16(u32 offset, u16 data)
 
 			case 0xe0:
 				cps2_objram_bank = data & 1;
-				static_ram5[1] = (u8 *)cps2_objram[cps2_objram_bank ^ 1];
+				static_ram6 = (u8 *)cps2_objram[cps2_objram_bank ^ 1];
 				return;
 			}
 			break;

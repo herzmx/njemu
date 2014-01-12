@@ -293,19 +293,6 @@ void EEPROM_save(FILE *fp)
 	fwrite(eeprom_data, 1, (1 << intf->address_bits) * intf->data_bits / 8, fp);
 }
 
-void EEPROM_set_data(const u8 *data, int length)
-{
-	memcpy(eeprom_data, data, length);
-}
-
-u8 *EEPROM_get_data_pointer(int *length)
-{
-	if(length)
-		*length = MEMORY_SIZE;
-
-	return eeprom_data;
-}
-
 u8 EEPROM_read_data(u32 address)
 {
 	return eeprom_data[address];

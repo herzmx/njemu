@@ -1447,9 +1447,7 @@ void m68000_write_memory_16(u32 offset, u16 data)
 
 u8 z80_read_memory_8(u32 offset)
 {
-	offset &= Z80_AMASK;
-
-	return memory_region_cpu2[offset];
+	return memory_region_cpu2[offset & Z80_AMASK];
 }
 
 

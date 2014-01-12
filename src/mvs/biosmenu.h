@@ -11,7 +11,6 @@
 
 enum
 {
-	// official BIOS
 	EUROPE_V2 = 0,
 	EUROPE_V1,
 	USA_V2,
@@ -22,20 +21,6 @@ enum
 	JAPAN_V1,
 	ASIA_AES,
 
-	// hack BIOS
-	UNI_V10,
-	UNI_V11,
-	UNI_V12old,
-	UNI_V12,
-	UNI_V13,
-
-	UNI_V20,
-	UNI_V21,
-	UNI_V22,
-//	UNI_V23,
-
-	DEBUG_BIOS,
-
 	BIOS_MAX
 };
 
@@ -43,7 +28,6 @@ enum
 extern const char *bios_name[BIOS_MAX];
 extern const u32 bios_crc[BIOS_MAX];
 extern const u32 bios_patch_address[BIOS_MAX];
-//extern const u32 sm1_crc;
 extern const u32 sfix_crc;
 extern const u32 lorom_crc;
 

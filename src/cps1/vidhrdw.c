@@ -577,70 +577,73 @@ void cps1_build_palette(void)
 	object•`‰æ
 ------------------------------------------------------*/
 
-#define SCAN_OBJECT(blit_func)													\
-	int x, y, sx, sy, code, attr;												\
-	int nx, ny, nsx, nsy;														\
-	u16 ncode;																	\
-	struct cps1_object_t *object = cps1_last_object;							\
-																				\
-	while (object >= cps1_object)												\
-	{																			\
-		sx   = object->sx;														\
-		sy   = object->sy;														\
-		code = object->code;													\
-		attr = object->attr;													\
-		object--;																\
-																				\
-		switch (cps1_kludge)													\
-		{																		\
-		case CPS1_KLUDGE_FORGOTTN: code += 0x4000; break;						\
-		case CPS1_KLUDGE_GHOULS:   if (code >= 0x1000) code += 0x4000; break;	\
-		case CPS1_KLUDGE_3WONDERS: if (code >= 0x2a00) code += 0x4000; break;	\
-		}																		\
-																				\
-		if (code >= cps1_object_num) continue;									\
-																				\
-		if (!(attr & 0xff00))													\
-		{																		\
-			if (cps1_object_pen_usage[code])									\
-				blit_func(sx & 0x1ff, sy & 0x1ff, code, attr);					\
-			continue;															\
-		}																		\
-																				\
-		nx = (attr >>  8) & 0x0f;												\
-		ny = (attr >> 12) & 0x0f;												\
-																				\
-		for (y = 0; y <= ny; y++)												\
-		{																		\
-			for (x = 0; x <= nx; x++)											\
-			{																	\
-				ncode = (code & ~0xf) + ((code + x) & 0xf) + (y << 4);			\
-																				\
-				if (cps1_object_pen_usage[ncode])								\
-				{																\
-					if (attr & 0x20)											\
-						nsx = sx + ((nx - x) << 4);								\
-					else														\
-						nsx = sx + (x << 4);									\
-																				\
-					if (attr & 0x40)											\
-						nsy = sy + ((ny - y) << 4);								\
-					else														\
-						nsy = sy + (y << 4);									\
-																				\
-					blit_func(nsx & 0x1ff, nsy & 0x1ff, ncode, attr);			\
-				}																\
-			}																	\
-		}																		\
+#define SCAN_OBJECT(blit_func)												\
+	switch (cps1_kludge)													\
+	{																		\
+	case CPS1_KLUDGE_FORGOTTN: code += 0x4000; break;						\
+	case CPS1_KLUDGE_GHOULS:   if (code >= 0x1000) code += 0x4000; break;	\
+	case CPS1_KLUDGE_3WONDERS: if (code >= 0x2a00) code += 0x4000; break;	\
+	}																		\
+																			\
+	if (code >= cps1_object_num) continue;									\
+																			\
+	if (!(attr & 0xff00))													\
+	{																		\
+		if (cps1_object_pen_usage[code])									\
+			blit_func(sx & 0x1ff, sy & 0x1ff, code, attr);					\
+		continue;															\
+	}																		\
+																			\
+	nx = (attr >>  8) & 0x0f;												\
+	ny = (attr >> 12) & 0x0f;												\
+																			\
+	for (y = 0; y <= ny; y++)												\
+	{																		\
+		for (x = 0; x <= nx; x++)											\
+		{																	\
+			ncode = (code & ~0xf) + ((code + x) & 0xf) + (y << 4);			\
+																			\
+			if (cps1_object_pen_usage[ncode])								\
+			{																\
+				if (attr & 0x20)											\
+					nsx = sx + ((nx - x) << 4);								\
+				else														\
+					nsx = sx + (x << 4);									\
+																			\
+				if (attr & 0x40)											\
+					nsy = sy + ((ny - y) << 4);								\
+				else														\
+					nsy = sy + (y << 4);									\
+																			\
+				blit_func(nsx & 0x1ff, nsy & 0x1ff, ncode, attr);			\
+			}																\
+		}																	\
 	}
 
 /*------------------------------------------------------
 	•`‰æ
 ------------------------------------------------------*/
 
+static struct cps1_object_t *object1;
+
 void cps1_render_object(void)
 {
-	SCAN_OBJECT(blit_draw_object)
+	int x, y, sx, sy, code, attr;
+	int nx, ny, nsx, nsy;
+	u16 ncode;
+
+	object1 = cps1_last_object;
+
+	while (object1 >= cps1_object)
+	{
+		sx   = object1->sx;
+		sy   = object1->sy;
+		code = object1->code;
+		attr = object1->attr;
+		object1--;
+
+		SCAN_OBJECT(blit_draw_object)
+	}
 
 	blit_finish_object();
 }
@@ -652,7 +655,21 @@ void cps1_render_object(void)
 
 void cps1_scan_object(void)
 {
-	SCAN_OBJECT(blit_update_object)
+	int x, y, sx, sy, code, attr;
+	int nx, ny, nsx, nsy;
+	u16 ncode;
+	struct cps1_object_t *object2 = object1;
+
+	while (object2 >= cps1_object)
+	{
+		sx   = object2->sx;
+		sy   = object2->sy;
+		code = object2->code;
+		attr = object2->attr;
+		object2--;
+
+		SCAN_OBJECT(blit_update_object)
+	}
 }
 
 
@@ -779,7 +796,7 @@ static void cps1_scan_scroll1_background(void)
 	tpens = cps1_transparency_scroll[(attr & 0x0180) >> 7];				\
 	if (cps1_pen_usage[gfxset][code] & tpens)							\
 	{																	\
-		blit_update_scroll1h(sx, sy, code, attr);						\
+		blit_update_scrollh(sx, sy, code, attr);						\
 	}
 
 void cps1_scan_scroll1_foreground(void)
@@ -816,6 +833,8 @@ void cps1_scan_scroll1(void)
 																			\
 	for (block = 0; block < cps_scroll2_blocks; block++)					\
 	{																		\
+		blit_set_clip_scroll2(scroll2[block].start, scroll2[block].end + 1);\
+																			\
 		cps_scroll2x = scroll2[block].value;								\
 		logical_col  = cps_scroll2x >> 4;									\
 		scroll_col   = cps_scroll2x & 0x0f;									\
@@ -851,7 +870,7 @@ void cps1_scan_scroll1(void)
 	•`‰æ
 ------------------------------------------------------*/
 
-#define BLIT_FINISH_FUNC	blit_finish_scroll2(scroll2[block].start, scroll2[block].end + 1);
+#define BLIT_FINISH_FUNC	blit_finish_scroll2();
 
 #define DRAW_SCROLL2													\
 	if (pen_usage[code])												\
@@ -903,6 +922,10 @@ static void cps1_render_scroll2_background(void)
 
 #undef DRAW_SCROLL2
 
+#undef BLIT_FINISH_FUNC
+
+#define BLIT_FINISH_FUNC	blit_finish_scroll2h();
+
 #define DRAW_SCROLL2													\
 	attr  = cps_scroll2[offs + 1];										\
 	tpens = cps1_transparency_scroll[(attr & 0x0180) >> 7];				\
@@ -915,7 +938,7 @@ static void cps1_render_scroll2_foreground(void)
 {
 	if (cps_scroll2_blocks == 1)
 	{
-		blit_finish_scroll2h(16, 240);
+		blit_finish_scroll2h();
 	}
 	else
 	{
@@ -1195,7 +1218,7 @@ static void cps1_scan_scroll3_background(void)
 	tpens = cps1_transparency_scroll[(attr & 0x0180) >> 7];				\
 	if (pen_usage[code] & tpens)										\
 	{																	\
-		blit_update_scroll3h(sx, sy, code, attr);						\
+		blit_update_scrollh(sx, sy, code, attr);						\
 	}
 
 void cps1_scan_scroll3_foreground(void)

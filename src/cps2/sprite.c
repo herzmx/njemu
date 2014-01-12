@@ -197,7 +197,7 @@ static void object_reset_sprite(void)
 	OBJECTテクスチャからスプライト番号を取得
 ------------------------------------------------------------------------*/
 
-static int object_get_sprite(int key)
+static int object_get_sprite(u32 key)
 {
 	SPRITE *p = object_head[key & OBJECT_HASH_MASK];
 
@@ -304,8 +304,8 @@ static void object_delete_sprite(int delay)
 
 static void object_delete_dirty_palette(void)
 {
-	SPRITE *p, *prev_p;
 	int i, palno;
+	SPRITE *p, *prev_p;
 
 	for (palno = 0; palno < 32; palno++)
 	{
@@ -379,7 +379,7 @@ static void scroll1_reset_sprite(void)
 	SCROLL1テクスチャからスプライト番号を取得
 ------------------------------------------------------------------------*/
 
-static int scroll1_get_sprite(int key)
+static int scroll1_get_sprite(u32 key)
 {
 	SPRITE *p = scroll1_head[key & SCROLL1_HASH_MASK];
 
@@ -486,12 +486,12 @@ static void scroll1_delete_sprite(int delay)
 
 static void scroll1_delete_dirty_palette(void)
 {
-	SPRITE *p, *prev_p;
 	int i, palno;
+	SPRITE *p, *prev_p;
 
-	for (palno = 32; palno < 64; palno++)
+	for (palno = 0; palno < 32; palno++)
 	{
-		if (!palette_dirty_marks[palno]) continue;
+		if (!palette_dirty_marks[palno + 32]) continue;
 
 		for (i = 0; i < SCROLL1_HASH_SIZE; i++)
 		{
@@ -561,7 +561,7 @@ static void scroll2_reset_sprite(void)
 	SCROLL2テクスチャからスプライト番号を取得
 ------------------------------------------------------------------------*/
 
-static int scroll2_get_sprite(int key)
+static int scroll2_get_sprite(u32 key)
 {
 	SPRITE *p = scroll2_head[key & SCROLL2_HASH_MASK];
 
@@ -668,12 +668,12 @@ static void scroll2_delete_sprite(int delay)
 
 static void scroll2_delete_dirty_palette(void)
 {
-	SPRITE *p, *prev_p;
 	int i, palno;
+	SPRITE *p, *prev_p;
 
-	for (palno = 64; palno < 96; palno++)
+	for (palno = 0; palno < 32; palno++)
 	{
-		if (!palette_dirty_marks[palno]) continue;
+		if (!palette_dirty_marks[palno + 64]) continue;
 
 		for (i = 0; i < SCROLL2_HASH_SIZE; i++)
 		{
@@ -743,7 +743,7 @@ static void scroll3_reset_sprite(void)
 	SCROLL3テクスチャからスプライト番号を取得
 ------------------------------------------------------------------------*/
 
-static int scroll3_get_sprite(int key)
+static int scroll3_get_sprite(u32 key)
 {
 	SPRITE *p = scroll3_head[key & SCROLL3_HASH_MASK];
 
@@ -850,12 +850,12 @@ static void scroll3_delete_sprite(int delay)
 
 static void scroll3_delete_dirty_palette(void)
 {
-	SPRITE *p, *prev_p;
 	int i, palno;
+	SPRITE *p, *prev_p;
 
-	for (palno = 96; palno < 128; palno++)
+	for (palno = 0; palno < 32; palno++)
 	{
-		if (!palette_dirty_marks[palno]) continue;
+		if (!palette_dirty_marks[palno + 96]) continue;
 
 		for (i = 0; i < SCROLL3_HASH_SIZE; i++)
 		{
@@ -1262,7 +1262,7 @@ void blit_update_scroll1(int x, int y, u32 code, u32 attr)
 {
 	if ((x > 56 && x < 448) && (y > min_y_8 && y < clip_max_y))
 	{
-		u32 key = MAKE_KEY(code, ((attr & 0x1f) + 32));
+		u32 key = MAKE_KEY(code, (attr & 0x1f));
 		SPRITE *p = scroll1_head[key & SCROLL1_HASH_MASK];
 
 		while (p)
@@ -1292,7 +1292,7 @@ void blit_draw_scroll1(int x, int y, u32 code, u32 attr)
 	{
 		int idx;
 		struct Vertex *vertices;
-		int color = (attr & 0x1f) + 32;
+		int color = attr & 0x1f;
 		u32 key = MAKE_KEY(code, color);
 
 		if ((idx = scroll1_get_sprite(key)) < 0)
@@ -1310,7 +1310,7 @@ void blit_draw_scroll1(int x, int y, u32 code, u32 attr)
 			idx  = scroll1_insert_sprite(key);
 			offs = (*read_cache)(code << 6);
 			gfx  = (u32 *)&memory_region_gfx1[offs];
-			pal  = &video_palette[color << 4];
+			pal  = &video_palette[(color + 32) << 4];
 			dst  = SWIZZLED_8x8(tex_scroll1, idx);
 
 			while (lines--)
@@ -1383,7 +1383,7 @@ void blit_update_scroll2(int x, int y, u32 code, u32 attr)
 {
 	if ((x > 48 && x < 448) && (y > min_y_16 && y < clip_max_y))
 	{
-		u32 key = MAKE_KEY(code, ((attr & 0x1f) + 64));
+		u32 key = MAKE_KEY(code, (attr & 0x1f));
 		SPRITE *p = scroll2_head[key & SCROLL2_HASH_MASK];
 
 		while (p)
@@ -1413,7 +1413,7 @@ void blit_draw_scroll2(int x, int y, u32 code, u32 attr)
 	{
 		int idx;
 		struct Vertex *vertices;
-		u16 color = (attr & 0x1f) + 64;
+		u16 color = attr & 0x1f;
 		u32 key = MAKE_KEY(code, color);
 
 		if ((idx = scroll2_get_sprite(key)) < 0)
@@ -1431,7 +1431,7 @@ void blit_draw_scroll2(int x, int y, u32 code, u32 attr)
 			idx  = scroll2_insert_sprite(key);
 			offs = (*read_cache)(code << 7);
 			gfx  = (u32 *)&memory_region_gfx1[offs];
-			pal  = &video_palette[color << 4];
+			pal  = &video_palette[(color + 64) << 4];
 			dst  = SWIZZLED_16x16(tex_scroll2, idx);
 
 			while (lines--)
@@ -1517,7 +1517,7 @@ void blit_update_scroll3(int x, int y, u32 code, u32 attr)
 {
 	if ((x > 32 && x < 448) && (y > min_y_32 && y < clip_max_y))
 	{
-		u32 key = MAKE_KEY(code, ((attr & 0x1f) + 96));
+		u32 key = MAKE_KEY(code, (attr & 0x1f));
 		SPRITE *p = scroll3_head[key & SCROLL3_HASH_MASK];
 
 		while (p)
@@ -1547,7 +1547,7 @@ void blit_draw_scroll3(int x, int y, u32 code, u32 attr)
 	{
 		int idx;
 		struct Vertex *vertices;
-		int color = (attr & 0x1f) + 96;
+		int color = attr & 0x1f;
 		u32 key = MAKE_KEY(code, color);
 
 		if ((idx = scroll3_get_sprite(key)) < 0)
@@ -1565,7 +1565,7 @@ void blit_draw_scroll3(int x, int y, u32 code, u32 attr)
 			idx  = scroll3_insert_sprite(key);
 			offs = (*read_cache)(code << 9);
 			gfx  = (u32 *)&memory_region_gfx1[offs];
-			pal  = &video_palette[color << 4];
+			pal  = &video_palette[(color + 96) << 4];
 			dst  = SWIZZLED_32x32(tex_scroll3, idx);
 
 			while (lines--)

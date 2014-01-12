@@ -1012,7 +1012,11 @@ int menu_state(void)
 				if (state_version == current_state_version)
 					state_func = STATE_FUNC_LOAD;
 				else
+				{
 					state_func = STATE_FUNC_SAVE;
+					strcpy(date_str, "----/--/--");
+					strcpy(time_str, "--:--:--");
+				}
 			}
 			update = 1;
 		}

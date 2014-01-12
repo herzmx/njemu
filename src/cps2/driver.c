@@ -136,6 +136,7 @@ TIMER_CALLBACK( cps2_vblank_interrupt )
 	}
 
 	cps2_objram_latch();
+
 	next_update_first_line = FIRST_VISIBLE_LINE;
 }
 
