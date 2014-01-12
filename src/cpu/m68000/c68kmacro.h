@@ -139,7 +139,6 @@
 
 #define SET_PC(A)															\
 	CPU->BasePC = CPU->Fetch[((A) >> C68K_FETCH_SFT) & C68K_FETCH_MASK];	\
-	CPU->BasePC -= (A) & 0xff000000;										\
 	PC = (A) + CPU->BasePC;
 
 #define ADJUST_PC()				PC -= CPU->BasePC;
@@ -1572,7 +1571,7 @@
 	if (src)																\
 	{																		\
 		EA_READ_D(32, X, dst)												\
-		if ((dst == 0x80000000) && (src == -1))								\
+		if (((u32)dst == 0x80000000) && ((s32)src == -1))					\
 		{																	\
 			FLAG_C = CFLAG_CLEAR;											\
 			FLAG_V = VFLAG_CLEAR;											\

@@ -154,6 +154,13 @@ WRITE16_HANDLER( cps1_sound_command_w );
 READ16_HANDLER( cps1_eeprom_port_r );
 WRITE16_HANDLER( cps1_eeprom_port_w );
 
+READ16_HANDLER( qsound_rom_r );
+READ16_HANDLER( qsound_sharedram1_r );
+WRITE16_HANDLER( qsound_sharedram1_w );
+READ16_HANDLER( qsound_sharedram2_r );
+WRITE16_HANDLER( qsound_sharedram2_w );
+WRITE8_HANDLER( qsound_banksw_w );
+
 TIMER_CALLBACK( cps1_vblank_interrupt );
 TIMER_CALLBACK( cps1_qsound_interrupt );
 

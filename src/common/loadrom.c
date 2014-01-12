@@ -7,6 +7,7 @@
 ******************************************************************************/
 
 #include "emumain.h"
+#include <sys/unistd.h>
 
 
 /******************************************************************************
@@ -213,7 +214,7 @@ int cachefile_open(const char *fname)
 
 int rom_load(struct rom_t *rom, u8 *mem, int idx, int max)
 {
-	int offset, length;
+	u32 offset, length;
 
 _continue:
 	offset = rom[idx].offset;

@@ -8,9 +8,9 @@
 
 #include "cps1.h"
 
-#define MENU_BLANK					{ "\n", 0, 0x00, 0, 0, NULL }
-#define MENU_RETURN					{ "Return to main menu", 1, 0x00, 0, 0, NULL }
-#define MENU_END					{ "\0", 0, 0x00, 0, 0, NULL }
+#define MENU_BLANK					{ "\n", 0, 0x00, 0, 0, { NULL } }
+#define MENU_RETURN					{ "Return to main menu", 1, 0x00, 0, 0, { NULL } }
+#define MENU_END					{ "\0", 0, 0x00, 0, 0, { NULL } }
 
 #define ACTIVE_HIGH					0
 #define ACTIVE_LOW					1
@@ -92,9 +92,10 @@ static int dip_load_coin1a(void)
 	case 0x06: return 4;
 	case 0x07: return 3;
 	}
+	return 0;
 }
 
-static int dip_save_coin1a(int value)
+static void dip_save_coin1a(int value)
 {
 	cps1_dipswitch[DIP_A] &= ~0x07;
 
@@ -124,9 +125,10 @@ static int dip_load_coin1b(void)
 	case 0x30: return 4;
 	case 0x38: return 3;
 	}
+	return 0;
 }
 
-static int dip_save_coin1b(int value)
+static void dip_save_coin1b(int value)
 {
 	cps1_dipswitch[DIP_A] &= ~0x38;
 
@@ -172,9 +174,10 @@ static int dip_load_coin2a(void)
 	case 0x06: return 5;
 	case 0x07: return 4;
 	}
+	return 0;
 }
 
-static int dip_save_coin2a(int value)
+static void dip_save_coin2a(int value)
 {
 	cps1_dipswitch[DIP_A] &= ~0x07;
 
@@ -204,9 +207,10 @@ static int dip_load_coin2b(void)
 	case 0x30: return 5;
 	case 0x38: return 4;
 	}
+	return 0;
 }
 
-static int dip_save_coin2b(int value)
+static void dip_save_coin2b(int value)
 {
 	cps1_dipswitch[DIP_A] &= ~0x38;
 
@@ -242,9 +246,10 @@ static int dip_load_cabinet(void)
 	case 0x80: return 1;
 	case 0xc0: return 0;
 	}
+	return 0;
 }
 
-static int dip_save_cabinet(int value)
+static void dip_save_cabinet(int value)
 {
 	cps1_dipswitch[DIP_A] &= ~0xc0;
 
@@ -285,9 +290,10 @@ static int dip_load_difficulty1(void)
 	case 0x06: return 1;
 	case 0x07: return 0;
 	}
+	return 0;
 }
 
-static int dip_save_difficulty1(int value)
+static void dip_save_difficulty1(int value)
 {
 	switch (value)
 	{
@@ -315,9 +321,10 @@ static int dip_load_difficulty2(void)
 	case 0x06: return 2;
 	case 0x07: return 3;
 	}
+	return 0;
 }
 
-static int dip_save_difficulty2(int value)
+static void dip_save_difficulty2(int value)
 {
 	cps1_dipswitch[DIP_B] &= ~0x07;
 
@@ -467,9 +474,9 @@ static void dip_load_ghouls(int type)
 
 	switch (type)
 	{
-	case 0: dip = dipswitch_ghouls; break;
-	case 1: dip = dipswitch_ghoulsu; break;
-	case 2: dip = dipswitch_daimakai; break;
+	case 1:  dip = dipswitch_ghoulsu; break;
+	case 2:  dip = dipswitch_daimakai; break;
+	default: dip = dipswitch_ghouls; break;
 	}
 
 	// DIP A
@@ -521,9 +528,9 @@ static void dip_save_ghouls(int type)
 
 	switch (type)
 	{
-	case 0: dip = dipswitch_ghouls; break;
-	case 1: dip = dipswitch_ghoulsu; break;
-	case 2: dip = dipswitch_daimakai; break;
+	case 1:  dip = dipswitch_ghoulsu; break;
+	case 2:  dip = dipswitch_daimakai; break;
+	default: dip = dipswitch_ghouls; break;
 	}
 
 	// DIP A
@@ -630,11 +637,10 @@ static void dip_load_strider(int type)
 {
 	dipswitch_t *dip;
 
-	switch (type)
-	{
-	case 0: dip = dipswitch_strider; break;
-	case 1: dip = dipswitch_stridrua; break;
-	}
+	if (type)
+		dip = dipswitch_stridrua;
+	else
+		dip = dipswitch_strider;
 
 	// DIP A
 	(dip++)->value = dip_load_coin1a();
@@ -678,11 +684,10 @@ static void dip_save_strider(int type)
 {
 	dipswitch_t *dip;
 
-	switch (type)
-	{
-	case 0: dip = dipswitch_strider; break;
-	case 1: dip = dipswitch_stridrua; break;
-	}
+	if (type)
+		dip = dipswitch_stridrua;
+	else
+		dip = dipswitch_strider;
 
 	// DIP A
 	dip_save_coin1a((dip++)->value);

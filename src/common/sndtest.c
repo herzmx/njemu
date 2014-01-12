@@ -7,6 +7,7 @@
 ******************************************************************************/
 
 #include "emumain.h"
+#include "psp/font/jpnfont.h"
 
 
 #if (EMU_SYSTEM == MVS)

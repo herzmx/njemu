@@ -8,9 +8,9 @@
 
 #include "mvs.h"
 
-#define MENU_BLANK					{ "\n", 0, 0x00, 0, 0, NULL }
-#define MENU_RETURN					{ "Return to main menu", 1, 0x00, 0, 0, NULL }
-#define MENU_END					{ "\0", 0, 0x00, 0, 0, NULL }
+#define MENU_BLANK					{ "\n", 0, 0x00, 0, 0, { NULL } }
+#define MENU_RETURN					{ "Return to main menu", 1, 0x00, 0, 0, { NULL } }
+#define MENU_END					{ "\0", 0, 0x00, 0, 0, { NULL } }
 
 
 /*--------------------------------------

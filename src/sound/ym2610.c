@@ -1176,7 +1176,7 @@ INLINE void advance_eg_channel(FM_OPN *OPN, FM_SLOT *SLOT)
 				{
 					SLOT->volume += 4 * eg_inc[SLOT->eg_sel_d1r + ((OPN->eg_cnt>>SLOT->eg_sh_d1r)&7)];
 
-					if ( SLOT->volume >= SLOT->sl )
+					if ((u32)SLOT->volume >= SLOT->sl)
 						SLOT->state = EG_SUS;
 				}
 			}
@@ -1186,7 +1186,7 @@ INLINE void advance_eg_channel(FM_OPN *OPN, FM_SLOT *SLOT)
 				{
 					SLOT->volume += eg_inc[SLOT->eg_sel_d1r + ((OPN->eg_cnt>>SLOT->eg_sh_d1r)&7)];
 
-					if ( SLOT->volume >= SLOT->sl )
+					if ((u32)SLOT->volume >= SLOT->sl)
 						SLOT->state = EG_SUS;
 				}
 			}
@@ -1419,9 +1419,10 @@ INLINE void refresh_fc_eg_slot(FM_SLOT *SLOT , int fc , int kc )
 }
 
 /* update phase increment counters */
-INLINE void refresh_fc_eg_chan(FM_CH *CH )
+INLINE void refresh_fc_eg_chan(FM_CH *CH)
 {
-	if( CH->SLOT[SLOT1].Incr==-1){
+	if ((s32)CH->SLOT[SLOT1].Incr == -1)
+	{
 		int fc = CH->fc;
 		int kc = CH->kcode;
 		refresh_fc_eg_slot(&CH->SLOT[SLOT1] , fc , kc );
@@ -2748,8 +2749,181 @@ static void OPNB_ADPCMB_write(ADPCMB *adpcmb, int r, int v)
 /* YM2610(OPNB) */
 
 #ifdef SOUND_TEST
+static s16 mixing_buffer[2][746*2];
+#else
+static s16 mixing_buffer[2][SOUND_SAMPLES];
+#endif
+
+/* Generate samples for one of the YM2610s */
+static void YM2610Update_stream(int length)
+{
+	FM_OPN *OPN = &YM2610.OPN;
+	int i, j, outn;
+	FMSAMPLE_MIX lt, rt;
+	FM_CH *cch[6];
+
+	cch[0] = &YM2610.CH[1];
+	cch[1] = &YM2610.CH[2];
+	cch[2] = &YM2610.CH[4];
+	cch[3] = &YM2610.CH[5];
+
+	/* update frequency counter */
+	refresh_fc_eg_chan(cch[0]);
+	if (OPN->ST.mode & 0xc0)
+	{
+		/* 3SLOT MODE */
+		if ((s32)cch[1]->SLOT[SLOT1].Incr == -1)
+		{
+			/* 3 slot mode */
+			refresh_fc_eg_slot(&cch[1]->SLOT[SLOT1], OPN->SL3.fc[1], OPN->SL3.kcode[1]);
+			refresh_fc_eg_slot(&cch[1]->SLOT[SLOT2], OPN->SL3.fc[2], OPN->SL3.kcode[2]);
+			refresh_fc_eg_slot(&cch[1]->SLOT[SLOT3], OPN->SL3.fc[0], OPN->SL3.kcode[0]);
+			refresh_fc_eg_slot(&cch[1]->SLOT[SLOT4], cch[1]->fc,     cch[1]->kcode);
+		}
+	}
+	else
+		refresh_fc_eg_chan(cch[1]);
+	refresh_fc_eg_chan(cch[2]);
+	refresh_fc_eg_chan(cch[3]);
+
+	/* calc SSG count */
+	outn = SSG_calc_count(length);
+
+	/* buffering */
+	for (i = 0; i < length; i++)
+	{
+		advance_lfo(OPN);
+
+		/* clear output acc. */
+		out_adpcma[OUTD_LEFT] = out_adpcma[OUTD_RIGHT]= out_adpcma[OUTD_CENTER] = 0;
+		out_delta[OUTD_LEFT] = out_delta[OUTD_RIGHT]= out_delta[OUTD_CENTER] = 0;
+
+		/* clear outputs */
+		out_fm[1] = 0;
+		out_fm[2] = 0;
+		out_fm[4] = 0;
+		out_fm[5] = 0;
+
+		/* clear outputs SSG */
+		out_ssg = 0;
+
+		/* advance envelope generator */
+		OPN->eg_timer += OPN->eg_timer_add;
+		while (OPN->eg_timer >= OPN->eg_timer_overflow)
+		{
+			OPN->eg_timer -= OPN->eg_timer_overflow;
+			OPN->eg_cnt++;
+
+			advance_eg_channel(OPN, &cch[0]->SLOT[SLOT1]);
+			advance_eg_channel(OPN, &cch[1]->SLOT[SLOT1]);
+			advance_eg_channel(OPN, &cch[2]->SLOT[SLOT1]);
+			advance_eg_channel(OPN, &cch[3]->SLOT[SLOT1]);
+		}
+
+		/* calculate FM */
+		chan_calc(OPN, cch[0]);	/*remapped to 1*/
+		chan_calc(OPN, cch[1]);	/*remapped to 2*/
+		chan_calc(OPN, cch[2]);	/*remapped to 4*/
+		chan_calc(OPN, cch[3]);	/*remapped to 5*/
+
+		/* calculate SSG */
+		outn = SSG_CALC(outn);
+
+		/* deltaT ADPCM */
+		if (YM2610.adpcmb.portstate & 0x80)
+			OPNB_ADPCMB_calc(&YM2610.adpcmb);
+
+		for (j = 0; j < 6; j++)
+		{
+			/* ADPCM */
+			if (YM2610.adpcma[j].flag)
+				OPNB_ADPCMA_calc_chan(j, &YM2610.adpcma[j]);
+		}
+
+		/* buffering */
+		lt =  out_adpcma[OUTD_LEFT]  + out_adpcma[OUTD_CENTER];
+		rt =  out_adpcma[OUTD_RIGHT] + out_adpcma[OUTD_CENTER];
+
+		lt += (out_delta[OUTD_LEFT]  + out_delta[OUTD_CENTER]) >> 9;
+		rt += (out_delta[OUTD_RIGHT] + out_delta[OUTD_CENTER]) >> 9;
+
+		lt += out_ssg;
+		rt += out_ssg;
+
+		lt += (out_fm[1] >> 1) & OPN->pan[2];	/* the shift right was verified on real chip */
+		rt += (out_fm[1] >> 1) & OPN->pan[3];
+		lt += (out_fm[2] >> 1) & OPN->pan[4];
+		rt += (out_fm[2] >> 1) & OPN->pan[5];
+
+		lt += (out_fm[4] >> 1) & OPN->pan[8];
+		rt += (out_fm[4] >> 1) & OPN->pan[9];
+		lt += (out_fm[5] >> 1) & OPN->pan[10];
+		rt += (out_fm[5] >> 1) & OPN->pan[11];
+
+		lt *= 1.5;
+		rt *= 1.5;
+
+		Limit(lt, MAXOUT, MINOUT);
+		Limit(rt, MAXOUT, MINOUT);
+
+		mixing_buffer[0][i] = lt;
+		mixing_buffer[1][i] = rt;
+	}
+}
+
+
+#ifdef SOUND_TEST
+
 static int stream_pos;
+static int samples_generate;
 static int samples_left;
+
+static float samples_per_frame;
+static float samples_left_over;
+static u32   samples_this_frame;
+
+void YM2610Update_SoundTest(int p)
+{
+	int i, length;
+	s16 *buffer = (s16 *)p;
+
+	length = SOUND_SAMPLES;
+
+	if (samples_left)
+	{
+		for (i = 0; i < samples_left; i++)
+		{
+			*buffer++ = mixing_buffer[0][stream_pos];
+			*buffer++ = mixing_buffer[1][stream_pos];
+			stream_pos++;
+			length--;
+		}
+	}
+
+next_frame:
+	stream_pos = 0;
+	samples_generate = samples_this_frame;
+	samples_left = samples_this_frame;
+
+	samples_left_over += samples_per_frame;
+	samples_this_frame = (u32)samples_left_over;
+	samples_left_over -= (float)samples_this_frame;
+
+	timer_update_subcpu();
+	YM2610Update_stream(samples_left);
+
+	for (i = 0; i < samples_generate; i++)
+	{
+		*buffer++ = mixing_buffer[0][stream_pos];
+		*buffer++ = mixing_buffer[1][stream_pos];
+		stream_pos++;
+		samples_left--;
+
+		if (--length == 0) break;
+	}
+	if (length) goto next_frame;
+}
+
 #endif
 
 void YM2610Init(int clock, int rate,
@@ -2765,6 +2939,17 @@ void YM2610Init(int clock, int rate,
 	else
 #endif
 		sound->callback = YM2610Update;
+
+#ifdef SOUND_TEST
+	stream_pos = 0;
+	samples_left = 0;
+
+	samples_per_frame  = 44100.0f * 264.0f / 15625.0f;
+
+	samples_left_over  = samples_per_frame;
+	samples_this_frame = (u32)samples_left_over;
+	samples_left_over -= (float)samples_this_frame;
+#endif
 
 	/* clear */
 	memset(&YM2610, 0, sizeof(YM2610));
@@ -2897,11 +3082,6 @@ void YM2610Reset(void)
 	/* set BRDY bit in status register */
 	if (YM2610.adpcmb.status_change_BRDY_bit)
 		YM2610.adpcm_arrivedEndAddress |= YM2610.adpcmb.status_change_BRDY_bit;
-
-#ifdef SOUND_TEST
-	stream_pos = 0;
-	samples_left = 0;
-#endif
 }
 
 /* YM2610 write */
@@ -3058,126 +3238,6 @@ int YM2610TimerOver(int ch)
 }
 
 
-static s16 mixing_buffer[2][SOUND_SAMPLES];
-
-/* Generate samples for one of the YM2610s */
-static void YM2610Update_stream(int length)
-{
-	FM_OPN *OPN = &YM2610.OPN;
-	int i, j, outn;
-	FMSAMPLE_MIX lt, rt;
-	FM_CH *cch[6];
-
-	cch[0] = &YM2610.CH[1];
-	cch[1] = &YM2610.CH[2];
-	cch[2] = &YM2610.CH[4];
-	cch[3] = &YM2610.CH[5];
-
-	/* update frequency counter */
-	refresh_fc_eg_chan(cch[0]);
-	if (OPN->ST.mode & 0xc0)
-	{
-		/* 3SLOT MODE */
-		if (cch[1]->SLOT[SLOT1].Incr == -1)
-		{
-			/* 3 slot mode */
-			refresh_fc_eg_slot(&cch[1]->SLOT[SLOT1], OPN->SL3.fc[1], OPN->SL3.kcode[1]);
-			refresh_fc_eg_slot(&cch[1]->SLOT[SLOT2], OPN->SL3.fc[2], OPN->SL3.kcode[2]);
-			refresh_fc_eg_slot(&cch[1]->SLOT[SLOT3], OPN->SL3.fc[0], OPN->SL3.kcode[0]);
-			refresh_fc_eg_slot(&cch[1]->SLOT[SLOT4], cch[1]->fc,     cch[1]->kcode);
-		}
-	}
-	else
-		refresh_fc_eg_chan(cch[1]);
-	refresh_fc_eg_chan(cch[2]);
-	refresh_fc_eg_chan(cch[3]);
-
-	/* calc SSG count */
-	outn = SSG_calc_count(length);
-
-	/* buffering */
-	for (i = 0; i < length; i++)
-	{
-		advance_lfo(OPN);
-
-		/* clear output acc. */
-		out_adpcma[OUTD_LEFT] = out_adpcma[OUTD_RIGHT]= out_adpcma[OUTD_CENTER] = 0;
-		out_delta[OUTD_LEFT] = out_delta[OUTD_RIGHT]= out_delta[OUTD_CENTER] = 0;
-
-		/* clear outputs */
-		out_fm[1] = 0;
-		out_fm[2] = 0;
-		out_fm[4] = 0;
-		out_fm[5] = 0;
-
-		/* clear outputs SSG */
-		out_ssg = 0;
-
-		/* advance envelope generator */
-		OPN->eg_timer += OPN->eg_timer_add;
-		while (OPN->eg_timer >= OPN->eg_timer_overflow)
-		{
-			OPN->eg_timer -= OPN->eg_timer_overflow;
-			OPN->eg_cnt++;
-
-			advance_eg_channel(OPN, &cch[0]->SLOT[SLOT1]);
-			advance_eg_channel(OPN, &cch[1]->SLOT[SLOT1]);
-			advance_eg_channel(OPN, &cch[2]->SLOT[SLOT1]);
-			advance_eg_channel(OPN, &cch[3]->SLOT[SLOT1]);
-		}
-
-		/* calculate FM */
-		chan_calc(OPN, cch[0]);	/*remapped to 1*/
-		chan_calc(OPN, cch[1]);	/*remapped to 2*/
-		chan_calc(OPN, cch[2]);	/*remapped to 4*/
-		chan_calc(OPN, cch[3]);	/*remapped to 5*/
-
-		/* calculate SSG */
-		outn = SSG_CALC(outn);
-
-		/* deltaT ADPCM */
-		if (YM2610.adpcmb.portstate & 0x80)
-			OPNB_ADPCMB_calc(&YM2610.adpcmb);
-
-		for (j = 0; j < 6; j++)
-		{
-			/* ADPCM */
-			if (YM2610.adpcma[j].flag)
-				OPNB_ADPCMA_calc_chan(j, &YM2610.adpcma[j]);
-		}
-
-		/* buffering */
-		lt =  out_adpcma[OUTD_LEFT]  + out_adpcma[OUTD_CENTER];
-		rt =  out_adpcma[OUTD_RIGHT] + out_adpcma[OUTD_CENTER];
-
-		lt += (out_delta[OUTD_LEFT]  + out_delta[OUTD_CENTER]) >> 9;
-		rt += (out_delta[OUTD_RIGHT] + out_delta[OUTD_CENTER]) >> 9;
-
-		lt += out_ssg;
-		rt += out_ssg;
-
-		lt += (out_fm[1] >> 1) & OPN->pan[2];	/* the shift right was verified on real chip */
-		rt += (out_fm[1] >> 1) & OPN->pan[3];
-		lt += (out_fm[2] >> 1) & OPN->pan[4];
-		rt += (out_fm[2] >> 1) & OPN->pan[5];
-
-		lt += (out_fm[4] >> 1) & OPN->pan[8];
-		rt += (out_fm[4] >> 1) & OPN->pan[9];
-		lt += (out_fm[5] >> 1) & OPN->pan[10];
-		rt += (out_fm[5] >> 1) & OPN->pan[11];
-
-		lt <<= 1;
-		rt <<= 1;
-
-		Limit(lt, MAXOUT, MINOUT);
-		Limit(rt, MAXOUT, MINOUT);
-
-		mixing_buffer[0][i] = lt;
-		mixing_buffer[1][i] = rt;
-	}
-}
-
-
 void YM2610Update(int p)
 {
 	int i;
@@ -3226,48 +3286,6 @@ void YM2610Update(int p)
 		break;
 	}
 }
-
-#ifdef SOUND_TEST
-static int stream_pos;
-static int samples_left;
-
-void YM2610Update_SoundTest(int p)
-{
-	int i, length;
-	s16 *buffer = (s16 *)p;
-
-	length = SOUND_SAMPLES;
-
-	if (samples_left)
-	{
-		for (i = 0; i < samples_left; i++)
-		{
-			*buffer++ = mixing_buffer[0][stream_pos];
-			*buffer++ = mixing_buffer[1][stream_pos];
-			stream_pos++;
-			length--;
-		}
-	}
-
-next_frame:
-	timer_update_subcpu();
-	YM2610Update_stream(736);
-	samples_left = 736;
-	stream_pos = 0;
-
-	for (i = 0; i < 736; i++)
-	{
-		*buffer++ = mixing_buffer[0][stream_pos];
-		*buffer++ = mixing_buffer[1][stream_pos];
-		stream_pos++;
-		samples_left--;
-
-		if (--length == 0) break;
-	}
-	if (length) goto next_frame;
-}
-#endif
-
 
 #ifdef SAVE_STATE
 

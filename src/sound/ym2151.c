@@ -1017,7 +1017,7 @@ void YM2151WriteReg(int r, int v)
 
 		case 0x08:	/* Key Code */
 			v &= 0x7f;
-			if (v != op->kc)
+			if ((u32)v != op->kc)
 			{
 				u32 kc, kc_channel;
 
@@ -1054,7 +1054,7 @@ void YM2151WriteReg(int r, int v)
 
 		case 0x10:	/* Key Fraction */
 			v >>= 2;
-			if (v !=  (op->kc_i & 63))
+			if ((u32)v !=  (op->kc_i & 63))
 			{
 				u32 kc_channel;
 
@@ -1343,7 +1343,7 @@ static void advance_eg(void)
 				{
 					op->volume += eg_inc[op->eg_sel_d1r + ((ym2151->eg_cnt >> op->eg_sh_d1r) & 7)];
 
-					if (op->volume >= op->d1l)
+					if ((u32)op->volume >= op->d1l)
 						op->state = EG_SUS;
 				}
 				break;

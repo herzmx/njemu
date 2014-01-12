@@ -221,7 +221,7 @@ struct driver_t *driver;
 	ƒ[ƒJƒ‹•Ï”
 ******************************************************************************/
 
-static int z80_bank;
+static u32 z80_bank;
 
 static int cps1_sound_fade_timer;
 static u8 sound_data;
@@ -471,7 +471,7 @@ WRITE8_HANDLER( qsound_banksw_w )
 		Z80 bank register for music note data. It's odd that it isn't encrypted
 		though.
 	*/
-	int bankaddress = 0x10000 + ((data & 0x0f) << 14);
+	u32 bankaddress = 0x10000 + ((data & 0x0f) << 14);
 
 	if (bankaddress >= memory_length_cpu2)
 		bankaddress = 0x10000;
@@ -649,7 +649,7 @@ STATE_LOAD( driver )
 	state_load_long(&sound_data, 1);
 	state_load_long(&cps1_sound_fade_timer, 1);
 
-	z80_bank = -1;
+	z80_bank = 0xffffffff;
 	z80_set_bank(bank);
 
 	coin_counter_reset();

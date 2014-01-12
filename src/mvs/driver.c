@@ -115,11 +115,11 @@ void neogeo_driver_init(void)
 	neogeo_vectors[0] = memory_region_user1;
 	neogeo_vectors[1] = neogeo_game_vectors;
 
-	m68k_second_bank = -1;
-	z80_bank[0] = -1;
-	z80_bank[1] = -1;
-	z80_bank[2] = -1;
-	z80_bank[3] = -1;
+	m68k_second_bank = 0xffffffff;
+	z80_bank[0] = 0xffffffff;
+	z80_bank[1] = 0xffffffff;
+	z80_bank[2] = 0xffffffff;
+	z80_bank[3] = 0xffffffff;
 
 	if (memory_length_cpu1 > 0x100000)
 		neogeo_set_cpu1_second_bank(0x100000);
@@ -355,7 +355,7 @@ INLINE void neogeo_select_vectors(int vector)
 	Select palette RAM bank  (0x3a000f / 0x3a001f)
 ------------------------------------------------------*/
 
-INLINE void neogeo_setpalbank(int bank)
+INLINE void neogeo_setpalbank(u32 bank)
 {
 	if (neogeo_palette_index != bank)
 	{
@@ -469,7 +469,7 @@ WRITE16_HANDLER( neogeo_bankswitch_16_w )
 {
 	if ((offset & (0x2ffff0/2)) == (0x2ffff0/2))
 	{
-		int bankaddress;
+		u32 bankaddress;
 
 		if (memory_length_cpu1 <= 0x100000)
 			return;
@@ -878,7 +878,7 @@ WRITE16_HANDLER( neogeo_secondbank_16_w )
 	Fatal Fury 2
 ------------------------------------------------------*/
 
-static int neogeo_prot_data;
+static u32 neogeo_prot_data;
 
 READ16_HANDLER( fatfury2_protection_16_r )
 {
@@ -898,6 +898,7 @@ READ16_HANDLER( fatfury2_protection_16_r )
 	case 0x3600c/2:
 		return ((res & 0xf0) >> 4) | ((res & 0x0f) << 4);
 	}
+	return 0xff;
 }
 
 WRITE16_HANDLER( fatfury2_protection_16_w )
@@ -1332,6 +1333,7 @@ READ16_HANDLER( brza_sram_16_r )
 {
 	if ((offset & 0x2f0000/2) == 0x200000/2)
 		return brza_sram[offset & 0xfff];
+	return 0xffff;
 }
 
 WRITE16_HANDLER( brza_sram_16_w )

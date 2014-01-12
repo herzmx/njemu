@@ -137,7 +137,7 @@ int uifont_get_string_width(const char *s)
 {
 	int width, type;
 	u16 code;
-	u8 *p = (u8 *)s;
+	const u8 *p = (const u8 *)s;
 
 	width = 0;
 
@@ -254,7 +254,7 @@ INLINE void uifont_draw(int sx, int sy, int r, int g, int b, const char *s)
 {
 	int type, res = 1;
 	u16 code;
-	u8 *p = (u8 *)s;
+	const u8 *p = (const u8 *)s;
 	struct font_t font;
 
 	r >>= 3;
@@ -495,6 +495,7 @@ void box(int sx, int sy, int ex, int ey, int r, int g, int b)
 	hline(sx + 1, ex, ey, r, g, b);
 	vline(sx, sy + 1, ey, r, g, b);
 }
+
 
 /*------------------------------------------------------
 	lŠpŒ`“h‚è‚Â‚Ô‚µ

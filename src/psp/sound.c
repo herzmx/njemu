@@ -19,6 +19,7 @@ static int sound_handle;
 static SceUID sound_thread;
 static int sound_volume;
 static int sound_enable;
+static int sound_pause;
 static s16 sound_buffer[2][SOUND_BUFFER_SIZE];
 
 static struct sound_t sound_info;
@@ -62,6 +63,7 @@ static int sound_update_thread(SceSize args, void *argp)
 		}
 		else
 		{
+			sound_pause = 1;
 			memset(sound_buffer[flip], 0, SOUND_BUFFER_SIZE);
 			sceAudioOutputPannedBlocking(sound_handle, 0, 0, (char *)sound_buffer[flip]);
 		}
@@ -110,9 +112,15 @@ void sound_thread_enable(int enable)
 		sound_enable = enable;
 
 		if (sound_enable)
+		{
+			sound_pause = 0;
 			sound_thread_set_volume();
+		}
 		else
+		{
 			sound_volume = 0;
+			while (!sound_pause) sceKernelDelayThread(1);
+		}
 	}
 }
 

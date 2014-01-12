@@ -11,4 +11,8 @@
 
 void showmenu(void);
 
+#ifdef SAVE_STATE
+int state_draw_progress(int progress);
+#endif
+
 #endif /* PSP_MENU_H */

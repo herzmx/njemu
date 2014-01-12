@@ -18,7 +18,8 @@
 #define SCROLL2_MAX_HEIGHT	416
 #define SCROLL3_MAX_HEIGHT	416
 
-#define MAKE_KEY(code, palno)	(code | (palno << 24))
+#define MAKE_KEY(code, attr)			(code | ((attr & 0x1f) << 24))
+#define MAKE_KEY_SCROLL3(code, attr)	((code << 8) | (attr & 0x1f))
 
 
 /******************************************************************************
@@ -31,8 +32,8 @@ struct sprite_t
 {
 	u32 key;
 	u32 index;
-	int used;
-	int pal;
+	u32 used;
+	u32 pal;
 	SPRITE *next;
 };
 
@@ -50,9 +51,9 @@ static RECT cps_clip[5] =
 static int clip_min_y;
 static int clip_max_y;
 
-static int min_y_8;
-static int min_y_16;
-static int min_y_32;
+static int onject_min_y;
+static int scroll2_min_y;
+static int scroll2_max_y;
 
 static const int ALIGN_DATA swizzle_table[32] =
 {
@@ -117,7 +118,7 @@ static struct Vertex ALIGN_DATA vertices_scroll1[SCROLL1_MAX_SPRITES * 2];
 static u16 scroll1_num;
 static u16 scroll1_texture_num;
 static u16 scroll1_max;
-static u8 scroll1_palette_is_dirty;
+static u8  scroll1_palette_is_dirty;
 
 
 /*------------------------------------------------------------------------
@@ -141,7 +142,7 @@ static struct Vertex ALIGN_DATA vertices_scroll2[SCROLL2_MAX_SPRITES * 2];
 static u16 scroll2_num;
 static u16 scroll2_texture_num;
 static u16 scroll2_max;
-static u8 scroll2_palette_is_dirty;
+static u8  scroll2_palette_is_dirty;
 
 
 /*------------------------------------------------------------------------
@@ -151,8 +152,8 @@ static u8 scroll2_palette_is_dirty;
 	palette: 96～127番を使用
 ------------------------------------------------------------------------*/
 
-#define SCROLL3_HASH_SIZE		0x80
-#define SCROLL3_HASH_MASK		0x7f
+#define SCROLL3_HASH_SIZE		0x20
+#define SCROLL3_HASH_MASK		0x1f
 #define SCROLL3_TEXTURE_SIZE	((BUF_WIDTH/32)*(SCROLL3_MAX_HEIGHT/32))
 #define SCROLL3_MAX_SPRITES		((384/32 + 2) * (224/32 + 2))
 
@@ -165,7 +166,7 @@ static struct Vertex ALIGN_DATA vertices_scroll3[SCROLL3_MAX_SPRITES * 2];
 static u16 scroll3_num;
 static u16 scroll3_texture_num;
 static u16 scroll3_max;
-static u8 scroll3_palette_is_dirty;
+static u8  scroll3_palette_is_dirty;
 
 
 /******************************************************************************
@@ -257,7 +258,7 @@ static int object_insert_sprite(u32 key)
 	OBJECTテクスチャから一定時間を経過したスプライトを削除
 ------------------------------------------------------------------------*/
 
-static void object_delete_sprite(int delay)
+static void object_delete_sprite(void)
 {
 	int i;
 	SPRITE *p, *prev_p;
@@ -269,7 +270,7 @@ static void object_delete_sprite(int delay)
 
 		while (p)
 		{
-			if (frames_displayed - p->used > delay)
+			if (frames_displayed != p->used)
 			{
 				object_texture_num--;
 
@@ -304,7 +305,8 @@ static void object_delete_sprite(int delay)
 
 static void object_delete_dirty_palette(void)
 {
-	int i, palno;
+	int i;
+	u32 palno;
 	SPRITE *p, *prev_p;
 
 	for (palno = 0; palno < 32; palno++)
@@ -439,7 +441,7 @@ static int scroll1_insert_sprite(u32 key)
 	SCROLL1テクスチャから一定時間を経過したスプライトを削除
 ------------------------------------------------------------------------*/
 
-static void scroll1_delete_sprite(int delay)
+static void scroll1_delete_sprite(void)
 {
 	int i;
 	SPRITE *p, *prev_p;
@@ -451,7 +453,7 @@ static void scroll1_delete_sprite(int delay)
 
 		while (p)
 		{
-			if (frames_displayed - p->used > delay)
+			if (frames_displayed != p->used)
 			{
 				scroll1_texture_num--;
 
@@ -486,12 +488,14 @@ static void scroll1_delete_sprite(int delay)
 
 static void scroll1_delete_dirty_palette(void)
 {
-	int i, palno;
+	int i;
+	u32 palno;
+	u8 *dirty_flags = &palette_dirty_marks[32];
 	SPRITE *p, *prev_p;
 
 	for (palno = 0; palno < 32; palno++)
 	{
-		if (!palette_dirty_marks[palno + 32]) continue;
+		if (!dirty_flags[palno]) continue;
 
 		for (i = 0; i < SCROLL1_HASH_SIZE; i++)
 		{
@@ -621,7 +625,7 @@ static int scroll2_insert_sprite(u32 key)
 	SCROLL2テクスチャから一定時間を経過したスプライトを削除
 ------------------------------------------------------------------------*/
 
-static void scroll2_delete_sprite(int delay)
+static void scroll2_delete_sprite(void)
 {
 	int i;
 	SPRITE *p, *prev_p;
@@ -633,7 +637,7 @@ static void scroll2_delete_sprite(int delay)
 
 		while (p)
 		{
-			if (frames_displayed - p->used > delay)
+			if (frames_displayed != p->used)
 			{
 				scroll2_texture_num--;
 
@@ -668,12 +672,14 @@ static void scroll2_delete_sprite(int delay)
 
 static void scroll2_delete_dirty_palette(void)
 {
-	int i, palno;
+	int i;
+	u32 palno;
+	u8 *dirty_flags = &palette_dirty_marks[64];
 	SPRITE *p, *prev_p;
 
 	for (palno = 0; palno < 32; palno++)
 	{
-		if (!palette_dirty_marks[palno + 64]) continue;
+		if (!dirty_flags[palno]) continue;
 
 		for (i = 0; i < SCROLL2_HASH_SIZE; i++)
 		{
@@ -780,7 +786,6 @@ static int scroll3_insert_sprite(u32 key)
 
 	q->next = NULL;
 	q->key  = key;
-	q->pal  = key >> 24;
 	q->used = frames_displayed;
 
 	if (!p)
@@ -803,7 +808,7 @@ static int scroll3_insert_sprite(u32 key)
 	SCROLL3テクスチャから一定時間を経過したスプライトを削除
 ------------------------------------------------------------------------*/
 
-static void scroll3_delete_sprite(int delay)
+static void scroll3_delete_sprite(void)
 {
 	int i;
 	SPRITE *p, *prev_p;
@@ -815,7 +820,7 @@ static void scroll3_delete_sprite(int delay)
 
 		while (p)
 		{
-			if (frames_displayed - p->used > delay)
+			if (frames_displayed != p->used)
 			{
 				scroll3_texture_num--;
 
@@ -850,45 +855,24 @@ static void scroll3_delete_sprite(int delay)
 
 static void scroll3_delete_dirty_palette(void)
 {
-	int i, palno;
-	SPRITE *p, *prev_p;
+	u32 palno;
+	u8 *dirty_flags = &palette_dirty_marks[96];
+	SPRITE *p;
 
 	for (palno = 0; palno < 32; palno++)
 	{
-		if (!palette_dirty_marks[palno + 96]) continue;
+		if (!dirty_flags[palno]) continue;
 
-		for (i = 0; i < SCROLL3_HASH_SIZE; i++)
+		p = scroll3_head[palno];
+
+		while (p)
 		{
-			prev_p = NULL;
-			p = scroll3_head[i];
+			scroll3_texture_num--;
 
-			while (p)
-			{
-				if (p->pal == palno)
-				{
-					scroll3_texture_num--;
-
-					if (!prev_p)
-					{
-						scroll3_head[i] = p->next;
-						p->next = scroll3_free_head;
-						scroll3_free_head = p;
-						p = scroll3_head[i];
-					}
-					else
-					{
-						prev_p->next = p->next;
-						p->next = scroll3_free_head;
-						scroll3_free_head = p;
-						p = prev_p->next;
-					}
-				}
-				else
-				{
-					prev_p = p;
-					p = p->next;
-				}
-			}
+			scroll3_head[palno] = p->next;
+			p->next = scroll3_free_head;
+			scroll3_free_head = p;
+			p = scroll3_head[palno];
 		}
 	}
 
@@ -959,10 +943,10 @@ void blit_reset(void)
 	tex_scroll2 = tex_scroll1 + BUF_WIDTH * scroll1_height;
 	tex_scroll3 = tex_scroll2 + BUF_WIDTH * scroll2_height;
 
-	for (i = 0; i < object_max  - 1; i++) object_data[i].index = i;
-	for (i = 0; i < scroll1_max - 1; i++) scroll1_data[i].index = i;
-	for (i = 0; i < scroll2_max - 1; i++) scroll2_data[i].index = i;
-	for (i = 0; i < scroll3_max - 1; i++) scroll3_data[i].index = i;
+	for (i = 0; i < object_max; i++) object_data[i].index = i;
+	for (i = 0; i < scroll1_max; i++) scroll1_data[i].index = i;
+	for (i = 0; i < scroll2_max; i++) scroll2_data[i].index = i;
+	for (i = 0; i < scroll3_max; i++) scroll3_data[i].index = i;
 
 	clip_min_y = FIRST_VISIBLE_LINE;
 	clip_max_y = LAST_VISIBLE_LINE;
@@ -1005,9 +989,7 @@ void blit_partial_start(int start, int end)
 	clip_min_y  = start;
 	clip_max_y  = end + 1;
 
-	min_y_8  = start - 8;
-	min_y_16 = start - 16;
-	min_y_32 = start - 32;
+	onject_min_y = start - 16;
 
 	object_num  = 0;
 	scroll1_num = 0;
@@ -1053,9 +1035,9 @@ void blit_finish(void)
 
 void blit_update_object(int x, int y, u32 code, u32 attr)
 {
-	if ((x > 48 && x < 448) && (y > min_y_16 && y < clip_max_y))
+	if ((x > 48 && x < 448) && (y > onject_min_y && y < clip_max_y))
 	{
-		u32 key = MAKE_KEY(code, (attr & 0x1f));
+		u32 key = MAKE_KEY(code, attr);
 		SPRITE *p = object_head[key & OBJECT_HASH_MASK];
 
 		while (p)
@@ -1078,23 +1060,23 @@ void blit_update_object(int x, int y, u32 code, u32 attr)
 
 void blit_draw_object(int x, int y, int z, u32 code, u32 attr)
 {
-	if ((x > 48 && x < 448) && (y > min_y_16 && y < clip_max_y))
+	if ((x > 48 && x < 448) && (y > onject_min_y && y < clip_max_y))
 	{
 		int idx;
 		struct Vertex *vertices;
-		u16 color = attr & 0x1f;
-		u32 key = MAKE_KEY(code, color);
+		u32 key = MAKE_KEY(code, attr);
 
 		if ((idx = object_get_sprite(key)) < 0)
 		{
 			int lines = 16;
 			u16 *dst, *pal;
 			u32 *gfx, tile, offs;
+			u16 color = attr & 0x1f;
 
 			if (object_texture_num == object_max - 1)
 			{
 				cps2_scan_object_callback();
-				object_delete_sprite(0);
+				object_delete_sprite();
 			}
 
 			idx  = object_insert_sprite(key);
@@ -1138,11 +1120,11 @@ void blit_draw_object(int x, int y, int z, u32 code, u32 attr)
 
 		vertices[0].x = x;
 		vertices[0].y = y;
-		vertices[0].z = z;
+		vertices[0].z = z & 7;
 
 		vertices[1].x = x + 16;
 		vertices[1].y = y + 16;
-		vertices[1].z = z;
+		vertices[1].z = z >> 4;
 
 		object_num += 2;
 	}
@@ -1150,7 +1132,7 @@ void blit_draw_object(int x, int y, int z, u32 code, u32 attr)
 
 
 /*------------------------------------------------------------------------
-	OBJECT描画 (通常)
+	OBJECT描画
 ------------------------------------------------------------------------*/
 
 static void blit_render_object(int start_pri, int end_pri)
@@ -1192,7 +1174,7 @@ static void blit_render_object(int start_pri, int end_pri)
 
 
 /*------------------------------------------------------------------------
-	OBJECT描画 (Zバッファ使用)
+	OBJECT描画(Zバッファ)
 ------------------------------------------------------------------------*/
 
 static void blit_render_object_zb(int start_pri, int end_pri)
@@ -1208,16 +1190,14 @@ static void blit_render_object_zb(int start_pri, int end_pri)
 
 	for (i = 0; i < object_num; i += 2)
 	{
-		int pri = vertices_object[i].z & 7;
-		int zvalue = vertices_object[i].z >> 4;
+		int priority = vertices_object[i].z;
 
-		if (pri < start_pri || pri > end_pri) continue;
+		if (priority < start_pri || priority > end_pri) continue;
 
 		vertices_tmp[0] = vertices_object[i + 0];
 		vertices_tmp[1] = vertices_object[i + 1];
 
-		vertices_tmp[0].z = zvalue;
-		vertices_tmp[1].z = zvalue;
+		vertices_tmp[0].z = vertices_tmp[1].z;
 
 		total_object += 2;
 		vertices_tmp += 2;
@@ -1260,24 +1240,21 @@ void blit_finish_object(int start_pri, int end_pri)
 
 void blit_update_scroll1(int x, int y, u32 code, u32 attr)
 {
-	if ((x > 56 && x < 448) && (y > min_y_8 && y < clip_max_y))
-	{
-		u32 key = MAKE_KEY(code, (attr & 0x1f));
-		SPRITE *p = scroll1_head[key & SCROLL1_HASH_MASK];
+	u32 key = MAKE_KEY(code, attr);
+	SPRITE *p = scroll1_head[key & SCROLL1_HASH_MASK];
 
-		while (p)
+	while (p)
+	{
+		if (p->key == key)
 		{
-			if (p->key == key)
+			if (p->used != frames_displayed)
 			{
-				if (p->used != frames_displayed)
-				{
-					update_cache((key << 6) & 0x1ffffff);
-					p->used = frames_displayed;
-				}
-				return;
+				update_cache((key << 6) & 0x1ffffff);
+				p->used = frames_displayed;
 			}
-			p = p->next;
+			return;
 		}
+		p = p->next;
 	}
 }
 
@@ -1288,64 +1265,61 @@ void blit_update_scroll1(int x, int y, u32 code, u32 attr)
 
 void blit_draw_scroll1(int x, int y, u32 code, u32 attr)
 {
-	if ((x > 56 && x < 448) && (y > min_y_8 && y < clip_max_y))
+	int idx;
+	struct Vertex *vertices;
+	u32 key = MAKE_KEY(code, attr);
+
+	if ((idx = scroll1_get_sprite(key)) < 0)
 	{
-		int idx;
-		struct Vertex *vertices;
-		int color = attr & 0x1f;
-		u32 key = MAKE_KEY(code, color);
+		int lines = 8;
+		u16 *dst, *pal;
+		u32 *gfx, tile, offs;
+		u16 color = (attr & 0x1f) + 32;
 
-		if ((idx = scroll1_get_sprite(key)) < 0)
+		if (scroll1_texture_num == scroll1_max - 1)
 		{
-			int lines = 8;
-			u16 *dst, *pal;
-			u32 *gfx, tile, offs;
-
-			if (scroll1_texture_num == scroll1_max - 1)
-			{
-				cps2_scan_scroll1_callback();
-				scroll1_delete_sprite(0);
-			}
-
-			idx  = scroll1_insert_sprite(key);
-			offs = (*read_cache)(code << 6);
-			gfx  = (u32 *)&memory_region_gfx1[offs];
-			pal  = &video_palette[(color + 32) << 4];
-			dst  = SWIZZLED_8x8(tex_scroll1, idx);
-
-			while (lines--)
-			{
-				tile = gfx[1];
-				dst[0] = pal[tile & 0x0f]; tile >>= 4;
-				dst[1] = pal[tile & 0x0f]; tile >>= 4;
-				dst[2] = pal[tile & 0x0f]; tile >>= 4;
-				dst[3] = pal[tile & 0x0f]; tile >>= 4;
-				dst[4] = pal[tile & 0x0f]; tile >>= 4;
-				dst[5] = pal[tile & 0x0f]; tile >>= 4;
-				dst[6] = pal[tile & 0x0f]; tile >>= 4;
-				dst[7] = pal[tile & 0x0f];
-				gfx += 2;
-				dst += 8;
-			}
+			cps2_scan_scroll1_callback();
+			scroll1_delete_sprite();
 		}
 
-		vertices = &vertices_scroll1[scroll1_num];
+		idx  = scroll1_insert_sprite(key);
+		offs = (*read_cache)(code << 6);
+		gfx  = (u32 *)&memory_region_gfx1[offs];
+		pal  = &video_palette[color << 4];
+		dst  = SWIZZLED_8x8(tex_scroll1, idx);
 
-		vertices[0].u = vertices[1].u = (idx & 63) << 3;
-		vertices[0].v = vertices[1].v = (idx >> 6) << 3;
-
-		attr ^= 0x60;
-		vertices[(attr & 0x20) >> 5].u += 8;
-		vertices[(attr & 0x40) >> 6].v += 8;
-
-		vertices[0].x = x;
-		vertices[0].y = y;
-
-		vertices[1].x = x + 8;
-		vertices[1].y = y + 8;
-
-		scroll1_num += 2;
+		while (lines--)
+		{
+			tile = gfx[1];
+			dst[0] = pal[tile & 0x0f]; tile >>= 4;
+			dst[1] = pal[tile & 0x0f]; tile >>= 4;
+			dst[2] = pal[tile & 0x0f]; tile >>= 4;
+			dst[3] = pal[tile & 0x0f]; tile >>= 4;
+			dst[4] = pal[tile & 0x0f]; tile >>= 4;
+			dst[5] = pal[tile & 0x0f]; tile >>= 4;
+			dst[6] = pal[tile & 0x0f]; tile >>= 4;
+			dst[7] = pal[tile & 0x0f];
+			gfx += 2;
+			dst += 8;
+		}
 	}
+
+	vertices = &vertices_scroll1[scroll1_num];
+
+	vertices[0].u = vertices[1].u = (idx & 63) << 3;
+	vertices[0].v = vertices[1].v = (idx >> 6) << 3;
+
+	attr ^= 0x60;
+	vertices[(attr & 0x20) >> 5].u += 8;
+	vertices[(attr & 0x40) >> 6].v += 8;
+
+	vertices[0].x = x;
+	vertices[0].y = y;
+
+	vertices[1].x = x + 8;
+	vertices[1].y = y + 8;
+
+	scroll1_num += 2;
 }
 
 
@@ -1379,11 +1353,22 @@ void blit_finish_scroll1(void)
 	SCROLL2テクスチャを更新
 ------------------------------------------------------------------------*/
 
+void blit_set_clip_scroll2(int min_y, int max_y)
+{
+	scroll2_min_y = min_y;
+	scroll2_max_y = max_y + 1;
+}
+
+
+/*------------------------------------------------------------------------
+	SCROLL2テクスチャを更新
+------------------------------------------------------------------------*/
+
 void blit_update_scroll2(int x, int y, u32 code, u32 attr)
 {
-	if ((x > 48 && x < 448) && (y > min_y_16 && y < clip_max_y))
+	if (y > scroll2_min_y - 16 && y < scroll2_max_y)
 	{
-		u32 key = MAKE_KEY(code, (attr & 0x1f));
+		u32 key = MAKE_KEY(code, attr);
 		SPRITE *p = scroll2_head[key & SCROLL2_HASH_MASK];
 
 		while (p)
@@ -1409,29 +1394,29 @@ void blit_update_scroll2(int x, int y, u32 code, u32 attr)
 
 void blit_draw_scroll2(int x, int y, u32 code, u32 attr)
 {
-	if ((x > 48 && x < 448) && (y > min_y_16 && y < clip_max_y))
+	if (y > scroll2_min_y - 16 && y < scroll2_max_y)
 	{
 		int idx;
 		struct Vertex *vertices;
-		u16 color = attr & 0x1f;
-		u32 key = MAKE_KEY(code, color);
+		u32 key = MAKE_KEY(code, attr);
 
 		if ((idx = scroll2_get_sprite(key)) < 0)
 		{
 			int lines = 16;
 			u16 *dst, *pal;
 			u32 *gfx, tile, offs;
+			u16 color = (attr & 0x1f) + 64;
 
 			if (scroll2_texture_num == scroll2_max - 1)
 			{
 				cps2_scan_scroll2_callback();
-				scroll2_delete_sprite(0);
+				scroll2_delete_sprite();
 			}
 
 			idx  = scroll2_insert_sprite(key);
 			offs = (*read_cache)(code << 7);
 			gfx  = (u32 *)&memory_region_gfx1[offs];
-			pal  = &video_palette[(color + 64) << 4];
+			pal  = &video_palette[color << 4];
 			dst  = SWIZZLED_16x16(tex_scroll2, idx);
 
 			while (lines--)
@@ -1482,14 +1467,11 @@ void blit_draw_scroll2(int x, int y, u32 code, u32 attr)
 	SCROLL2描画終了
 ------------------------------------------------------------------------*/
 
-void blit_finish_scroll2(int min_y, int max_y)
+void blit_finish_scroll2(void)
 {
 	struct Vertex *vertices;
 
 	if (!scroll2_num) return;
-
-	if (min_y < clip_min_y) min_y = clip_min_y;
-	if (max_y > clip_max_y) max_y = clip_max_y;
 
 	sceGuStart(GU_DIRECT, gulist);
 
@@ -1497,7 +1479,7 @@ void blit_finish_scroll2(int min_y, int max_y)
 	memcpy(vertices, vertices_scroll2, scroll2_num * sizeof(struct Vertex));
 
 	sceGuDrawBufferList(GU_PSM_5551, work_frame, BUF_WIDTH);
-	sceGuScissor(64, min_y, 448, max_y);
+	sceGuScissor(64, scroll2_min_y, 448, scroll2_max_y);
 	sceGuTexImage(0, 512, 512, BUF_WIDTH, tex_scroll2);
 
 	sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, scroll2_num, 0, vertices);
@@ -1515,24 +1497,21 @@ void blit_finish_scroll2(int min_y, int max_y)
 
 void blit_update_scroll3(int x, int y, u32 code, u32 attr)
 {
-	if ((x > 32 && x < 448) && (y > min_y_32 && y < clip_max_y))
-	{
-		u32 key = MAKE_KEY(code, (attr & 0x1f));
-		SPRITE *p = scroll3_head[key & SCROLL3_HASH_MASK];
+	u32 key = MAKE_KEY(code, attr);
+	SPRITE *p = scroll3_head[key & SCROLL3_HASH_MASK];
 
-		while (p)
+	while (p)
+	{
+		if (p->key == key)
 		{
-			if (p->key == key)
+			if (p->used != frames_displayed)
 			{
-				if (p->used != frames_displayed)
-				{
-					update_cache((key << 9) & 0x1ffffff);
-					p->used = frames_displayed;
-				}
-				return;
+				update_cache((key << 9) & 0x1ffffff);
+				p->used = frames_displayed;
 			}
-			p = p->next;
+			return;
 		}
+		p = p->next;
 	}
 }
 
@@ -1543,90 +1522,87 @@ void blit_update_scroll3(int x, int y, u32 code, u32 attr)
 
 void blit_draw_scroll3(int x, int y, u32 code, u32 attr)
 {
-	if ((x > 32 && x < 448) && (y > min_y_32 && y < clip_max_y))
+	int idx;
+	struct Vertex *vertices;
+	u32 key = MAKE_KEY_SCROLL3(code, attr);
+
+	if ((idx = scroll3_get_sprite(key)) < 0)
 	{
-		int idx;
-		struct Vertex *vertices;
-		int color = attr & 0x1f;
-		u32 key = MAKE_KEY(code, color);
+		int lines = 32;
+		u16 *dst, *pal;
+		u32 *gfx, tile, offs;
+		u16 color = (attr & 0x1f) + 96;
 
-		if ((idx = scroll3_get_sprite(key)) < 0)
+		if (scroll3_texture_num == scroll3_max - 1)
 		{
-			int lines = 32;
-			u16 *dst, *pal;
-			u32 *gfx, tile, offs;
-
-			if (scroll3_texture_num == scroll3_max - 1)
-			{
-				cps2_scan_scroll3_callback();
-				scroll3_delete_sprite(0);
-			}
-
-			idx  = scroll3_insert_sprite(key);
-			offs = (*read_cache)(code << 9);
-			gfx  = (u32 *)&memory_region_gfx1[offs];
-			pal  = &video_palette[(color + 96) << 4];
-			dst  = SWIZZLED_32x32(tex_scroll3, idx);
-
-			while (lines--)
-			{
-				tile = *gfx++;
-				dst[  0] = pal[tile & 0x0f]; tile >>= 4;
-				dst[  1] = pal[tile & 0x0f]; tile >>= 4;
-				dst[  2] = pal[tile & 0x0f]; tile >>= 4;
-				dst[  3] = pal[tile & 0x0f]; tile >>= 4;
-				dst[  4] = pal[tile & 0x0f]; tile >>= 4;
-				dst[  5] = pal[tile & 0x0f]; tile >>= 4;
-				dst[  6] = pal[tile & 0x0f]; tile >>= 4;
-				dst[  7] = pal[tile & 0x0f];
-				tile = *gfx++;
-				dst[ 64] = pal[tile & 0x0f]; tile >>= 4;
-				dst[ 65] = pal[tile & 0x0f]; tile >>= 4;
-				dst[ 66] = pal[tile & 0x0f]; tile >>= 4;
-				dst[ 67] = pal[tile & 0x0f]; tile >>= 4;
-				dst[ 68] = pal[tile & 0x0f]; tile >>= 4;
-				dst[ 69] = pal[tile & 0x0f]; tile >>= 4;
-				dst[ 70] = pal[tile & 0x0f]; tile >>= 4;
-				dst[ 71] = pal[tile & 0x0f];
-				tile = *gfx++;
-				dst[128] = pal[tile & 0x0f]; tile >>= 4;
-				dst[129] = pal[tile & 0x0f]; tile >>= 4;
-				dst[130] = pal[tile & 0x0f]; tile >>= 4;
-				dst[131] = pal[tile & 0x0f]; tile >>= 4;
-				dst[132] = pal[tile & 0x0f]; tile >>= 4;
-				dst[133] = pal[tile & 0x0f]; tile >>= 4;
-				dst[134] = pal[tile & 0x0f]; tile >>= 4;
-				dst[135] = pal[tile & 0x0f];
-				tile = *gfx++;
-				dst[192] = pal[tile & 0x0f]; tile >>= 4;
-				dst[193] = pal[tile & 0x0f]; tile >>= 4;
-				dst[194] = pal[tile & 0x0f]; tile >>= 4;
-				dst[195] = pal[tile & 0x0f]; tile >>= 4;
-				dst[196] = pal[tile & 0x0f]; tile >>= 4;
-				dst[197] = pal[tile & 0x0f]; tile >>= 4;
-				dst[198] = pal[tile & 0x0f]; tile >>= 4;
-				dst[199] = pal[tile & 0x0f];
-				dst += swizzle_table[lines];
-			}
+			cps2_scan_scroll3_callback();
+			scroll3_delete_sprite();
 		}
 
-		vertices = &vertices_scroll3[scroll3_num];
+		idx  = scroll3_insert_sprite(key);
+		offs = (*read_cache)(code << 9);
+		gfx  = (u32 *)&memory_region_gfx1[offs];
+		pal  = &video_palette[color << 4];
+		dst  = SWIZZLED_32x32(tex_scroll3, idx);
 
-		vertices[0].u = vertices[1].u = (idx & 15) << 5;
-		vertices[0].v = vertices[1].v = (idx >> 4) << 5;
-
-		attr ^= 0x60;
-		vertices[(attr & 0x20) >> 5].u += 32;
-		vertices[(attr & 0x40) >> 6].v += 32;
-
-		vertices[0].x = x;
-		vertices[0].y = y;
-
-		vertices[1].x = x + 32;
-		vertices[1].y = y + 32;
-
-		scroll3_num += 2;
+		while (lines--)
+		{
+			tile = *gfx++;
+			dst[  0] = pal[tile & 0x0f]; tile >>= 4;
+			dst[  1] = pal[tile & 0x0f]; tile >>= 4;
+			dst[  2] = pal[tile & 0x0f]; tile >>= 4;
+			dst[  3] = pal[tile & 0x0f]; tile >>= 4;
+			dst[  4] = pal[tile & 0x0f]; tile >>= 4;
+			dst[  5] = pal[tile & 0x0f]; tile >>= 4;
+			dst[  6] = pal[tile & 0x0f]; tile >>= 4;
+			dst[  7] = pal[tile & 0x0f];
+			tile = *gfx++;
+			dst[ 64] = pal[tile & 0x0f]; tile >>= 4;
+			dst[ 65] = pal[tile & 0x0f]; tile >>= 4;
+			dst[ 66] = pal[tile & 0x0f]; tile >>= 4;
+			dst[ 67] = pal[tile & 0x0f]; tile >>= 4;
+			dst[ 68] = pal[tile & 0x0f]; tile >>= 4;
+			dst[ 69] = pal[tile & 0x0f]; tile >>= 4;
+			dst[ 70] = pal[tile & 0x0f]; tile >>= 4;
+			dst[ 71] = pal[tile & 0x0f];
+			tile = *gfx++;
+			dst[128] = pal[tile & 0x0f]; tile >>= 4;
+			dst[129] = pal[tile & 0x0f]; tile >>= 4;
+			dst[130] = pal[tile & 0x0f]; tile >>= 4;
+			dst[131] = pal[tile & 0x0f]; tile >>= 4;
+			dst[132] = pal[tile & 0x0f]; tile >>= 4;
+			dst[133] = pal[tile & 0x0f]; tile >>= 4;
+			dst[134] = pal[tile & 0x0f]; tile >>= 4;
+			dst[135] = pal[tile & 0x0f];
+			tile = *gfx++;
+			dst[192] = pal[tile & 0x0f]; tile >>= 4;
+			dst[193] = pal[tile & 0x0f]; tile >>= 4;
+			dst[194] = pal[tile & 0x0f]; tile >>= 4;
+			dst[195] = pal[tile & 0x0f]; tile >>= 4;
+			dst[196] = pal[tile & 0x0f]; tile >>= 4;
+			dst[197] = pal[tile & 0x0f]; tile >>= 4;
+			dst[198] = pal[tile & 0x0f]; tile >>= 4;
+			dst[199] = pal[tile & 0x0f];
+			dst += swizzle_table[lines];
+		}
 	}
+
+	vertices = &vertices_scroll3[scroll3_num];
+
+	vertices[0].u = vertices[1].u = (idx & 15) << 5;
+	vertices[0].v = vertices[1].v = (idx >> 4) << 5;
+
+	attr ^= 0x60;
+	vertices[(attr & 0x20) >> 5].u += 32;
+	vertices[(attr & 0x40) >> 6].v += 32;
+
+	vertices[0].x = x;
+	vertices[0].y = y;
+
+	vertices[1].x = x + 32;
+	vertices[1].y = y + 32;
+
+	scroll3_num += 2;
 }
 
 

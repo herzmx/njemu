@@ -205,7 +205,7 @@ s32 Cz80_Exec(cz80_struc *CPU, s32 cycles)
 	s32 OPBase;
 #endif
 	u32 Opcode;
-	u32 adr;
+	u32 adr = 0;
 	u32 res;
 	u32 val;
 	int afterEI = 0;

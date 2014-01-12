@@ -143,7 +143,7 @@ static int write_chunk(FILE *fp, u32 chunk_type, u8 *chunk_data, u32 chunk_lengt
 {
 	u32 crc;
 	u8 v[4];
-	int written;
+	u32 written;
 
 	/* write length */
 	convert_to_network_order(chunk_length, v);
@@ -232,7 +232,7 @@ static int png_write_datastream(FILE *fp, struct png_info *p)
 
 static int png_filter(struct png_info *p)
 {
-	int i;
+	u32 i;
 	u8 *src, *dst;
 
 	if ((p->fimage = (u8 *)malloc(p->height * (p->rowbytes + 1))) == NULL)
@@ -310,7 +310,7 @@ static int png_pack_buffer(struct png_info *p)
 
 static int png_create_datastream(FILE *fp)
 {
-	int i, j;
+	u32 i, j;
 	u8 *ip;
 	struct png_info p;
 	u16 *vptr, *src;

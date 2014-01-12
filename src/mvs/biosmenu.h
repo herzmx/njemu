@@ -21,6 +21,18 @@ enum
 	JAPAN_V1,
 	ASIA_AES,
 
+#if !RELEASE
+	UNI_V10,
+	UNI_V11,
+	UNI_V12old,
+	UNI_V12,
+	UNI_V13,
+	UNI_V20,
+	UNI_V21,
+	UNI_V22,
+	DEBUG_BIOS,
+#endif
+
 	BIOS_MAX
 };
 

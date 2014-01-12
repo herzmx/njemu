@@ -251,7 +251,9 @@ void timer_set(int which, int duration, int param, void (*callback)(int param))
 
 float timer_get_time(void)
 {
-	return (float)global_offset + (float)getabsolutetime() / 1000000.0;
+	int time = getabsolutetime();
+
+	return (float)global_offset + (float)time / 1000000.0;
 }
 
 

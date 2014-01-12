@@ -19,7 +19,7 @@
 	エミュレーションリセット
 ------------------------------------------------------*/
 
-int menu_reset(void)
+static int menu_reset(void)
 {
 	if (messagebox(MB_RESETEMULATION))
 	{
@@ -37,7 +37,7 @@ int menu_reset(void)
 	エミュレーション再起動
 ------------------------------------------------------*/
 
-int menu_restart(void)
+static int menu_restart(void)
 {
 	if (messagebox(MB_RESTARTEMULATION))
 	{
@@ -54,7 +54,7 @@ int menu_restart(void)
 	ファイルブラウザに戻る
 ------------------------------------------------------*/
 
-int menu_browser(void)
+static int menu_browser(void)
 {
 	Loop = LOOP_BROWSER;
 	Sleep = 0;
@@ -66,7 +66,7 @@ int menu_browser(void)
 	エミュレータ終了
 ------------------------------------------------------*/
 
-int menu_exit(void)
+static int menu_exit(void)
 {
 	if (messagebox(MB_EXITEMULATOR))
 	{
@@ -429,7 +429,8 @@ static int menu_keycfg(void)
 			for (i = 0; i < rows; i++)
 			{
 				int value = keycfg[top + i].value;
-				char *name, temp[16];
+				char temp[16];
+				const char *name;
 				const char *label = keycfg[top + i].label;
 				const char *sensitivity[3] = { "Low", "Normal", "High" };
 #if (EMU_SYSTEM == CPS2)
@@ -448,7 +449,7 @@ static int menu_keycfg(void)
 					if (!strcmp(driver->name, "progear"))
 						if (top + i == 10) label = progear_p2[option_controller ^ 1];
 #endif
-					name = (char *)button_name[value];
+					name = button_name[value];
 					break;
 
 				case KEYCFG_NUMBER:
@@ -456,11 +457,11 @@ static int menu_keycfg(void)
 						sprintf(temp, "%d frame", value + 1);
 					else
 						sprintf(temp, "%d frames", value + 1);
-					name = temp;
+					name = (const char *)temp;
 					break;
 
 				case KEYCFG_ANALOG:
-					name = (char *)sensitivity[value];
+					name = sensitivity[value];
 					break;
 
 				default:
@@ -841,7 +842,7 @@ static void state_delete_slot(void)
 }
 
 
-void state_draw_thumbnail(void)
+static void state_draw_thumbnail(void)
 {
 	if (machine_screen_type)
 	{
@@ -978,7 +979,7 @@ int state_draw_progress(int progress)
 }
 
 
-int menu_state(void)
+static int menu_state(void)
 {
 	int i, prev_sel = -1, prev_func = -1, update = 1;
 	int thumbnail_loaded = 0;
@@ -1285,7 +1286,7 @@ typedef struct
 } menu_t;
 
 
-menu_t mainmenu[] =
+static menu_t mainmenu[] =
 {
 	{"Game configuration",     menu_gamecfg,   ICON_CONFIG,    "Change game settings." },
 	{"Key configuration",      menu_keycfg,    ICON_KEYCONFIG, "Change buttons and autofire/hotkey settings." },
@@ -1310,6 +1311,7 @@ void showmenu(void)
 	int i, prev_sel = 0, update = 1;
 	int mainmenu_num = 0;
 
+	sound_thread_enable(0);
 #if USE_CACHE
 	cache_sleep(1);
 #endif
@@ -1321,7 +1323,6 @@ void showmenu(void)
 	state_make_thumbnail();
 #endif
 
-	sound_thread_enable(0);
 	set_cpu_clock(PSPCLOCK_222);
 	video_clear_screen();
 	ui_popup_reset(POPUP_MENU);
@@ -1431,6 +1432,10 @@ void showmenu(void)
 	video_clear_frame(work_frame);
 	set_cpu_clock(psp_cpuclock);
 
+#if USE_CACHE
+	cache_sleep(0);
+#endif
+
 #if (EMU_SYSTEM == CPS2)
 	qsound_set_samplerate();
 #endif
@@ -1439,8 +1444,4 @@ void showmenu(void)
 		sound_thread_set_volume();
 		sound_thread_enable(option_sound_enable);
 	}
-
-#if USE_CACHE
-	cache_sleep(0);
-#endif
 }

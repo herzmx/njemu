@@ -153,15 +153,16 @@ static void free_zipname(void)
 
 static char *get_zipname(const char *name, int *flag)
 {
-	int i;
+	int i, length;
 	char fname[MAX_PATH];
 
 	strcpy(fname, name);
 	*strrchr(fname, '.') = '\0';
 
-	if (strlen(fname) > 8) return NULL;
+	length = strlen(fname);
+	if (length > 8) return NULL;
 
-	for (i = 0; i < strlen(fname); i++)
+	for (i = 0; i < length; i++)
 		fname[i] = tolower(fname[i]);
 
 	for (i = 0; i < zipname_num; i++)
@@ -484,7 +485,7 @@ void find_state_file(u8 *slot)
 	{
 		if (strnicmp(dir.d_name, pattern, len) == 0)
 		{
-			char number = dir.d_name[len] - '0';
+			int number = dir.d_name[len] - '0';
 
 			if (number >= 0 && number <= 9)
 				slot[number] = 1;

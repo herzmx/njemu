@@ -33,7 +33,7 @@ int  state_reload_bios;
 #if (EMU_SYSTEM == CPS1)
 static const char *current_version_str = "CPS1SV04";
 #elif (EMU_SYSTEM == CPS2)
-static const char *current_version_str = "CPS2SV07";
+static const char *current_version_str = "CPS2SV08";
 #elif (EMU_SYSTEM == MVS)
 static const char *current_version_str = "MVSSV007";
 #endif

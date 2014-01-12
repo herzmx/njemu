@@ -46,6 +46,10 @@ float timer_get_time(void);
 float timer_timeelapsed(void);
 int timer_getscanline(void);
 
+#ifdef SOUND_TEST
+void timer_update_subcpu(void);
+#endif
+
 #ifdef SAVE_STATE
 STATE_SAVE( timer );
 STATE_LOAD( timer );

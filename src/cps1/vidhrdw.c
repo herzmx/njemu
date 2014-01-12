@@ -220,9 +220,9 @@ static void cps1_init_tables(void)
 
 static int cps1_gfx_decode(void)
 {
-	int i, j;
+	u32 i, j;
 	u8 *gfx = memory_region_gfx1;
-	int size = memory_length_gfx1;
+	u32 size = memory_length_gfx1;
 
 	if (driver->has_stars)
 		i = 0x10000 >> 2;
@@ -531,9 +531,9 @@ void cps1_video_reset(void)
 	ƒpƒŒƒbƒg
 ------------------------------------------------------*/
 
-void cps1_build_palette(void)
+static void cps1_build_palette(void)
 {
-	int offset;
+	u32 offset;
 	u16 palette;
 
 	cps1_palette = cps1_base(CPS1_PALETTE_BASE, cps1_palette_mask);
@@ -624,23 +624,20 @@ void cps1_build_palette(void)
 	•`‰æ
 ------------------------------------------------------*/
 
-static struct cps1_object_t *object1;
 
-void cps1_render_object(void)
+static void cps1_render_object(void)
 {
-	int x, y, sx, sy, code, attr;
-	int nx, ny, nsx, nsy;
-	u16 ncode;
+	int x, y, sx, sy, nx, ny, nsx, nsy;
+	u32 code, ncode, attr;
+	struct cps1_object_t *object = cps1_last_object;
 
-	object1 = cps1_last_object;
-
-	while (object1 >= cps1_object)
+	while (object >= cps1_object)
 	{
-		sx   = object1->sx;
-		sy   = object1->sy;
-		code = object1->code;
-		attr = object1->attr;
-		object1--;
+		sx   = object->sx;
+		sy   = object->sy;
+		code = object->code;
+		attr = object->attr;
+		object--;
 
 		SCAN_OBJECT(blit_draw_object)
 	}
@@ -655,18 +652,17 @@ void cps1_render_object(void)
 
 void cps1_scan_object(void)
 {
-	int x, y, sx, sy, code, attr;
-	int nx, ny, nsx, nsy;
-	u16 ncode;
-	struct cps1_object_t *object2 = object1;
+	int x, y, sx, sy, nx, ny, nsx, nsy;
+	u32 code, ncode, attr;
+	struct cps1_object_t *object = cps1_last_object;
 
-	while (object2 >= cps1_object)
+	while (object >= cps1_object)
 	{
-		sx   = object2->sx;
-		sy   = object2->sy;
-		code = object2->code;
-		attr = object2->attr;
-		object2--;
+		sx   = object->sx;
+		sy   = object->sy;
+		code = object->code;
+		attr = object->attr;
+		object--;
 
 		SCAN_OBJECT(blit_update_object)
 	}
@@ -735,7 +731,7 @@ static void cps1_render_scroll1_normal(void)
 	}																	\
 	if (cps1_pen_usage[gfxset][code] & tpens)							\
 	{																	\
-		blit_draw_scroll1h(sx, sy, code, attr, gfxset, tpens);			\
+		blit_draw_scroll1h(sx, sy, code, attr, tpens, gfxset);			\
 	}
 
 static void cps1_render_scroll1_separate(void)
@@ -833,7 +829,7 @@ void cps1_scan_scroll1(void)
 																			\
 	for (block = 0; block < cps_scroll2_blocks; block++)					\
 	{																		\
-		blit_set_clip_scroll2(scroll2[block].start, scroll2[block].end + 1);\
+		blit_set_clip_scroll2(scroll2[block].start, scroll2[block].end);	\
 																			\
 		cps_scroll2x = scroll2[block].value;								\
 		logical_col  = cps_scroll2x >> 4;									\
@@ -1242,7 +1238,7 @@ void cps1_scan_scroll3(void)
 	Stars
 ******************************************************************************/
 
-void cps1_render_stars(void)
+static void cps1_render_stars(void)
 {
 	u32 offs;
 	int layer_ctrl = cps1_port(driver->layer_control);
@@ -1335,7 +1331,7 @@ static void cps1_render_layer(int layer)
 void cps1_screenrefresh(void)
 {
 	int i, video_ctrl, layer_ctrl, l0, l1, l2, l3;
-	u16 mask, prio_mask;
+	u16 mask = 0, prio_mask;
 
 	video_ctrl = cps1_port(CPS1_VIDEO_CONTROL);
 	cps_flip_screen = video_ctrl & 0x8000;

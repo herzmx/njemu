@@ -171,7 +171,7 @@ static void error_file(const char *rom_name)
 
 static void neogeo_decode_spr(u8 *mem, u32 length, u8 *usage)
 {
-	int tileno, numtiles = length / 128;
+	u32 tileno, numtiles = length / 128;
 
 	for (tileno = 0;tileno < numtiles;tileno++)
 	{
@@ -242,7 +242,7 @@ static void neogeo_decode_spr(u8 *mem, u32 length, u8 *usage)
 
 static void neogeo_decode_fix(u8 *mem, u32 length, u8 *usage)
 {
-	int i, j;
+	u32 i, j;
 	u8 tile, opaque;
 	u8 *p, buf[32];
 
@@ -395,6 +395,8 @@ static int load_rom_gfx1(void)
 	file_close();
 
 	neogeo_decode_fix(memory_region_gfx1, memory_length_gfx1, gfx_pen_usage[0]);
+
+	return 1;
 }
 
 /*--------------------------------------------------------
@@ -658,7 +660,7 @@ static int load_rom_user1(int reload)
 		memset(memory_region_user1, 0, memory_length_user1);
 	}
 
-	parent = strlen(parent_name) ? parent_name : "neogeo";
+	parent = strlen(parent_name) ? parent_name : (char *)"neogeo";
 
 	if (!num_usr1rom)
 	{
@@ -732,7 +734,7 @@ static int load_rom_user1(int reload)
 	ROM情報をデータベースで解析
 --------------------------------------------------------*/
 
-int load_rom_info(const char *game_name)
+static int load_rom_info(const char *game_name)
 {
 	FILE *fp;
 	char path[MAX_PATH];
@@ -1383,7 +1385,6 @@ void m68000_write_memory_8(u32 offset, u8 data)
 
 	switch (offset & 0xf00000)
 	{
-	case 0x000000: WRITE_BYTE(memory_region_cpu1, offset, data); return;
 	case 0x100000: WRITE_MIRROR_BYTE(neogeo_ram, offset, data, 0x00ffff); return;
 
 	case 0x200000: (*neogeo_protection_16_w)(offset >> 1, data << shift, mem_mask); return;
@@ -1415,7 +1416,6 @@ void m68000_write_memory_16(u32 offset, u16 data)
 
 	switch (offset & 0xf00000)
 	{
-	case 0x000000: WRITE_WORD(memory_region_cpu1, offset, data); return;
 	case 0x100000: WRITE_MIRROR_WORD(neogeo_ram, offset, data, 0x00ffff); return;
 
 	case 0x200000: (*neogeo_protection_16_w)(offset >> 1, data, 0); return;

@@ -66,7 +66,7 @@ extern int fatal_error;
 
 void emu_main(void);
 
-void reset_frameskip(void);
+void autoframeskip_reset(void);
 
 u8 skip_this_frame(void);
 void update_screen(void);

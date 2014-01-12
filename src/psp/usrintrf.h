@@ -150,6 +150,8 @@ void hline_alpha(int sx, int ex, int y, int r, int g, int b, int alpha);
 void vline(int x, int sy, int ey, int r, int g, int b);
 void vline_alpha(int x, int sy, int ey, int r, int g, int b, int alpha);
 
+void box(int sx, int sy, int ex, int ey, int r, int g, int b);
+
 void boxfill(int sx, int sy, int ex, int ey, int r, int g, int b);
 void boxfill_alpha(int sx, int sy, int ex, int ey, int r, int g, int b, int alpha);
 

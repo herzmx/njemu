@@ -165,7 +165,7 @@ void OKIM6295Reset(void)
 
 ***********************************************************************************************/
 
-void OKIM6295Update(int length)
+static void OKIM6295Update(int length)
 {
 	int prev_sample = okim6295->prev_sample;
 	int curr_sample = okim6295->curr_sample;

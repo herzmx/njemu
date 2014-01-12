@@ -62,7 +62,7 @@ struct cps2_object_t
 	u32 code;
 };
 
-static struct cps2_object_t ALIGN_DATA cps2_object[cps2_max_obj + 1];
+static struct cps2_object_t ALIGN_DATA cps2_object[cps2_max_obj];
 static struct cps2_object_t *cps2_last_object;
 
 static u16 cps2_object_xoffs;
@@ -246,7 +246,6 @@ static u16 *cps1_base(int offset, int address_mask)
 int cps2_video_init(void)
 {
 	cps2_kludge = driver->kludge;
-	cps2_scroll3_base = (driver->kludge & (CPS2_KLUDGE_SSF2 | CPS2_KLUDGE_SSF2T | CPS2_KLUDGE_HSF2D)) ? 0x0000 : 0x4000;
 #if !RELEASE
 	cps2_scroll3_base = (driver->kludge & (CPS2_KLUDGE_SSF2 | CPS2_KLUDGE_SSF2T | CPS2_KLUDGE_HSF2D)) ? 0x0000 : 0x4000;
 #else
@@ -571,7 +570,7 @@ void cps2_scan_scroll1_callback(void)
 
 #define scroll2_offset(col, row) (((row) & 0x0f) + (((col) & 0x3f) << 4) + (((row) & 0x30) << 6)) << 1
 
-#define SCAN_SCROLL2()														\
+#define SCAN_SCROLL2(blit_func)												\
 	int block;																\
 	int x, y, sx, sy, offs, code;											\
 	int logical_col, scroll_col;											\
@@ -582,6 +581,8 @@ void cps2_scan_scroll1_callback(void)
 																			\
 	for (block = 0; block < cps_scroll2_blocks; block++)					\
 	{																		\
+		blit_set_clip_scroll2(scroll2[block].start, scroll2[block].end);	\
+																			\
 		cps_scroll2x = scroll2[block].value;								\
 		logical_col  = cps_scroll2x >> 4;									\
 		scroll_col   = cps_scroll2x & 0x0f;									\
@@ -605,7 +606,8 @@ void cps2_scan_scroll1_callback(void)
 				offs = scroll2_offset(logical_col + x, logical_row + y);	\
 				code = 0x10000 + cps_scroll2[offs];							\
 																			\
-				if (pen_usage[code]) BLIT_FUNC								\
+				if (pen_usage[code])										\
+					blit_func(sx, sy, code, cps_scroll2[offs + 1]);			\
 			}																\
 		}																	\
 																			\
@@ -617,14 +619,11 @@ void cps2_scan_scroll1_callback(void)
 	•`‰æ
 ------------------------------------------------------*/
 
-
 static void cps2_render_scroll2(void)
 {
-#define BLIT_FUNC			blit_draw_scroll2(sx, sy, code, cps_scroll2[offs + 1]);
-#define BLIT_FINISH_FUNC	blit_finish_scroll2(scroll2[block].start, scroll2[block].end + 1);
-	SCAN_SCROLL2()
+#define BLIT_FINISH_FUNC	blit_finish_scroll2();
+	SCAN_SCROLL2(blit_draw_scroll2)
 #undef BLIT_FINISH_FUNC
-#undef BLIT_FUNC
 }
 
 
@@ -634,11 +633,9 @@ static void cps2_render_scroll2(void)
 
 void cps2_scan_scroll2_callback(void)
 {
-#define BLIT_FUNC			blit_update_scroll2(sx, sy, code, cps_scroll2[offs + 1]);
 #define BLIT_FINISH_FUNC
-	SCAN_SCROLL2()
+	SCAN_SCROLL2(blit_update_scroll2)
 #undef BLIT_FINISH_FUNC
-#undef BLIT_FUNC
 }
 
 

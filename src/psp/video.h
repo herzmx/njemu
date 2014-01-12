@@ -97,6 +97,7 @@ void video_clear_frame(void *frame);
 void video_clear_rect(void *frame, RECT *rect);
 void video_fill_frame(void *frame, u32 color);
 void video_fill_rect(void *frame, u32 color, RECT *rect);
+void video_clear_depth(void *frame);
 
 void video_copy_rect(void *src, void *dst, RECT *src_rect, RECT *dst_rect);
 void video_copy_rect_flip(void *src, void *dst, RECT *src_rect, RECT *dst_rect);

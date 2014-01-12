@@ -19,8 +19,9 @@
 #define SCROLL3_MAX_HEIGHT	448
 #define SCROLLH_MAX_HEIGHT	192
 
-#define MAKE_KEY(code, attr)		(code | ((attr & 0x1f) << 16))
-#define MAKE_HIGH_KEY(code, attr)	(code | ((attr & 0x19f) << 15))
+#define MAKE_KEY(code, attr)			(code | ((attr & 0x1f) << 16))
+#define MAKE_KEY_SCROLL3(code, attr)	((code << 8) | (attr & 0x1f))
+#define MAKE_HIGH_KEY(code, attr)		(code | ((attr & 0x19f) << 15))
 
 
 /******************************************************************************
@@ -32,7 +33,7 @@ typedef struct sprite_t SPRITE ALIGN_DATA;
 struct sprite_t
 {
 	u32 key;
-	int used;
+	u32 used;
 	u16 pal;
 	u16 index;
 	SPRITE *next;
@@ -151,8 +152,8 @@ static u8 scroll2_palette_is_dirty;
 	palette: 96～127番を使用
 ------------------------------------------------------------------------*/
 
-#define SCROLL3_HASH_SIZE		0x80
-#define SCROLL3_HASH_MASK		0x7f
+#define SCROLL3_HASH_SIZE		0x20
+#define SCROLL3_HASH_MASK		0x1f
 #define SCROLL3_TEXTURE_SIZE	((BUF_WIDTH/32)*(SCROLL3_MAX_HEIGHT/32))
 #define SCROLL3_MAX_SPRITES		((384/32 + 2) * (224/32 + 2))
 
@@ -232,7 +233,7 @@ static void object_reset_sprite(void)
 	OBJECTテクスチャからスプライト番号を取得
 ------------------------------------------------------------------------*/
 
-static int object_get_sprite(int key)
+static int object_get_sprite(u32 key)
 {
 	SPRITE *p = object_head[key & OBJECT_HASH_MASK];
 
@@ -288,7 +289,7 @@ static int object_insert_sprite(u32 key)
 	OBJECTテクスチャから一定時間を経過したスプライトを削除
 ------------------------------------------------------------------------*/
 
-static void object_delete_sprite(int delay)
+static void object_delete_sprite(void)
 {
 	int i;
 	SPRITE *p, *prev_p;
@@ -300,7 +301,7 @@ static void object_delete_sprite(int delay)
 
 		while (p)
 		{
-			if (frames_displayed - p->used > delay)
+			if (frames_displayed != p->used)
 			{
 				object_texture_num--;
 
@@ -335,8 +336,8 @@ static void object_delete_sprite(int delay)
 
 static void object_delete_dirty_palette(void)
 {
-	SPRITE *p, *prev_p;
 	int i, palno;
+	SPRITE *p, *prev_p;
 
 	for (palno = 0; palno < 32; palno++)
 	{
@@ -410,7 +411,7 @@ static void scroll1_reset_sprite(void)
 	SCROLL1テクスチャからスプライト番号を取得
 ------------------------------------------------------------------------*/
 
-static int scroll1_get_sprite(int key)
+static int scroll1_get_sprite(u32 key)
 {
 	SPRITE *p = scroll1_head[key & SCROLL1_HASH_MASK];
 
@@ -443,7 +444,7 @@ static int scroll1_insert_sprite(u32 key)
 
 	q->next = NULL;
 	q->key  = key;
-	q->pal  = (key >> 16) + 32;
+	q->pal  = key >> 16;
 	q->used = frames_displayed;
 
 	if (!p)
@@ -466,7 +467,7 @@ static int scroll1_insert_sprite(u32 key)
 	SCROLL1テクスチャから一定時間を経過したスプライトを削除
 ------------------------------------------------------------------------*/
 
-static void scroll1_delete_sprite(int delay)
+static void scroll1_delete_sprite(void)
 {
 	int i;
 	SPRITE *p, *prev_p;
@@ -478,7 +479,7 @@ static void scroll1_delete_sprite(int delay)
 
 		while (p)
 		{
-			if (frames_displayed - p->used > delay)
+			if (frames_displayed != p->used)
 			{
 				scroll1_texture_num--;
 
@@ -513,12 +514,13 @@ static void scroll1_delete_sprite(int delay)
 
 static void scroll1_delete_dirty_palette(void)
 {
-	SPRITE *p, *prev_p;
 	int i, palno;
+	u8 *dirty_flags = &palette_dirty_marks[32];
+	SPRITE *p, *prev_p;
 
-	for (palno = 32; palno < 64; palno++)
+	for (palno = 0; palno < 32; palno++)
 	{
-		if (!palette_dirty_marks[palno]) continue;
+		if (!dirty_flags[palno]) continue;
 
 		for (i = 0; i < SCROLL1_HASH_SIZE; i++)
 		{
@@ -625,7 +627,7 @@ static void scroll2_reset_sprite(void)
 	SCROLL2テクスチャからスプライト番号を取得
 ------------------------------------------------------------------------*/
 
-static int scroll2_get_sprite(int key)
+static int scroll2_get_sprite(u32 key)
 {
 	SPRITE *p = scroll2_head[key & SCROLL2_HASH_MASK];
 
@@ -658,7 +660,7 @@ static int scroll2_insert_sprite(u32 key)
 
 	q->next = NULL;
 	q->key  = key;
-	q->pal  = (key >> 16) + 64;
+	q->pal  = key >> 16;
 	q->used = frames_displayed;
 
 	if (!p)
@@ -681,7 +683,7 @@ static int scroll2_insert_sprite(u32 key)
 	SCROLL2テクスチャから一定時間を経過したスプライトを削除
 ------------------------------------------------------------------------*/
 
-static void scroll2_delete_sprite(int delay)
+static void scroll2_delete_sprite(void)
 {
 	int i;
 	SPRITE *p, *prev_p;
@@ -693,7 +695,7 @@ static void scroll2_delete_sprite(int delay)
 
 		while (p)
 		{
-			if (frames_displayed - p->used > delay)
+			if (frames_displayed != p->used)
 			{
 				scroll2_texture_num--;
 
@@ -728,12 +730,13 @@ static void scroll2_delete_sprite(int delay)
 
 static void scroll2_delete_dirty_palette(void)
 {
-	SPRITE *p, *prev_p;
 	int i, palno;
+	u8 *dirty_flags = &palette_dirty_marks[64];
+	SPRITE *p, *prev_p;
 
-	for (palno = 64; palno < 96; palno++)
+	for (palno = 0; palno < 32; palno++)
 	{
-		if (!palette_dirty_marks[palno]) continue;
+		if (!dirty_flags[palno]) continue;
 
 		for (i = 0; i < SCROLL2_HASH_SIZE; i++)
 		{
@@ -840,7 +843,7 @@ static void scroll3_reset_sprite(void)
 	SCROLL3テクスチャからスプライト番号を取得
 ------------------------------------------------------------------------*/
 
-static int scroll3_get_sprite(int key)
+static int scroll3_get_sprite(u32 key)
 {
 	SPRITE *p = scroll3_head[key & SCROLL3_HASH_MASK];
 
@@ -873,7 +876,6 @@ static int scroll3_insert_sprite(u32 key)
 
 	q->next = NULL;
 	q->key  = key;
-	q->pal  = (key >> 16) + 96;
 	q->used = frames_displayed;
 
 	if (!p)
@@ -896,7 +898,7 @@ static int scroll3_insert_sprite(u32 key)
 	SCROLL3テクスチャから一定時間を経過したスプライトを削除
 ------------------------------------------------------------------------*/
 
-static void scroll3_delete_sprite(int delay)
+static void scroll3_delete_sprite(void)
 {
 	int i;
 	SPRITE *p, *prev_p;
@@ -908,7 +910,7 @@ static void scroll3_delete_sprite(int delay)
 
 		while (p)
 		{
-			if (frames_displayed - p->used > delay)
+			if (frames_displayed != p->used)
 			{
 				scroll3_texture_num--;
 
@@ -943,45 +945,24 @@ static void scroll3_delete_sprite(int delay)
 
 static void scroll3_delete_dirty_palette(void)
 {
-	SPRITE *p, *prev_p;
 	int i, palno;
+	u8 *dirty_flags = &palette_dirty_marks[96];
+	SPRITE *p, *prev_p;
 
-	for (palno = 96; palno < 128; palno++)
+	for (palno = 0; palno < 32; palno++)
 	{
-		if (!palette_dirty_marks[palno]) continue;
+		if (!dirty_flags[palno]) continue;
 
-		for (i = 0; i < SCROLL3_HASH_SIZE; i++)
+		p = scroll3_head[palno];
+
+		while (p)
 		{
-			prev_p = NULL;
-			p = scroll3_head[i];
+			scroll3_texture_num--;
 
-			while (p)
-			{
-				if (p->pal == palno)
-				{
-					scroll3_texture_num--;
-
-					if (!prev_p)
-					{
-						scroll3_head[i] = p->next;
-						p->next = scroll3_free_head;
-						scroll3_free_head = p;
-						p = scroll3_head[i];
-					}
-					else
-					{
-						prev_p->next = p->next;
-						p->next = scroll3_free_head;
-						scroll3_free_head = p;
-						p = prev_p->next;
-					}
-				}
-				else
-				{
-					prev_p = p;
-					p = p->next;
-				}
-			}
+			scroll3_head[palno] = p->next;
+			p->next = scroll3_free_head;
+			scroll3_free_head = p;
+			p = scroll3_head[palno];
 		}
 
 		if (scrollh_layer_number == LAYER_SCROLL3)
@@ -1056,7 +1037,7 @@ static void scrollh_reset_sprite(void)
 	SCROLLHテクスチャからスプライト番号を取得
 ------------------------------------------------------------------------*/
 
-static int scrollh_get_sprite(int key)
+static int scrollh_get_sprite(u32 key)
 {
 	SPRITE *p = scrollh_head[key & SCROLLH_HASH_MASK];
 
@@ -1089,7 +1070,7 @@ static int scrollh_insert_sprite(u32 key)
 
 	q->next = NULL;
 	q->key  = key;
-	q->pal  = ((key >> 16) & 0x1f) + (scrollh_layer_number << 5);
+	q->pal  = (key >> 16) & 0x1f;
 	q->used = frames_displayed;
 
 	if (!p)
@@ -1112,7 +1093,7 @@ static int scrollh_insert_sprite(u32 key)
 	SCROLLHテクスチャから一定時間を経過したスプライトを削除
 ------------------------------------------------------------------------*/
 
-static void scrollh_delete_sprite(int delay)
+static void scrollh_delete_sprite(void)
 {
 	int i;
 	SPRITE *p, *prev_p;
@@ -1124,7 +1105,7 @@ static void scrollh_delete_sprite(int delay)
 
 		while (p)
 		{
-			if (frames_displayed - p->used > delay)
+			if (frames_displayed != p->used)
 			{
 				scrollh_texture_num--;
 
@@ -1157,7 +1138,7 @@ static void scrollh_delete_sprite(int delay)
 	SCROLLHキャッシュから指定した透過ペンのテクスチャを削除
 ------------------------------------------------------------------------*/
 
-static void scrollh_delete_sprite_tpens(int tpens)
+static void scrollh_delete_sprite_tpens(u16 tpens)
 {
 	int i;
 	SPRITE *p, *prev_p;
@@ -1401,7 +1382,7 @@ void blit_draw_object(int x, int y, u32 code, u32 attr)
 			if (object_texture_num == object_max - 1)
 			{
 				cps1_scan_object();
-				object_delete_sprite(0);
+				object_delete_sprite();
 			}
 
 			idx = object_insert_sprite(key);
@@ -1519,7 +1500,7 @@ void blit_draw_scroll1(int x, int y, u32 code, u32 attr, int gfxset)
 		if (scroll1_texture_num == scroll1_max - 1)
 		{
 			cps1_scan_scroll1();
-			scroll1_delete_sprite(0);
+			scroll1_delete_sprite();
 		}
 
 		idx = scroll1_insert_sprite(key);
@@ -1608,7 +1589,7 @@ void blit_draw_scroll1h(int x, int y, u32 code, u32 attr, u16 tpens, int gfxset)
 		if (scrollh_texture_num == scroll1h_max - 1)
 		{
 			cps1_scan_scroll1_foreground();
-			scrollh_delete_sprite(0);
+			scrollh_delete_sprite();
 		}
 
 		idx = scrollh_insert_sprite(key);
@@ -1668,7 +1649,7 @@ void blit_draw_scroll1h(int x, int y, u32 code, u32 attr, u16 tpens, int gfxset)
 void blit_set_clip_scroll2(int min_y, int max_y)
 {
 	scroll2_min_y = min_y;
-	scroll2_max_y = max_y;
+	scroll2_max_y = max_y + 1;
 }
 
 
@@ -1718,7 +1699,7 @@ void blit_draw_scroll2(int x, int y, u32 code, u32 attr)
 			if (scroll2_texture_num == scroll2_max - 1)
 			{
 				cps1_scan_scroll2();
-				scroll2_delete_sprite(0);
+				scroll2_delete_sprite();
 			}
 
 			idx = scroll2_insert_sprite(key);
@@ -1844,7 +1825,7 @@ void blit_draw_scroll2h(int x, int y, u32 code, u32 attr, u16 tpens)
 			if (scrollh_texture_num == scroll2h_max - 1)
 			{
 				cps1_scan_scroll2_foreground();
-				scrollh_delete_sprite(0);
+				scrollh_delete_sprite();
 			}
 
 			idx = scrollh_insert_sprite(key);
@@ -1940,7 +1921,7 @@ void blit_finish_scroll2h(void)
 
 void blit_update_scroll3(int x, int y, u32 code, u32 attr)
 {
-	u32 key = MAKE_KEY(code, attr);
+	u32 key = MAKE_KEY_SCROLL3(code, attr);
 	SPRITE *p = scroll3_head[key & SCROLL3_HASH_MASK];
 
 	while (p)
@@ -1963,7 +1944,7 @@ void blit_draw_scroll3(int x, int y, u32 code, u32 attr)
 {
 	int idx;
 	struct Vertex *vertices;
-	u32 key = MAKE_KEY(code, attr);
+	u32 key = MAKE_KEY_SCROLL3(code, attr);
 
 	if ((idx = scroll3_get_sprite(key)) < 0)
 	{
@@ -1975,7 +1956,7 @@ void blit_draw_scroll3(int x, int y, u32 code, u32 attr)
 		if (scroll3_texture_num == scroll3_max - 1)
 		{
 			cps1_scan_scroll3();
-			scroll3_delete_sprite(0);
+			scroll3_delete_sprite();
 		}
 
 		idx = scroll3_insert_sprite(key);
@@ -2090,7 +2071,7 @@ void blit_draw_scroll3h(int x, int y, u32 code, u32 attr, u16 tpens)
 		if (scrollh_texture_num == scroll3h_max - 1)
 		{
 			cps1_scan_scroll3_foreground();
-			scrollh_delete_sprite(0);
+			scrollh_delete_sprite();
 		}
 
 		idx = scrollh_insert_sprite(key);

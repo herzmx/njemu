@@ -24,9 +24,10 @@ void blit_update_scroll1(int x, int y, u32 code, u32 attr);
 void blit_draw_scroll1(int x, int y, u32 code, u32 attr);
 void blit_finish_scroll1(void);
 
+void blit_set_clip_scroll2(int min_y, int max_y);
 void blit_update_scroll2(int x, int y, u32 code, u32 attr);
 void blit_draw_scroll2(int x, int y, u32 code, u32 attr);
-void blit_finish_scroll2(int min_y, int max_y);
+void blit_finish_scroll2(void);
 
 void blit_update_scroll3(int x, int y, u32 code, u32 attr);
 void blit_draw_scroll3(int x, int y, u32 code, u32 attr);

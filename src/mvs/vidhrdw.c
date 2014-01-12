@@ -330,7 +330,11 @@ void neogeo_video_reset(void)
 
 	next_update_first_line = FIRST_VISIBLE_LINE;
 
+#if !RELEASE
+	if (neogeo_bios == ASIA_AES || neogeo_bios == DEBUG_BIOS)
+#else
 	if (neogeo_bios == ASIA_AES)
+#endif
 	{
 		fix_bank   = 1;
 		fix_usage  = gfx_pen_usage[1];

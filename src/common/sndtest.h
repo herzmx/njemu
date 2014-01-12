@@ -12,6 +12,6 @@
 extern int sound_test;
 
 void soundtest_main(void);
-void soundtest_update_sound(void);
+void soundtest_sound_update(void);
 
 #endif /* SOUND_TEST_H */

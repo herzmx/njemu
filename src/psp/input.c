@@ -47,10 +47,17 @@ u32 poll_gamepad(void)
 
 	sceCtrlPeekBufferPositive(&paddata, 1);
 
+#if (EMU_SYSTEM == MVS)
+	if (!(paddata.Buttons & PSP_CTRL_UP)    && paddata.Ly >= 0xD0) paddata.Buttons |= PSP_CTRL_DOWN;  // DOWN
+	if (!(paddata.Buttons & PSP_CTRL_DOWN)  && paddata.Ly <= 0x30) paddata.Buttons |= PSP_CTRL_UP;    // UP
+	if (!(paddata.Buttons & PSP_CTRL_RIGHT) && paddata.Lx <= 0x30) paddata.Buttons |= PSP_CTRL_LEFT;  // LEFT
+	if (!(paddata.Buttons & PSP_CTRL_LEFT)  && paddata.Lx >= 0xD0) paddata.Buttons |= PSP_CTRL_RIGHT; // RIGHT
+#else
 	if (paddata.Ly >= 0xD0) paddata.Buttons |= PSP_CTRL_DOWN;  // DOWN
 	if (paddata.Ly <= 0x30) paddata.Buttons |= PSP_CTRL_UP;    // UP
 	if (paddata.Lx <= 0x30) paddata.Buttons |= PSP_CTRL_LEFT;  // LEFT
 	if (paddata.Lx >= 0xD0) paddata.Buttons |= PSP_CTRL_RIGHT; // RIGHT
+#endif
 
 	return paddata.Buttons;
 }

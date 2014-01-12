@@ -68,7 +68,7 @@ struct driver_t *driver;
 	ローカル変数
 ******************************************************************************/
 
-static int z80_bank;
+static u32 z80_bank;
 static int readpaddle;
 static int next_update_first_line;
 
@@ -81,7 +81,7 @@ static int next_update_first_line;
 	Z80 ROMバンク切り替え
 --------------------------------------------------------*/
 
-void z80_set_bank(u32 offset)
+static void z80_set_bank(u32 offset)
 {
 	if (offset != z80_bank)
 	{
@@ -189,7 +189,7 @@ WRITE8_HANDLER( qsound_banksw_w )
 		Z80 bank register for music note data. It's odd that it isn't encrypted
 		though.
 	*/
-	int bankaddress = 0x10000 + ((data & 0x0f) << 14);
+	u32 bankaddress = 0x10000 + ((data & 0x0f) << 14);
 
 	if (bankaddress >= memory_length_cpu2)
 		bankaddress = 0x10000;
@@ -219,16 +219,6 @@ READ16_HANDLER( cps2_qsound_volume_r )
 *   0xf1c006
 *
 ********************************************************************/
-
-static struct EEPROM_interface cps2_eeprom_interface =
-{
-	6,		/* address bits */
-	16,		/* data bits */
-	"0110",	/*  read command */
-	"0101",	/* write command */
-	"0111"	/* erase command */
-};
-
 
 static void cps2_nvram_read_write(int read_or_write)
 {
@@ -345,7 +335,7 @@ void cps2_driver_init(void)
 	z80_init();
 	z80_bank = -1;
 
-	EEPROM_init(&cps2_eeprom_interface);
+	EEPROM_init();
 	cps2_nvram_read_write(0);
 
 	if (!strcmp(driver->name, "sfa3"))
@@ -387,7 +377,7 @@ STATE_LOAD( driver )
 
 	state_load_long(&bank, 1);
 
-	z80_bank = -1;
+	z80_bank = 0xffffffff;
 	z80_set_bank(bank);
 
 	next_update_first_line = FIRST_VISIBLE_LINE;

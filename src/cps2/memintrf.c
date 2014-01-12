@@ -269,7 +269,7 @@ static int load_rom_gfx1(void)
 			msg_printf("Please rebuild cache file.\n");
 			msg_printf("Press any button.\n");
 			pad_wait_press(PAD_WAIT_INFINITY);
-			return 1;
+			return 0;
 		}
 	}
 	if (!found)
@@ -451,6 +451,13 @@ static int load_rom_info(const char *game_name)
 
 					if (stricmp(name, game_name) == 0)
 					{
+#if RELEASE
+						if (stricmp(name, "hsf2d") == 0)
+						{
+							fclose(fp);
+							return 1;
+						}
+#endif
 						if (str_cmp(parent, "cps2") == 0)
 							parent_name[0] = '\0';
 						else
@@ -1085,23 +1092,7 @@ void m68000_write_memory_16(u32 offset, u16 data)
 
 u8 z80_read_memory_8(u32 offset)
 {
-	offset &= Z80_AMASK;
-
-	switch (offset & 0xf000)
-	{
-	case 0xd000:
-		if (offset == 0xd007) return 0x80;
-		break;
-
-	default:
-		// 0000-7fff: ROM
-		// 8000-bfff: banked ROM
-		// c000-cfff: QSOUND shared RAM
-		// f000-ffff: RAM
-		return memory_region_cpu2[offset];
-	}
-
-	return 0;
+	return memory_region_cpu2[offset & Z80_AMASK];
 }
 
 

@@ -41,6 +41,7 @@ void blit_draw_scroll3(int x, int y, u32 code, u32 attr);
 void blit_finish_scroll3(void);
 
 void blit_update_scroll3h(int x, int y, u32 code, u32 attr);
+void blit_draw_scroll3h(int x, int y, u32 code, u32 attr, u16 tpens);
 
 void blit_update_scrollh(int x, int y, u32 code, u32 attr);
 void blit_finish_scrollh(void);

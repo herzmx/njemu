@@ -26,7 +26,7 @@ typedef struct sprite_t SPRITE;
 struct sprite_t
 {
 	u32 key;
-	int used;
+	u32 used;
 	u16 pal;
 	u16 index;
 	SPRITE *next;
@@ -142,7 +142,7 @@ static void fix_reset_sprite(void)
 	FIXテクスチャからスプライト番号を取得
 ------------------------------------------------------------------------*/
 
-static int fix_get_sprite(int key)
+static int fix_get_sprite(u32 key)
 {
 	SPRITE *p = fix_head[key & FIX_HASH_MASK];
 
@@ -323,7 +323,7 @@ static void spr_reset_sprite(void)
 	SPRテクスチャからスプライト番号を取得
 ------------------------------------------------------------------------*/
 
-static int spr_get_sprite(int key)
+static int spr_get_sprite(u32 key)
 {
 	SPRITE *p = spr_head[key & SPR_HASH_MASK];
 
@@ -552,7 +552,7 @@ void blit_reset(void)
 	スプライト描画開始
 ------------------------------------------------------------------------*/
 
-void blit_start(void)
+static void blit_start(void)
 {
 	if (fix_texture_clear) fix_reset_sprite();
 	if (spr_texture_clear) spr_reset_sprite();

@@ -86,6 +86,25 @@ void check_input_mode(void)
 	{
 		neogeo_input_mode = neogeo_machine_mode - 1;
 	}
+
+#if !RELEASE
+	if (neogeo_ngh == NGH_irrmaze)
+		return;
+
+	switch (neogeo_bios)
+	{
+	case UNI_V10:
+	case UNI_V11:
+	case UNI_V12old:
+	case UNI_V12:
+	case UNI_V13:
+	case UNI_V20:
+	case UNI_V21:
+	case UNI_V22:
+		neogeo_input_mode = (neogeo_sram16[0x02 >> 1] & 0x8000) != 0;
+		break;
+	}
+#endif
 }
 
 
