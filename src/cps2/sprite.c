@@ -1729,18 +1729,3 @@ void blit_finish_scroll3(void)
 	sceGuFinish();
 	sceGuSync(0, 0);
 }
-
-
-/*------------------------------------------------------------------------
-	メモリキャッシュを更新する
-------------------------------------------------------------------------*/
-
-void blit_update_all_cache(void)
-{
-	cache_set_update_func(1);
-	cps2_scan_scroll1_callback();
-	cps2_scan_scroll2_callback();
-	cps2_scan_scroll3_callback();
-	cps2_scan_object_callback();
-	cache_set_update_func(0);
-}

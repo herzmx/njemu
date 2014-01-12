@@ -154,7 +154,7 @@ static void TimerHandler(int channel, int count, double stepTime)
 	{
 		/* Start FM Timer */
 #if 0
-		float time_usec = count * SEC_TO_USEC(stepTime);
+		float time_usec = (float)((double)count * SEC_TO_USEC(stepTime));
 #else
 		// “s‡‚É‚æ‚èAfloat‚Å‚Í‚È‚­int‚ğg—p
 		int time_usec = count * SEC_TO_USEC(stepTime);

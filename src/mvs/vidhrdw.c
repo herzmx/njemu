@@ -21,12 +21,11 @@ u16 *neogeo_paletteram16;
 u16 ALIGN_DATA neogeo_palettebank16[2][0x2000 / 2];
 u32 neogeo_palette_index;
 
-u16 *video_palette16;
-u16 ALIGN_DATA video_palettebank16[2][0x2000 / 2];
+u16 *video_palette;
+u16 ALIGN_DATA video_palettebank[2][0x2000 / 2];
 u16 ALIGN_DATA video_clut16[0x8000];
 
-u8 *video_fix_usage[2];
-u8 *video_spr_usage;
+u8 *gfx_pen_usage[3];
 
 int fix_bank;
 u8  *fix_usage;
@@ -39,8 +38,12 @@ int neogeo_fix_bank_type;
 ******************************************************************************/
 
 static u32 no_of_tiles;
+static u32 high_tile;
+static u32 vhigh_tile;
+static u32 vvhigh_tile;
 static int next_update_first_line;
 
+static u8 *spr_pen_usage;
 static u16 *sprite_scale = &neogeo_vidram16[0x10000 >> 1];
 static u16 *sprite_yctrl = &neogeo_vidram16[0x10400 >> 1];
 static u16 *sprite_xctrl = &neogeo_vidram16[0x10800 >> 1];
@@ -62,10 +65,9 @@ static void draw_fix(void)
 
 	if (fix_bank && neogeo_fix_bank_type)
 	{
-		int garouoffsets[32];
-
 		if (neogeo_fix_bank_type == 1)
 		{
+			int garouoffsets[32];
 			int garoubank = 0;
 			int k = 0;
 
@@ -81,49 +83,55 @@ static void draw_fix(void)
 				garouoffsets[y++] = garoubank;
 				k += 2;
 			}
-		}
 
-		for (y = 16/8; y < 240/8; y++)
+			for (x = 1/8; x < 312/8; x++)
+			{
+				u16 *vram = &neogeo_vidram16[(0xe000 >> 1) + (16 / 8) + (x << 5)];
+
+				for (y = 16/8; y < 240/8; y++)
+				{
+					code = *vram++;
+					attr = (code & 0xf000) >> 12;
+					code = (code & 0x0fff) + ((garouoffsets[(y - 2) & 31] ^ 3) << 12);
+
+					if (fix_usage[code])
+						blit_draw_fix(x << 3, y << 3, code, attr);
+				}
+			}
+		}
+		else
 		{
 			for (x = 1/8; x < 312/8; x++)
 			{
-				code = neogeo_vidram16[(0xe000 >> 1) + y + (x << 5)];
-				attr = (code & 0xf000) >> 12;
-				code &= 0x0fff;
+				u16 *vram = &neogeo_vidram16[(0xe000 >> 1) + (16 / 8) + (x << 5)];
 
-				switch (neogeo_fix_bank_type)
+				for (y = 16/8; y < 240/8; y++)
 				{
-				case 1:
-					/* Garou, MSlug 3 */
-					code += 0x1000 * (garouoffsets[(y - 2) & 31] ^ 3);
-					break;
+					code = *vram++;
+					attr = (code & 0xf000) >> 12;
+					code &= 0x0fff;
+					code += (((neogeo_vidram16[(0xea00 >> 1) + ((y - 1) & 31) + 32 * (x / 6)] >> (5 - (x % 6)) * 2) & 3) ^ 3) << 12;
 
-				case 2:
-					code += 0x1000 * (((neogeo_vidram16[(0xea00 >> 1) + ((y - 1) & 31) + 32 * (x / 6)] >> (5 - (x % 6)) * 2) & 3) ^ 3);
-					break;
-				}
-
-				if (fix_usage[code])
-				{
-					blit_draw_fix(x << 3, y << 3, code, attr);
+					if (fix_usage[code])
+						blit_draw_fix(x << 3, y << 3, code, attr);
 				}
 			}
 		}
 	}
 	else
 	{
-		for (y = 16/8; y < 240/8; y++)
+		for (x = 1/8; x < 312/8; x++)
 		{
-			for (x = 1/8; x < 312/8; x++)
+			u16 *vram = &neogeo_vidram16[(0xe000 >> 1) + (16 / 8) + (x << 5)];
+
+			for (y = 16/8; y < 240/8; y++)
 			{
-				code  = neogeo_vidram16[(0xe000 >> 1) + y + (x << 5)];
+				code = *vram++;
 				attr = (code & 0xf000) >> 12;
 				code &= 0x0fff;
 
 				if (fix_usage[code])
-				{
 					blit_draw_fix(x << 3, y << 3, code, attr);
-				}
 			}
 		}
 	}
@@ -137,11 +145,14 @@ static void draw_fix(void)
 ------------------------------------------------------*/
 
 #define DRAW_SPRITE()											\
-	if (sy2 + zy >= min_y && sy2 <= max_y)						\
+	if (sy2 + zy > min_y && sy2 <= max_y)						\
 	{															\
 		code = sprite_base[0];									\
 		attr = sprite_base[1];									\
-		code |= (attr & 0x70) << 12;							\
+																\
+		if (attr & 0x10) code |= high_tile;						\
+		if (attr & 0x20) code |= vhigh_tile;					\
+		if (attr & 0x40) code |= vvhigh_tile;					\
 																\
 		if (attr & 0x08)										\
 			code = (code & ~7) | (neogeo_frame_counter & 7);	\
@@ -150,7 +161,7 @@ static void draw_fix(void)
 																\
 		code %= no_of_tiles;									\
 																\
-		if (video_spr_usage[code])								\
+		if (spr_pen_usage[code])								\
 			blit_draw_spr(sx, sy2, zx + 1, zy, code, attr);		\
 	}
 
@@ -278,15 +289,18 @@ void neogeo_video_init(void)
 	}
 
 	no_of_tiles = memory_length_gfx3 / 128;
+	high_tile   = (no_of_tiles > 0x10000) ? 0x10000 : 0;
+	vhigh_tile  = (no_of_tiles > 0x20000) ? 0x20000 : 0;
+	vvhigh_tile = (no_of_tiles > 0x40000) ? 0x40000 : 0;
 
 	memset(neogeo_vidram16, 0, sizeof(neogeo_vidram16));
 	memset(neogeo_palettebank16, 0, sizeof(neogeo_palettebank16));
-	memset(video_palettebank16, 0, sizeof(video_palettebank16));
+	memset(video_palettebank, 0, sizeof(video_palettebank));
 
 	for (i = 0; i < 0x1000; i += 16)
 	{
-		video_palettebank16[0][i] = 0x8000;
-		video_palettebank16[1][i] = 0x8000;
+		video_palettebank[0][i] = 0x8000;
+		video_palettebank[1][i] = 0x8000;
 	}
 
 	neogeo_video_reset();
@@ -309,25 +323,27 @@ void neogeo_video_exit(void)
 void neogeo_video_reset(void)
 {
 	neogeo_paletteram16 = neogeo_palettebank16[0];
-	video_palette16 = video_palettebank16[0];
+	video_palette = video_palettebank[0];
 	neogeo_palette_index = 0;
 	neogeo_vidram16_modulo = 1;
 	neogeo_vidram16_offset = 0;
 
 	next_update_first_line = FIRST_VISIBLE_LINE;
 
-	if (neogeo_bios == ASIA_AES)
+	if (neogeo_bios == ASIA_AES || neogeo_bios == DEBUG_BIOS)
 	{
 		fix_bank   = 1;
-		fix_usage  = video_fix_usage[1];
+		fix_usage  = gfx_pen_usage[1];
 		fix_memory = memory_region_gfx2;
 	}
 	else
 	{
 		fix_bank   = 0;
-		fix_usage  = video_fix_usage[0];
+		fix_usage  = gfx_pen_usage[0];
 		fix_memory = memory_region_gfx1;
 	}
+
+	spr_pen_usage = gfx_pen_usage[2];
 
 	blit_reset();
 }
@@ -356,13 +372,16 @@ void neogeo_screenrefresh(void)
 
 void neogeo_partial_screenrefresh(int current_line)
 {
-	if (current_line >= next_update_first_line)
+	if (current_line >= FIRST_VISIBLE_LINE && current_line <= LAST_VISIBLE_LINE)
 	{
-		blit_partial_start(next_update_first_line, current_line);
-		draw_spr(next_update_first_line, current_line);
-	}
+		if (current_line >= next_update_first_line)
+		{
+			blit_partial_start(next_update_first_line, current_line);
+			draw_spr(next_update_first_line, current_line);
+		}
 
-	next_update_first_line = current_line + 1;
+		next_update_first_line = current_line + 1;
+	}
 }
 
 
@@ -410,13 +429,13 @@ STATE_LOAD( video )
 	{
 		if (i & 0x0f)
 		{
-			video_palettebank16[0][i] = video_clut16[neogeo_palettebank16[0][i] & 0x7fff];
-			video_palettebank16[1][i] = video_clut16[neogeo_palettebank16[1][i] & 0x7fff];
+			video_palettebank[0][i] = video_clut16[neogeo_palettebank16[0][i] & 0x7fff];
+			video_palettebank[1][i] = video_clut16[neogeo_palettebank16[1][i] & 0x7fff];
 		}
 	}
 
 	neogeo_paletteram16 = neogeo_palettebank16[neogeo_palette_index];
-	video_palette16 = video_palettebank16[neogeo_palette_index];
+	video_palette = video_palettebank[neogeo_palette_index];
 }
 
 #endif /* SAVE_STATE */

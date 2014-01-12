@@ -1,5 +1,5 @@
 #include "romcnv.h"
-#include "zip32j.h"
+
 
 enum
 {
@@ -796,12 +796,12 @@ int load_rom_info(const char *game_name)
 
 int main(int argc, char *argv[])
 {
-	u32 i, j, k, l, length, res;
+	int i;
+	u32 length, res;
 	FILE *fp;
 	char fname[MAX_PATH], zipname[MAX_PATH];
-	char cmdline[MAX_PATH * 2], path[MAX_PATH];
-	char *p, buffer[1024];
-	int num = 0, num2 = 0;
+	char path[MAX_PATH];
+	char *p;
 
 	memory_region_cpu1   = NULL;
 	memory_region_gfx2   = NULL;
@@ -822,7 +822,7 @@ int main(int argc, char *argv[])
 	video_spr_usage      = NULL;
 
 	printf("-------------------------------------------\n");
-	printf(" ROM converter for NEOGEO Emulator ver.0.5\n");
+	printf(" ROM converter for NEOGEO Emulator ver.6\n");
 	printf("-------------------------------------------\n\n");
 
 	if (argc == 2 && argv[1] != NULL)
@@ -843,24 +843,11 @@ int main(int argc, char *argv[])
 			return 0;
 		}
 	}
-	else _chdir("..");
-
-	if (_chdir("temp") != 0)
-	{
-		if (_mkdir("temp") != 0)
-		{
-			printf("Error: Could not create directory \"temp\".\n");
-			printf("Press any key to exit.\n");
-			getch();
-			return 0;
-		}
-	}
-	else _chdir("..");
 
 	if (argc == 2 && argv[1] != NULL)
 	{
-		strcpy(buffer, argv[1]);
-		strcpy(game_dir, strtok(buffer, "\""));
+		strcpy(path, argv[1]);
+		strcpy(game_dir, strtok(path, "\""));
 	}
 	else
 	{
@@ -917,6 +904,22 @@ int main(int argc, char *argv[])
 
 	if (strlen(parent_name))
 		printf("Clone set (parent: %s)\n", parent_name);
+
+	_chdir(launchDir);
+	_chdir("cache");
+	sprintf(path, "%s_cache", game_name);
+	if (_chdir(path) != 0)
+	{
+		if (_mkdir(path) != 0)
+		{
+			_chdir("..");
+			printf("Error: Could not create directory \"cache/%s\".\n", path);
+			printf("Press any key to exit.\n");
+			getch();
+			return 0;
+		}
+		_chdir(path);
+	}
 
 	if (encrypt_usr1)
 	{
@@ -984,7 +987,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (encrypt_snd1)
+	if (encrypt_snd1 || disable_sound)
 	{
 		if (load_rom_sound1() == 0)
 		{
@@ -994,32 +997,34 @@ int main(int argc, char *argv[])
 			goto error;
 		}
 
-		printf("decrypt vrom\n");
-
-		switch (machine_init_type)
+		if (encrypt_snd1)
 		{
-		case INIT_kof2002:	neo_pcm2_swap(0);		break;
-		case INIT_mslug5:	neo_pcm2_swap(2);		break;
-		case INIT_svchaosa:	neo_pcm2_swap(3);		break;
-		case INIT_samsho5:	neo_pcm2_swap(4);		break;
-		case INIT_kof2003:	neo_pcm2_swap(5);		break;
-		case INIT_samsh5sp:	neo_pcm2_swap(6);		break;
-		case INIT_pnyaa:	neo_pcm2_snk_1999(4);	break;
-		case INIT_mslug4:	neo_pcm2_snk_1999(8);	break;
-		case INIT_rotd:		neo_pcm2_snk_1999(16);	break;
-		case INIT_matrim:	neo_pcm2_swap(1);		break;
+			printf("decrypt vrom\n");
 
-		case INIT_ms5pcb:	neo_pcm2_swap(2);		break;
-		case INIT_svcpcb:	neo_pcm2_swap(3);		break;
-		case INIT_kf2k3pcb:	neo_pcm2_swap(5);		break;
+			switch (machine_init_type)
+			{
+			case INIT_kof2002:	neo_pcm2_swap(0);		break;
+			case INIT_mslug5:	neo_pcm2_swap(2);		break;
+			case INIT_svchaosa:	neo_pcm2_swap(3);		break;
+			case INIT_samsho5:	neo_pcm2_swap(4);		break;
+			case INIT_kof2003:	neo_pcm2_swap(5);		break;
+			case INIT_samsh5sp:	neo_pcm2_swap(6);		break;
+			case INIT_pnyaa:	neo_pcm2_snk_1999(4);	break;
+			case INIT_mslug4:	neo_pcm2_snk_1999(8);	break;
+			case INIT_rotd:		neo_pcm2_snk_1999(16);	break;
+			case INIT_matrim:	neo_pcm2_swap(1);		break;
 
-		default:
-			printf("This romset not supported.\n");
-			printf("Press any key.\n");
-			getch();
-			goto error;
+			case INIT_ms5pcb:	neo_pcm2_swap(2);		break;
+			case INIT_svcpcb:	neo_pcm2_swap(3);		break;
+			case INIT_kf2k3pcb:	neo_pcm2_swap(5);		break;
+
+			default:
+				printf("This romset not supported.\n");
+				printf("Press any key.\n");
+				getch();
+				goto error;
+			}
 		}
-
 	}
 
 	if (encrypt_gfx)
@@ -1114,9 +1119,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	_chdir(launchDir);
-	_chdir("temp");
-
 	printf("Create cache file...\n");
 
 	if ((fp = fopen("spr_usage", "wb")) == NULL)
@@ -1128,22 +1130,16 @@ int main(int argc, char *argv[])
 	}
 	fwrite(video_spr_usage, 1, memory_length_gfx3 / 128, fp);
 	fclose(fp);
-	num++;
 
-	for (i = 0; i < memory_length_gfx3; i += 0x10000)
+	if ((fp = fopen("crom", "wb")) == NULL)
 	{
-		sprintf(fname, "%03x", i >> 16);
-		if ((fp = fopen(fname, "wb")) == NULL)
-		{
-			printf("ERROR: Could not create file.\n");
-			printf("Press any key to exit.\n");
-			getch();
-			goto error2;
-		}
-		fwrite(&memory_region_gfx3[i], 1, 0x10000, fp);
-		fclose(fp);
-		num++;
+		printf("ERROR: Could not create file.\n");
+		printf("Press any key to exit.\n");
+		getch();
+		goto error2;
 	}
+	fwrite(memory_region_gfx3, 1, memory_length_gfx3, fp);
+	fclose(fp);
 
 	if (encrypt_gfx)
 	{
@@ -1156,7 +1152,6 @@ int main(int argc, char *argv[])
 		}
 		fwrite(video_fix_usage, 1, memory_length_gfx2 / 32, fp);
 		fclose(fp);
-		num++;
 
 		if ((fp = fopen("srom", "wb")) == NULL)
 		{
@@ -1167,10 +1162,9 @@ int main(int argc, char *argv[])
 		}
 		fwrite(memory_region_gfx2, 1, memory_length_gfx2, fp);
 		fclose(fp);
-		num++;
 	}
 
-	if (encrypt_snd1)
+	if (encrypt_snd1 || disable_sound)
 	{
 		if ((fp = fopen("vrom", "wb")) == NULL)
 		{
@@ -1181,7 +1175,6 @@ int main(int argc, char *argv[])
 		}
 		fwrite(memory_region_sound1, 1, memory_length_sound1, fp);
 		fclose(fp);
-		num++;
 	}
 
 	if (encrypt_cpu1)
@@ -1195,7 +1188,6 @@ int main(int argc, char *argv[])
 		}
 		fwrite(memory_region_cpu1, 1, memory_length_cpu1, fp);
 		fclose(fp);
-		num++;
 	}
 
 	if (encrypt_usr1)
@@ -1209,63 +1201,16 @@ int main(int argc, char *argv[])
 		}
 		fwrite(memory_region_user1, 1, memory_length_user1, fp);
 		fclose(fp);
-		num++;
-	}
-
-	if ((fp = fopen("response.txt", "w")) == NULL)
-	{
-		printf("ERROR: Could not create file.\n");
-		printf("Press any key to exit.\n");
-		getch();
-		goto error2;
-	}
-
-	sprintf(path, "%s\\temp\\", launchDir);
-
-	for (i = 0; i < memory_length_gfx3; i += 0x10000)
-	{
-		sprintf(fname, "%03x", i >> 16);
-		fprintf(fp, "-D -j -r -9 \"%s\" \"%s\"\n", path, fname);
-	}
-
-	if (encrypt_gfx) fprintf(fp, "-D -j -r -9 \"%s\" \"%s\"\n", path, "srom");
-	if (encrypt_usr1) fprintf(fp, "-D -j -r -9 \"%s\" \"%s\"\n", path, "biosrom");
-	if (encrypt_cpu1) fprintf(fp, "-D -j -r -9 \"%s\" \"%s\"\n", path, "prom");
-	if (encrypt_snd1) fprintf(fp, "-D -j -r -9 \"%s\" \"%s\"\n", path, "vrom");
-
-	fprintf(fp, "-D -j -r -9 \"%s\" \"%s\"\n", path, "spr_usage");
-	if (encrypt_gfx) fprintf(fp, "-D -j -r -9 \"%s\" \"%s\"\n", path, "fix_usage");
-
-	fclose(fp);
-
-	printf("Compress to zip file... \"cache\\%s_cache.zip\"\n", game_name);
-
-	sprintf(zipname, "%s\\cache\\%s_cache.zip", launchDir, game_name);
-	remove(zipname);
-
-	sprintf(cmdline, "\"%s\" @\"%s\\response.txt\"", zipname, path);
-	if (Zip(NULL, cmdline, NULL, 0) != 0)
-	{
-		printf("ERROR: Could not create zip file.\n");
-		printf("Press any key to exit.\n");
-		getch();
-		goto error2;
 	}
 
 	printf("complete.\n");
-	printf("Please copy this file to directory \"/PSP/GAMES/mvspsp/cache\".\n");
+	printf("Please copy \"cache\\%s\" folder to directory \"/PSP/GAMES/mvspsp/cache\".\n", game_name);
 	printf("Press any key to exit.\n");
 	getch();
+	goto error;
 
 error2:
-	_chdir(launchDir);
-	_chdir("temp");
-
-	for (i = 0; i < memory_length_gfx3; i += 0x10000)
-	{
-		sprintf(fname, "%03x", i >> 16);
-		remove(fname);
-	}
+	remove("crom");
 	remove("spr_usage");
 
 	if (encrypt_gfx)
@@ -1273,10 +1218,9 @@ error2:
 		remove("fix_usage");
 		remove("srom");
 	}
-	if (encrypt_snd1) remove("vrom");
+	if (encrypt_snd1 || disable_sound) remove("vrom");
 	if (encrypt_cpu1) remove("prom");
 	if (encrypt_usr1) remove("biosrom");
-	remove("response.txt");
 
 error:
 	if (memory_region_cpu1)   free(memory_region_cpu1);

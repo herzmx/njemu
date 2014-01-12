@@ -103,7 +103,7 @@ static u32 bios_amask;
 
 static u8 *neogeo_sram;
 
-static int disable_sound;
+int disable_sound;
 static int neogeo_save_sound_flag;
 
 
@@ -379,7 +379,7 @@ static int load_rom_gfx1(void)
 	}
 	memset(memory_region_gfx1, 0, memory_length_gfx1);
 
-	if ((video_fix_usage[0] = memalign(64, memory_length_gfx1 / 32)) == NULL)
+	if ((gfx_pen_usage[0] = memalign(64, memory_length_gfx1 / 32)) == NULL)
 	{
 		error_memory("GFX_PEN_USAGE (sfix)");
 		return 0;
@@ -394,7 +394,7 @@ static int load_rom_gfx1(void)
 	file_read(memory_region_gfx1, memory_length_gfx1);
 	file_close();
 
-	neogeo_decode_fix(memory_region_gfx1, memory_length_gfx1, video_fix_usage[0]);
+	neogeo_decode_fix(memory_region_gfx1, memory_length_gfx1, gfx_pen_usage[0]);
 }
 
 /*--------------------------------------------------------
@@ -410,7 +410,7 @@ static int load_rom_gfx2(void)
 	}
 	memset(memory_region_gfx2, 0, memory_length_gfx2);
 
-	if ((video_fix_usage[1] = memalign(64, memory_length_gfx2 / 32)) == NULL)
+	if ((gfx_pen_usage[1] = memalign(64, memory_length_gfx2 / 32)) == NULL)
 	{
 		error_memory("GFX_PEN_USAGE (fix)");
 		return 0;
@@ -432,7 +432,7 @@ static int load_rom_gfx2(void)
 			error_file("fix_usage (fix pen usage)");
 			return 0;
 		}
-		file_read(video_fix_usage[1], memory_length_gfx2 / 32);
+		file_read(gfx_pen_usage[1], memory_length_gfx2 / 32);
 		file_close();
 	}
 	else
@@ -457,7 +457,7 @@ static int load_rom_gfx2(void)
 			file_close();
 		}
 
-		neogeo_decode_fix(memory_region_gfx2, memory_length_gfx2, video_fix_usage[1]);
+		neogeo_decode_fix(memory_region_gfx2, memory_length_gfx2, gfx_pen_usage[1]);
 	}
 
 	return 1;
@@ -469,7 +469,7 @@ static int load_rom_gfx2(void)
 
 static int load_rom_gfx3(void)
 {
-	if ((video_spr_usage = memalign(64, memory_length_gfx3 / 128)) == NULL)
+	if ((gfx_pen_usage[2] = memalign(64, memory_length_gfx3 / 128)) == NULL)
 	{
 		error_memory("GFX_PEN_USAGE (spr)");
 		return 0;
@@ -505,7 +505,7 @@ static int load_rom_gfx3(void)
 				file_close();
 			}
 
-			neogeo_decode_spr(memory_region_gfx3, memory_length_gfx3, video_spr_usage);
+			neogeo_decode_spr(memory_region_gfx3, memory_length_gfx3, gfx_pen_usage[2]);
 		}
 		else
 		{
@@ -521,7 +521,7 @@ static int load_rom_gfx3(void)
 			error_file("spr_usage (spr pen usage)");
 			return 0;
 		}
-		file_read(video_spr_usage, memory_length_gfx3 / 128);
+		file_read(gfx_pen_usage[2], memory_length_gfx3 / 128);
 		file_close();
 
 		if (cache_start() == 0)
@@ -542,9 +542,13 @@ static int load_rom_gfx3(void)
 
 static int load_rom_sound1(void)
 {
-	if (!option_sound_enable || disable_sound)
+	if (!option_sound_enable)
 	{
 		memory_length_sound1 = 0;
+		return 1;
+	}
+	if (disable_sound)
+	{
 		return 1;
 	}
 
@@ -685,7 +689,7 @@ static int load_rom_user1(int reload)
 		else
 		{
 			// irrmaze
-			patch = 0x010d8c;
+			if (!strcmp(game_name, "irrmaze")) patch = 0x010d8c;
 
 			if (file_open(game_name, parent, usr1rom[0].crc, fname) == -1)
 			{
@@ -1025,9 +1029,9 @@ int memory_init(void)
 	memory_length_sound2 = 0;
 	memory_length_user1  = 0x20000;
 
-	video_fix_usage[0] = NULL;
-	video_fix_usage[1] = NULL;
-	video_spr_usage    = NULL;
+	gfx_pen_usage[0] = NULL;
+	gfx_pen_usage[1] = NULL;
+	gfx_pen_usage[2] = NULL;
 
 	cache_init();
 	pad_wait_clear();
@@ -1129,6 +1133,15 @@ int memory_init(void)
 		}
 		else brza_sram = NULL;
 
+		if (load_rom_user1(0) == 0) return 0;
+		if (load_rom_cpu1() == 0) return 0;
+		if (load_rom_cpu2() == 0) return 0;
+		if (load_rom_sound1() == 0) return 0;
+		if (load_rom_sound2() == 0) return 0;
+		if (load_rom_gfx1() == 0) return 0;
+		if (load_rom_gfx2() == 0) return 0;
+		if (load_rom_gfx3() == 0) return 0;
+
 		if (disable_sound)
 		{
 			msg_printf("This game only work without sound.\n");
@@ -1139,15 +1152,6 @@ int memory_init(void)
 		{
 			neogeo_save_sound_flag = 0;
 		}
-
-		if (load_rom_user1(0) == 0) return 0;
-		if (load_rom_cpu1() == 0) return 0;
-		if (load_rom_cpu2() == 0) return 0;
-		if (load_rom_sound1() == 0) return 0;
-		if (load_rom_sound2() == 0) return 0;
-		if (load_rom_gfx1() == 0) return 0;
-		if (load_rom_gfx2() == 0) return 0;
-		if (load_rom_gfx3() == 0) return 0;
 
 		// FIXバンクタイプ設定
 		switch (machine_init_type)
@@ -1270,15 +1274,13 @@ int memory_init(void)
 
 void memory_shutdown(void)
 {
-	if (neogeo_save_sound_flag) option_sound_enable = 1;
-
 	cache_shutdown();
 
 	if (brza_sram) free(brza_sram);
 
-	if (video_fix_usage[0]) free(video_fix_usage[0]);
-	if (video_fix_usage[1]) free(video_fix_usage[1]);
-	if (video_spr_usage)    free(video_spr_usage);
+	if (gfx_pen_usage[0]) free(gfx_pen_usage[0]);
+	if (gfx_pen_usage[1]) free(gfx_pen_usage[1]);
+	if (gfx_pen_usage[2]) free(gfx_pen_usage[2]);
 
 	if (memory_region_cpu1)   free(memory_region_cpu1);
 	if (memory_region_cpu2)   free(memory_region_cpu2);
@@ -1288,6 +1290,8 @@ void memory_shutdown(void)
 	if (memory_region_sound1) free(memory_region_sound1);
 	if (memory_region_sound2) free(memory_region_sound2);
 	if (memory_region_user1)  free(memory_region_user1);
+
+	if (neogeo_save_sound_flag) option_sound_enable = 1;
 }
 
 

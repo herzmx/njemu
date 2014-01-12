@@ -137,18 +137,7 @@ static void neogeo_run(void)
 				autoframeskip_reset();
 			}
 
-			if (neogeo_driver_type == NORMAL)
-				timer_update_cpu();
-			else
-				timer_update_cpu_raster();
-
-			if (!skip_this_frame())
-			{
-				if (neogeo_driver_type == NORMAL)
-					neogeo_screenrefresh();
-				else
-					neogeo_raster_screenrefresh();
-			}
+			(*timer_update_cpu)();
 
 			update_screen();
 			update_inputport();

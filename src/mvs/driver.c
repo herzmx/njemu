@@ -78,7 +78,7 @@ static void neogeo_set_cpu1_second_bank(u32 offset)
 	if (m68k_second_bank != offset)
 	{
 		m68k_second_bank = offset;
-		neogeo_cpu1_second_bank = (u16 *)(&memory_region_cpu1[offset] - 0x200000);
+		neogeo_cpu1_second_bank = (u16 *)((u32)memory_region_cpu1 + offset - 0x200000);
 		C68k_Set_Fetch(&C68K, 0x200000, 0x2fffff, (u32)&memory_region_cpu1[offset]);
 	}
 }
@@ -192,7 +192,6 @@ void neogeo_driver_reset(void)
 
 	raster_enable = neogeo_raster_enable;
 
-	// uni-bios v2.0以降はスキャンライン割り込みを要求する
 	if (neogeo_bios >= UNI_V20 && neogeo_bios <= UNI_V22)
 		raster_enable = 1;
 
@@ -210,6 +209,8 @@ void neogeo_driver_reset(void)
 		else
 			neogeo_driver_type = NORMAL;
 	}
+
+	timer_set_update_handler();
 
 	trackball_select = 0;
 
@@ -366,7 +367,7 @@ INLINE void neogeo_setpalbank(int bank)
 	{
 		neogeo_palette_index = bank;
 		neogeo_paletteram16 = neogeo_palettebank16[bank];
-		video_palette16 = video_palettebank16[bank];
+		video_palette = video_palettebank[bank];
 		blit_clear_fix_sprite();
 		blit_clear_spr_sprite();
 	}
@@ -513,11 +514,11 @@ READ16_HANDLER( neogeo_controller2_16_r )
 {
 	if (neogeo_ngh == NGH_popbounc)
 	{
-		if (trackball_select)
-			return neogeo_port_value[1] << 8;
+		if (!trackball_select)
+			return input_analog_value[1] << 8;
 	}
 
-	return input_analog_value[1] << 8;
+	return neogeo_port_value[1] << 8;
 }
 
 
@@ -630,7 +631,7 @@ WRITE16_HANDLER( neogeo_syscontrol2_16_w )
 	case 1: neogeo_select_vectors(flag); break;
 	case 5:
 		fix_bank = flag;
-		fix_usage  = video_fix_usage[flag];
+		fix_usage  = gfx_pen_usage[flag];
 		fix_memory = (flag) ? memory_region_gfx2 : memory_region_gfx1;
 		break;
 	case 6: neogeo_sram_unlocked = flag; break;
@@ -697,7 +698,7 @@ WRITE16_HANDLER( neogeo_paletteram16_w )
 
 	if (offset & 0x0f)
 	{
-		video_palette16[offset] = video_clut16[newword & 0x7fff];
+		video_palette[offset] = video_clut16[newword & 0x7fff];
 		blit_palette_mark_dirty(offset >> 4);
 	}
 }
@@ -766,19 +767,19 @@ u8 neogeo_z80_port_r(u16 port)
 
 	case 0x08:
 		neogeo_set_cpu2_bank(3, (port & 0x7f00) << 3);
-		return 0;
+		break;
 
 	case 0x09:
 		neogeo_set_cpu2_bank(2, (port & 0x3f00) << 4);
-		return 0;
+		break;
 
 	case 0x0a:
 		neogeo_set_cpu2_bank(1, (port & 0x1f00) << 5);
-		return 0;
+		break;
 
 	case 0x0b:
 		neogeo_set_cpu2_bank(0, (port & 0x0f00) << 6);
-		return 0;
+		break;
 	};
 
 	return 0;

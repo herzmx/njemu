@@ -15,6 +15,7 @@
 #define MAX_CACHE_BLOCKS	0x200
 #elif (EMU_SYSTEM == MVS)
 #define MAX_CACHE_BLOCKS	0x400
+#define PCM_CACHE_SIZE		0x10000
 #endif
 
 enum
@@ -26,7 +27,12 @@ enum
 
 extern u32 (*read_cache)(u32 offset);
 extern void (*update_cache)(u32 offset);
-extern u8 block_empty[MAX_CACHE_BLOCKS];
+#if (EMU_SYSTEM == MVS)
+extern int pcm_cache_enable;
+#else
+extern u8 *block_empty;
+extern u32 block_offset[MAX_CACHE_BLOCKS];
+#endif
 extern int cache_type;
 
 void cache_init(void);
@@ -34,7 +40,10 @@ int cache_start(void);
 void cache_shutdown(void);
 void cache_sleep(int flag);
 
-void cahce_set_update_func(int flag);
+#if (EMU_SYSTEM == MVS)
+u8 pcm_cache_read(int ch, u32 offset);
+u8 *pcm_get_cache(int ch);
+#endif
 
 #endif /* USE_CACHE */
 

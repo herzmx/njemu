@@ -47,8 +47,8 @@ typedef struct cpuinfo_t
 } CPUINFO;
 
 
-static TIMER ALIGN_DATA timer[MAX_TIMER];
-static CPUINFO ALIGN_DATA cpu[MAX_CPU];
+static TIMER timer[MAX_TIMER];
+static CPUINFO cpu[MAX_CPU];
 
 
 /******************************************************************************

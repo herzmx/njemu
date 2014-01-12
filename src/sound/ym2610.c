@@ -107,7 +107,7 @@
 #include <stdarg.h>
 #include <math.h>
 
-#include "mvs.h"
+#include "emumain.h"
 #include "2610intf.h"
 #include "ym2610.h"
 
@@ -116,9 +116,6 @@
 #define PI 3.14159265358979323846
 #endif
 
-
-/* select timer system internal or external */
-#define FM_INTERNAL_TIMER 0
 
 /* --- speedup optimize --- */
 /* busy flag enulation , The definition of FM_GET_TIME_NOW() is necessary. */
@@ -697,16 +694,6 @@ typedef struct adpcmb_state
 	u8		now_data;		/* current rom data     */
 	u8		CPU_data;		/* current data from reg 08 */
 	u8		portstate;		/* port status          */
-	u8		control2;		/* control reg: SAMPLE, DA/AD, RAM TYPE (x8bit / x1bit), ROM/RAM */
-	u8		portshift;		/* address bits shift-left:
-                            ** 8 for YM2610,
-                            ** 5 for Y8950 and YM2608 */
-
-	u8		DRAMportshift;	/* address bits shift-right:
-                            ** 0 for ROM and x8bit DRAMs,
-                            ** 3 for x1 DRAMs */
-
-	u8		memread;		/* needed for reading/writing external memory */
 
 	/* note that different chips have these flags on different
     ** bits of the status register
@@ -718,7 +705,6 @@ typedef struct adpcmb_state
     ** the statusflag gets ORed with PCM_BSY (below) (on each read of statusflag of Y8950 and YM2608)
     */
 	u8		PCM_BSY;		/* 1 when ADPCM is playing; Y8950/YM2608 only */
-
 } ADPCMB;
 
 
@@ -875,35 +861,6 @@ INLINE void TimerBOver(FM_ST *ST)
 	ST->TBC = ( 256-ST->TB)<<4;
 	(ST->Timer_Handler)(1,ST->TBC,ST->TimerBase);
 }
-
-
-#if FM_INTERNAL_TIMER
-/* ----- internal timer mode , update timer */
-
-/* ---------- calculate timer A ---------- */
-	#define INTERNAL_TIMER_A(ST,CSM_CH)					\
-	{													\
-		if( ST.TAC &&  (ST.Timer_Handler==0) )		\
-			if( (ST.TAC -= (int)(ST.freqbase*4096)) <= 0 )	\
-			{											\
-				TimerAOver( &ST );						\
-				/* CSM mode total level latch and auto key on */	\
-				if( ST.mode & 0x80 )					\
-					CSMKeyControll( CSM_CH );			\
-			}											\
-	}
-/* ---------- calculate timer B ---------- */
-	#define INTERNAL_TIMER_B(ST,step)						\
-	{														\
-		if( ST.TBC && (ST.Timer_Handler==0) )				\
-			if( (ST.TBC -= (int)(ST.freqbase*4096*step)) <= 0 )	\
-				TimerBOver( &ST );							\
-	}
-#else /* FM_INTERNAL_TIMER */
-/* external timer mode */
-#define INTERNAL_TIMER_A(ST,CSM_CH)
-#define INTERNAL_TIMER_B(ST,step)
-#endif /* FM_INTERNAL_TIMER */
 
 
 
@@ -1949,7 +1906,7 @@ static void OPNWriteReg(FM_OPN *OPN, int r, int v)
 
 /* SSG */
 
-static void SSGWriteReg(int r, int v)
+static void SSG_write(int r, int v)
 {
 	int old;
 
@@ -2217,15 +2174,15 @@ static void SSG_reset(void)
 	for (i = 0; i < SSG_PORTA; i++)
 	{
 		YM2610.regs[i] = 0x00;
-		SSGWriteReg(i, 0x00);
+		SSG_write(i, 0x00);
 	}
 }
 
 
-static void SSG_write(int r, int v)
-{
-	SSGWriteReg(r, v);
-}
+/*********************************************************************************************/
+
+static void (*OPNB_ADPCMA_calc_chan)(int c, ADPCMA *ch);
+static void (*OPNB_ADPCMB_calc)(ADPCMB *adpcmb);
 
 
 /*********************************************************************************************/
@@ -2235,6 +2192,7 @@ static void SSG_write(int r, int v)
 #define ADPCMA_ADDRESS_SHIFT 8   /* adpcm A address shift */
 
 static u8 *pcmbufA;
+static u8 *pcmbufA_cache[6];
 static u32 pcmsizeA;
 
 
@@ -2275,11 +2233,10 @@ static void OPNB_ADPCMA_init_table(void)
 }
 
 /* ADPCM A (Non control type) : calculate one channel output */
-INLINE void OPNB_ADPCMA_calc_chan(ADPCMA *ch)
+static void OPNB_ADPCMA_calc_chan_static(int c, ADPCMA *ch)
 {
 	u32 step;
 	u8  data;
-
 
 	ch->now_step += ch->step;
 	if (ch->now_step >= (1 << ADPCM_SHIFT))
@@ -2310,7 +2267,61 @@ INLINE void OPNB_ADPCMA_calc_chan(ADPCMA *ch)
 			}
 
 			ch->now_addr++;
+			ch->adpcma_acc += jedi_table[ch->adpcma_step + data];
 
+			/* extend 12-bit signed int */
+			if (ch->adpcma_acc & 0x800)
+				ch->adpcma_acc |= ~0xfff;
+			else
+				ch->adpcma_acc &= 0xfff;
+
+			ch->adpcma_step += step_inc[data & 7];
+			Limit(ch->adpcma_step, 48*16, 0*16);
+
+		} while (--step);
+
+		/* calc pcm * volume data */
+		ch->adpcma_out = ((ch->adpcma_acc * ch->vol_mul) >> ch->vol_shift) & ~3;	/* multiply, shift and mask out 2 LSB bits */
+	}
+
+	/* output for work of output channels (out_adpcma[OPNxxxx]) */
+	*ch->pan += ch->adpcma_out;
+}
+
+static void OPNB_ADPCMA_calc_chan_dynamic(int c, ADPCMA *ch)
+{
+	u32 step;
+	u8  data;
+
+	ch->now_step += ch->step;
+	if (ch->now_step >= (1 << ADPCM_SHIFT))
+	{
+		step = ch->now_step >> ADPCM_SHIFT;
+		ch->now_step &= (1 << ADPCM_SHIFT) - 1;
+
+		do
+		{
+			/* end check */
+			/* 11-06-2001 JB: corrected comparison. Was > instead of == */
+			/* YM2610 checks lower 20 bits only, the 4 MSB bits are sample bank */
+			/* Here we use 1<<21 to compensate for nibble calculations */
+
+			if ((ch->now_addr & ((1 << 21) - 1)) == ((ch->end << 1) & ((1 << 21) - 1)))
+			{
+				ch->flag = 0;
+				YM2610.adpcm_arrivedEndAddress |= ch->flagMask;
+				return;
+			}
+
+			if (ch->now_addr & 1)
+				data = ch->now_data & 0x0f;
+			else
+			{
+				ch->now_data = pcm_cache_read(c, ch->now_addr >> 1);
+				data = (ch->now_data >> 4) & 0x0f;
+			}
+
+			ch->now_addr++;
 			ch->adpcma_acc += jedi_table[ch->adpcma_step + data];
 
 			/* extend 12-bit signed int */
@@ -2359,26 +2370,8 @@ static void OPNB_ADPCMA_write(int r, int v)
 					adpcma[c].adpcma_out  = 0;
 					adpcma[c].flag        = 1;
 
-					if (pcmbufA == NULL)
-					{
-						/* Check ROM Mapped */
-//						logerror("YM2610: ADPCM-A rom not mapped\n");
+					if (/*pcmbufA == NULL ||*/ adpcma[c].start >= pcmsizeA)
 						adpcma[c].flag = 0;
-					}
-					else
-					{
-						if (adpcma[c].end >= pcmsizeA)
-						{
-							/* Check End in Range */
-//							logerror("YM2610: ADPCM-A end out of range: $%08x\n", adpcma[c].end);
-							/* adpcma[c].end = pcmsizeA - 1; */ /* JB: DO NOT uncomment this, otherwise you will break the comparison in the ADPCM_CALC_CHA() */
-						}
-						if (adpcma[c].start >= pcmsizeA)	/* Check Start in Range */
-						{
-//							logerror("YM2610: ADPCM-A start out of range: $%08x\n", adpcma[c].start);
-							adpcma[c].flag = 0;
-						}
-					}
 				}
 			}
 		}
@@ -2488,184 +2481,8 @@ static const s32 adpcmb_decode_table2[16] =
   57,  57,  57,  57, 77, 102, 128, 153
 };
 
-/* 0-DRAM x1, 1-ROM, 2-DRAM x8, 3-ROM (3 is bad setting - not allowed by the manual) */
-static u8 dram_rightshift[4]={3,0,0,0};
 
-/* DELTA-T-ADPCM write register */
-static void OPNB_ADPCMB_write(ADPCMB *adpcmb, int r, int v)
-{
-	if (r >= 0x20) return;
-
-	YM2610.regs[r] = v; /* stock data */
-
-	switch (r)
-	{
-	case 0x10:
-/*
-START:
-    Accessing *external* memory is started when START bit (D7) is set to "1", so
-    you must set all conditions needed for recording/playback before starting.
-    If you access *CPU-managed* memory, recording/playback starts after
-    read/write of ADPCM data register $08.
-
-REC:
-    0 = ADPCM synthesis (playback)
-    1 = ADPCM analysis (record)
-
-MEMDATA:
-    0 = processor (*CPU-managed*) memory (means: using register $08)
-    1 = external memory (using start/end/limit registers to access memory: RAM or ROM)
-
-
-SPOFF:
-    controls output pin that should disable the speaker while ADPCM analysis
-
-RESET and REPEAT only work with external memory.
-
-
-some examples:
-value:   START, REC, MEMDAT, REPEAT, SPOFF, x,x,RESET   meaning:
-  C8     1      1    0       0       1      0 0 0       Analysis (recording) from AUDIO to CPU (to reg $08), sample rate in PRESCALER register
-  E8     1      1    1       0       1      0 0 0       Analysis (recording) from AUDIO to EXT.MEMORY,       sample rate in PRESCALER register
-  80     1      0    0       0       0      0 0 0       Synthesis (playing) from CPU (from reg $08) to AUDIO,sample rate in DELTA-N register
-  a0     1      0    1       0       0      0 0 0       Synthesis (playing) from EXT.MEMORY to AUDIO,        sample rate in DELTA-N register
-
-  60     0      1    1       0       0      0 0 0       External memory write via ADPCM data register $08
-  20     0      0    1       0       0      0 0 0       External memory read via ADPCM data register $08
-
-*/
-		v |= 0x20;		/*  YM2610 always uses external memory and doesn't even have memory flag bit. */
-		adpcmb->portstate = v & (0x80|0x40|0x20|0x10|0x01); /* start, rec, memory mode, repeat flag copy, reset(bit0) */
-
-		if (adpcmb->portstate & 0x80)	/* START,REC,MEMDATA,REPEAT,SPOFF,--,--,RESET */
-		{
-			/* set PCM BUSY bit */
-			adpcmb->PCM_BSY = 1;
-
-			/* start ADPCM */
-			adpcmb->now_step      = 0;
-			adpcmb->acc           = 0;
-			adpcmb->prev_acc      = 0;
-			adpcmb->adpcml        = 0;
-			adpcmb->adpcmd        = ADPCMB_DELTA_DEF;
-			adpcmb->now_data      = 0;
-		}
-
-//		if (adpcmb->portstate & 0x20) /* do we access external memory? */
-		{
-			adpcmb->now_addr = adpcmb->start << 1;
-			adpcmb->memread = 2;	/* two dummy reads needed before accesing external memory via register $08*/
-
-			/* if yes, then let's check if ADPCM memory is mapped and big enough */
-			if (!pcmbufB)
-			{
-//				logerror("YM2610: Delta-T ADPCM rom not mapped\n");
-				adpcmb->portstate = 0x00;
-				adpcmb->PCM_BSY = 0;
-			}
-			else
-			{
-				if (adpcmb->end >= pcmsizeB)	/* Check End in Range */
-				{
-//					logerror("YM2610: Delta-T ADPCM end out of range: $%08x\n", adpcmb->end);
-					adpcmb->end = pcmsizeB - 1;
-				}
-				if (adpcmb->start >= pcmsizeB)	/* Check Start in Range */
-				{
-//					logerror("YM2610: Delta-T ADPCM start out of range: $%08x\n", adpcmb->start);
-					adpcmb->portstate = 0x00;
-					adpcmb->PCM_BSY = 0;
-				}
-			}
-		}
-#if 0
-		else	/* we access CPU memory (ADPCM data register $08) so we only reset now_addr here */
-		{
-			adpcmb->now_addr = 0;
-		}
-#endif
-
-		if (adpcmb->portstate & 0x01)
-		{
-			adpcmb->portstate = 0x00;
-
-			/* clear PCM BUSY bit (in status register) */
-			adpcmb->PCM_BSY = 0;
-
-			/* set BRDY flag */
-			if (adpcmb->status_change_BRDY_bit)
-				YM2610.adpcm_arrivedEndAddress |= adpcmb->status_change_BRDY_bit;
-		}
-		break;
-
-	case 0x11:	/* L,R,-,-,SAMPLE,DA/AD,RAMTYPE,ROM */
-		v |= 0x01;		/*  YM2610 always uses ROM as an external memory and doesn't tave ROM/RAM memory flag bit. */
-		adpcmb->pan = &out_delta[(v >> 6) & 0x03];
-		if ((adpcmb->control2 & 3) != (v & 3))
-		{
-			/*0-DRAM x1, 1-ROM, 2-DRAM x8, 3-ROM (3 is bad setting - not allowed by the manual) */
-			if (adpcmb->DRAMportshift != dram_rightshift[v & 3])
-			{
-				adpcmb->DRAMportshift = dram_rightshift[v & 3];
-
-				/* final shift value depends on chip type and memory type selected:
-                        8 for YM2610 (ROM only),
-                        5 for ROM for Y8950 and YM2608,
-                        5 for x8bit DRAMs for Y8950 and YM2608,
-                        2 for x1bit DRAMs for Y8950 and YM2608.
-                */
-
-				/* refresh addresses */
-				adpcmb->start  = ((YM2610.regs[0x13] << 8) | YM2610.regs[0x12]) << adpcmb->portshift;
-				adpcmb->end    = ((YM2610.regs[0x15] << 8) | YM2610.regs[0x14]) << adpcmb->portshift;
-				adpcmb->end   += (1 << adpcmb->portshift) - 1;
-				adpcmb->limit  = ((YM2610.regs[0x1d] << 8) | YM2610.regs[0x1c]) << adpcmb->portshift;
-			}
-		}
-		adpcmb->control2 = v;
-		break;
-
-	case 0x12:	/* Start Address L */
-	case 0x13:	/* Start Address H */
-		adpcmb->start = ((YM2610.regs[0x13] << 8) | YM2610.regs[0x12]) << adpcmb->portshift;
-		/*logerror("DELTAT start: 02=%2x 03=%2x addr=%8x\n", YM2610.regs[0x12], YM2610.regs[0x13], adpcmb->start);*/
-		break;
-
-	case 0x14:	/* Stop Address L */
-	case 0x15:	/* Stop Address H */
-		adpcmb->end   = ((YM2610.regs[0x15] << 8) | YM2610.regs[0x14]) << adpcmb->portshift;
-		adpcmb->end  += (1 << adpcmb->portshift) - 1;
-		/*logerror("DELTAT end  : 04=%2x 05=%2x addr=%8x\n", YM2610.regs[0x14], YM2610.reg[0x15], adpcmb->end);*/
-		break;
-
-	case 0x19:	/* DELTA-N L (ADPCM Playback Prescaler) */
-	case 0x1a:	/* DELTA-N H */
-		adpcmb->delta = (YM2610.regs[0x1a] << 8) | YM2610.regs[0x19];
-		adpcmb->step  = (u32)((double)(adpcmb->delta /* * (1 << (ADPCMb_SHIFT - 16)) */) * (adpcmb->freqbase));
-		/*logerror("DELTAT deltan:09=%2x 0a=%2x\n", YM2610.regs[0x19], YM2610.regs[0x1a]);*/
-		break;
-
-	case 0x1b:	/* Output level control (volume, linear) */
-		{
-			s32 oldvol = adpcmb->volume;
-			adpcmb->volume = (v & 0xff) * (adpcmb->output_range / 256) / ADPCMB_DECODE_RANGE;
-//								v	  *		((1<<16)>>8)		>>	15;
-//						thus:	v	  *		(1<<8)				>>	15;
-//						thus: output_range must be (1 << (15+8)) at least
-//								v     *		((1<<23)>>8)		>>	15;
-//								v	  *		(1<<15)				>>	15;
-			/*logerror("DELTAT vol = %2x\n", v & 0xff);*/
-			if (oldvol != 0)
-			{
-				adpcmb->adpcml = (int)((double)adpcmb->adpcml / (double)oldvol * (double)adpcmb->volume);
-			}
-		}
-		break;
-	}
-}
-
-
-INLINE void OPNB_ADPCMB_CALC(ADPCMB *adpcmb)
+static void OPNB_ADPCMB_calc_static(ADPCMB *adpcmb)
 {
 	u32 step;
 	int data;
@@ -2686,10 +2503,10 @@ INLINE void OPNB_ADPCMB_CALC(ADPCMB *adpcmb)
 				if (adpcmb->portstate & 0x10)
 				{
 					/* repeat start */
-					adpcmb->now_addr = adpcmb->start << 1;
-					adpcmb->acc      = 0;
-					adpcmb->adpcmd   = ADPCMB_DELTA_DEF;
-					adpcmb->prev_acc = 0;
+					adpcmb->now_addr  = adpcmb->start << 1;
+					adpcmb->acc       = 0;
+					adpcmb->adpcmd    = ADPCMB_DELTA_DEF;
+					adpcmb->prev_acc  = 0;
 				}
 				else
 				{
@@ -2701,8 +2518,8 @@ INLINE void OPNB_ADPCMB_CALC(ADPCMB *adpcmb)
 					adpcmb->PCM_BSY = 0;
 
 					adpcmb->portstate = 0;
-					adpcmb->adpcml = 0;
-					adpcmb->prev_acc = 0;
+					adpcmb->adpcml    = 0;
+					adpcmb->prev_acc  = 0;
 					return;
 				}
 			}
@@ -2735,8 +2552,89 @@ INLINE void OPNB_ADPCMB_CALC(ADPCMB *adpcmb)
 			adpcmb->adpcmd = (adpcmb->adpcmd * adpcmb_decode_table2[data]) / 64;
 			Limit(adpcmb->adpcmd, ADPCMB_DELTA_MAX, ADPCMB_DELTA_MIN);
 
-			/* ElSemi: Fix interpolator. */
-			/*adpcmb->prev_acc = prev_acc + ((adpcmb->acc - prev_acc) / 2);*/
+		} while (--step);
+
+	}
+
+	/* ElSemi: Fix interpolator. */
+	adpcmb->adpcml = adpcmb->prev_acc * (int)((1 << ADPCM_SHIFT) - adpcmb->now_step);
+	adpcmb->adpcml += (adpcmb->acc * (int)adpcmb->now_step);
+	adpcmb->adpcml = (adpcmb->adpcml >> ADPCM_SHIFT) * (int)adpcmb->volume;
+
+	/* output for work of output channels (outd[OPNxxxx])*/
+	*adpcmb->pan += adpcmb->adpcml;
+}
+
+
+static void OPNB_ADPCMB_calc_dynamic(ADPCMB *adpcmb)
+{
+	u32 step;
+	int data;
+
+	adpcmb->now_step += adpcmb->step;
+	if (adpcmb->now_step >= (1 << ADPCM_SHIFT))
+	{
+		step = adpcmb->now_step >> ADPCM_SHIFT;
+		adpcmb->now_step &= (1 << ADPCM_SHIFT) - 1;
+		do
+		{
+			if (adpcmb->now_addr == (adpcmb->limit << 1))
+				adpcmb->now_addr = 0;
+
+			if (adpcmb->now_addr == (adpcmb->end << 1))
+			{
+				/* 12-06-2001 JB: corrected comparison. Was > instead of == */
+				if (adpcmb->portstate & 0x10)
+				{
+					/* repeat start */
+					adpcmb->now_addr  = adpcmb->start << 1;
+					adpcmb->acc       = 0;
+					adpcmb->adpcmd    = ADPCMB_DELTA_DEF;
+					adpcmb->prev_acc  = 0;
+				}
+				else
+				{
+					/* set EOS bit in status register */
+					if (adpcmb->status_change_EOS_bit)
+						YM2610.adpcm_arrivedEndAddress |= adpcmb->status_change_EOS_bit;
+
+					/* clear PCM BUSY bit (reflected in status register) */
+					adpcmb->PCM_BSY = 0;
+
+					adpcmb->portstate = 0;
+					adpcmb->adpcml    = 0;
+					adpcmb->prev_acc  = 0;
+					return;
+				}
+			}
+			if (adpcmb->now_addr & 1)
+			{
+				data = adpcmb->now_data & 0x0f;
+			}
+			else
+			{
+				adpcmb->now_data = pcm_cache_read(6, adpcmb->now_addr >> 1);
+				data = adpcmb->now_data >> 4;
+			}
+
+			adpcmb->now_addr++;
+			/* 12-06-2001 JB: */
+			/* YM2610 address register is 24 bits wide.*/
+			/* The "+1" is there because we use 1 bit more for nibble calculations.*/
+			/* WARNING: */
+			/* Side effect: we should take the size of the mapped ROM into account */
+			adpcmb->now_addr &= ((1 << (24 + 1)) - 1);
+
+			/* store accumulator value */
+			adpcmb->prev_acc = adpcmb->acc;
+
+			/* Forecast to next Forecast */
+			adpcmb->acc += (adpcmb_decode_table1[data] * adpcmb->adpcmd / 8);
+			Limit(adpcmb->acc, ADPCMB_DECODE_MAX, ADPCMB_DECODE_MIN);
+
+			/* delta to next delta */
+			adpcmb->adpcmd = (adpcmb->adpcmd * adpcmb_decode_table2[data]) / 64;
+			Limit(adpcmb->adpcmd, ADPCMB_DELTA_MAX, ADPCMB_DELTA_MIN);
 
 		} while (--step);
 
@@ -2749,6 +2647,99 @@ INLINE void OPNB_ADPCMB_CALC(ADPCMB *adpcmb)
 
 	/* output for work of output channels (outd[OPNxxxx])*/
 	*adpcmb->pan += adpcmb->adpcml;
+}
+
+
+/* DELTA-T-ADPCM write register */
+static void OPNB_ADPCMB_write(ADPCMB *adpcmb, int r, int v)
+{
+//	if (r >= 0x20) return;
+
+	YM2610.regs[r] = v; /* stock data */
+
+	switch (r)
+	{
+	case 0x10:	/* START,--,--,REPEAT,--,--,--,RESET */
+		adpcmb->portstate = v & (0x80|0x10|0x01);
+
+		if (adpcmb->portstate & 0x80)
+		{
+			/* set PCM BUSY bit */
+			adpcmb->PCM_BSY = 1;
+
+			/* start ADPCM */
+			adpcmb->now_step  = 0;
+			adpcmb->acc       = 0;
+			adpcmb->prev_acc  = 0;
+			adpcmb->adpcml    = 0;
+			adpcmb->adpcmd    = ADPCMB_DELTA_DEF;
+			adpcmb->now_data  = 0;
+		}
+
+		adpcmb->now_addr = adpcmb->start << 1;
+
+		/* if yes, then let's check if ADPCM memory is mapped and big enough */
+		if (!pcmbufB)
+		{
+			adpcmb->portstate = 0x00;
+			adpcmb->PCM_BSY = 0;
+		}
+		else
+		{
+			if (adpcmb->end >= pcmsizeB)	/* Check End in Range */
+			{
+				adpcmb->end = pcmsizeB - 1;
+			}
+			if (adpcmb->start >= pcmsizeB)	/* Check Start in Range */
+			{
+				adpcmb->portstate = 0x00;
+				adpcmb->PCM_BSY = 0;
+			}
+		}
+
+		if (adpcmb->portstate & 0x01)
+		{
+			adpcmb->portstate = 0x00;
+
+			/* clear PCM BUSY bit (in status register) */
+			adpcmb->PCM_BSY = 0;
+
+			/* set BRDY flag */
+			if (adpcmb->status_change_BRDY_bit)
+				YM2610.adpcm_arrivedEndAddress |= adpcmb->status_change_BRDY_bit;
+		}
+		break;
+
+	case 0x11:	/* L,R */
+		adpcmb->pan = &out_delta[(v >> 6) & 0x03];
+		break;
+
+	case 0x12:	/* Start Address L */
+	case 0x13:	/* Start Address H */
+		adpcmb->start = ((YM2610.regs[0x13] << 8) | YM2610.regs[0x12]) << 8;
+		break;
+
+	case 0x14:	/* Stop Address L */
+	case 0x15:	/* Stop Address H */
+		adpcmb->end   = ((YM2610.regs[0x15] << 8) | YM2610.regs[0x14]) << 8;
+		adpcmb->end  += (1 << 8) - 1;
+		break;
+
+	case 0x19:	/* DELTA-N L (ADPCM Playback Prescaler) */
+	case 0x1a:	/* DELTA-N H */
+		adpcmb->delta = (YM2610.regs[0x1a] << 8) | YM2610.regs[0x19];
+		adpcmb->step  = (u32)((double)adpcmb->delta * adpcmb->freqbase);
+		break;
+
+	case 0x1b:	/* Output level control (volume, linear) */
+		{
+			s32 oldvol = adpcmb->volume;
+			adpcmb->volume = (v & 0xff) * (adpcmb->output_range >> 8) / ADPCMB_DECODE_RANGE;
+
+			if (oldvol) adpcmb->adpcml = (int)((double)adpcmb->adpcml / (double)oldvol * (double)adpcmb->volume);
+		}
+		break;
+	}
 }
 
 
@@ -2792,12 +2783,30 @@ void YM2610Init(int clock, int rate,
 	YM2610.OPN.ST.IRQ_Handler   = IRQHandler;
 	/* SSG */
 	SSG.step = ((double)SSG_STEP * rate * 8) / clock;
-	/* ADPCM-A */
-	pcmbufA = (u8 *)pcmroma;
-	pcmsizeA = pcmsizea;
-	/* ADPCM-B */
-	pcmbufB = (u8 *)pcmromb;
-	pcmsizeB = pcmsizeb;
+	if (pcm_cache_enable)
+	{
+		OPNB_ADPCMA_calc_chan = OPNB_ADPCMA_calc_chan_dynamic;
+		OPNB_ADPCMB_calc = OPNB_ADPCMB_calc_dynamic;
+
+		/* ADPCM-A */
+		pcmbufA  = NULL;
+		pcmsizeA = pcmsizea;
+		/* ADPCM-B */
+		pcmbufB  = NULL;
+		pcmsizeB = pcmsizeb;
+	}
+	else
+	{
+		OPNB_ADPCMA_calc_chan = OPNB_ADPCMA_calc_chan_static;
+		OPNB_ADPCMB_calc = OPNB_ADPCMB_calc_static;
+
+		/* ADPCM-A */
+		pcmbufA = (u8 *)pcmroma;
+		pcmsizeA = pcmsizea;
+		/* ADPCM-B */
+		pcmbufB = (u8 *)pcmromb;
+		pcmsizeB = pcmsizeb;
+	}
 
 	YM2610.adpcmb.status_change_EOS_bit = 0x80;	/* status flag: set bit7 on End Of Sample */
 
@@ -2855,6 +2864,8 @@ void YM2610Reset(void)
 		YM2610.adpcma[i].adpcma_acc  = 0;
 		YM2610.adpcma[i].adpcma_step = 0;
 		YM2610.adpcma[i].adpcma_out  = 0;
+		if (pcm_cache_enable)
+			pcmbufA_cache[i] = pcm_get_cache(i);
 	}
 	YM2610.adpcmaTL = 0x3f;
 
@@ -2862,7 +2873,6 @@ void YM2610Reset(void)
 
 	/* ADPCM-B unit */
 	YM2610.adpcmb.freqbase     = OPN->ST.freqbase;
-	YM2610.adpcmb.portshift    = 8;		/* allways 8bits shift */
 	YM2610.adpcmb.output_range = 1 << 23;
 
 	YM2610.adpcmb.now_addr     = 0;
@@ -2870,7 +2880,7 @@ void YM2610Reset(void)
 	YM2610.adpcmb.step         = 0;
 	YM2610.adpcmb.start        = 0;
 	YM2610.adpcmb.end          = 0;
-	YM2610.adpcmb.limit        = ~0; /* this way YM2610 and Y8950 (both of which don't have limit address reg) will still work */
+	YM2610.adpcmb.limit        = (1 << 24) - 1; /* this way YM2610 and Y8950 (both of which don't have limit address reg) will still work */
 	YM2610.adpcmb.volume       = 0;
 	YM2610.adpcmb.pan          = &out_delta[OUTD_CENTER];
 	YM2610.adpcmb.acc          = 0;
@@ -2878,7 +2888,8 @@ void YM2610Reset(void)
 	YM2610.adpcmb.adpcmd       = 127;
 	YM2610.adpcmb.adpcml       = 0;
 	YM2610.adpcmb.portstate    = 0x20;
-	YM2610.adpcmb.control2     = 0x01;
+	if (pcm_cache_enable)
+		pcmbufB = pcm_get_cache(6);
 
 	/* The flag mask register disables the BRDY after the reset, however
     ** as soon as the mask is enabled the flag needs to be set. */
@@ -2909,9 +2920,6 @@ int YM2610Write(int a, u8 v)
 	case 0:	/* address port 0 */
 		OPN->ST.address = v;
 		YM2610.addr_A1 = 0;
-
-		/* Write register to SSG emulator */
-//		if (v < 16) SSG_write(0, v);
 		break;
 
 	case 1:	/* data port 0    */
@@ -2982,7 +2990,7 @@ int YM2610Write(int a, u8 v)
 
 		YM2610UpdateRequest();
 		addr = YM2610.OPN.ST.address | 0x100;
-		YM2610.regs[addr | 0x100] = v;
+		YM2610.regs[addr] = v;
 		if (addr < 0x130)
 			/* 100-12f : ADPCM A section */
 			OPNB_ADPCMA_write(addr, v);
@@ -3129,34 +3137,34 @@ static void YM2610Update_stream(int length)
 
 		/* deltaT ADPCM */
 		if (YM2610.adpcmb.portstate & 0x80)
-			OPNB_ADPCMB_CALC(&YM2610.adpcmb);
+			OPNB_ADPCMB_calc(&YM2610.adpcmb);
 
 		for (j = 0; j < 6; j++)
 		{
 			/* ADPCM */
 			if (YM2610.adpcma[j].flag)
-				OPNB_ADPCMA_calc_chan(&YM2610.adpcma[j]);
+				OPNB_ADPCMA_calc_chan(j, &YM2610.adpcma[j]);
 		}
 
 		/* buffering */
 		lt =  out_adpcma[OUTD_LEFT]  + out_adpcma[OUTD_CENTER];
 		rt =  out_adpcma[OUTD_RIGHT] + out_adpcma[OUTD_CENTER];
 
-		lt += (out_delta[OUTD_LEFT]  + out_delta[OUTD_CENTER])>>9;
-		rt += (out_delta[OUTD_RIGHT] + out_delta[OUTD_CENTER])>>9;
+		lt += (out_delta[OUTD_LEFT]  + out_delta[OUTD_CENTER]) >> 9;
+		rt += (out_delta[OUTD_RIGHT] + out_delta[OUTD_CENTER]) >> 9;
 
 		lt += out_ssg;
 		rt += out_ssg;
 
-		lt += ((out_fm[1]>>1) & OPN->pan[2]);	/* the shift right was verified on real chip */
-		rt += ((out_fm[1]>>1) & OPN->pan[3]);
-		lt += ((out_fm[2]>>1) & OPN->pan[4]);
-		rt += ((out_fm[2]>>1) & OPN->pan[5]);
+		lt += (out_fm[1] >> 1) & OPN->pan[2];	/* the shift right was verified on real chip */
+		rt += (out_fm[1] >> 1) & OPN->pan[3];
+		lt += (out_fm[2] >> 1) & OPN->pan[4];
+		rt += (out_fm[2] >> 1) & OPN->pan[5];
 
-		lt += ((out_fm[4]>>1) & OPN->pan[8]);
-		rt += ((out_fm[4]>>1) & OPN->pan[9]);
-		lt += ((out_fm[5]>>1) & OPN->pan[10]);
-		rt += ((out_fm[5]>>1) & OPN->pan[11]);
+		lt += (out_fm[4] >> 1) & OPN->pan[8];
+		rt += (out_fm[4] >> 1) & OPN->pan[9];
+		lt += (out_fm[5] >> 1) & OPN->pan[10];
+		rt += (out_fm[5] >> 1) & OPN->pan[11];
 
 		lt <<= 1;
 		rt <<= 1;
@@ -3166,11 +3174,7 @@ static void YM2610Update_stream(int length)
 
 		mixing_buffer[0][i] = lt;
 		mixing_buffer[1][i] = rt;
-
-		INTERNAL_TIMER_A( OPN->ST , cch[1] )
 	}
-
-	INTERNAL_TIMER_B(OPN->ST,length)
 }
 
 
@@ -3431,8 +3435,15 @@ STATE_LOAD( ym2610 )
 	for (r = 1; r < 16; r++)
 		OPNB_ADPCMB_write(&YM2610.adpcmb, r + 0x10, YM2610.regs[r + 0x10]);
 
-	if (pcmbufB)
-		YM2610.adpcmb.now_data = *(pcmbufB + (YM2610.adpcmb.now_addr >> 1));
+	if (pcm_cache_enable)
+	{
+		YM2610.adpcmb.now_data = pcm_cache_read(6, YM2610.adpcmb.now_addr >> 1);
+	}
+	else
+	{
+		if (pcmbufB)
+			YM2610.adpcmb.now_data = *(pcmbufB + (YM2610.adpcmb.now_addr >> 1));
+	}
 }
 
 #endif /* SAVE_STATE */

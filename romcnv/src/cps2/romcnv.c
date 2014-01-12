@@ -1519,22 +1519,20 @@ int load_rom_info(const char *game_name)
 }
 
 
-
-void convert_rom(char *game_name, int pause)
+static void free_memory(void)
 {
-	FILE *fp;
-	u32 i, j, block, res;
-	char fname[MAX_PATH], path[MAX_PATH], zipname[MAX_PATH], cmdline[MAX_PATH * 2];
-	char buffer[1024];
-	struct tileblock_t
-	{
-		u32 start;
-		u32 end;
-	} tileblock[4];
+	if (memory_region_gfx1) free(memory_region_gfx1);
+	if (gfx_pen_usage[TILE08]) free(gfx_pen_usage[TILE08]);
+	if (gfx_pen_usage[TILE16]) free(gfx_pen_usage[TILE16]);
+	if (gfx_pen_usage[TILE32]) free(gfx_pen_usage[TILE32]);
+}
+
+
+static int convert_rom(char *game_name)
+{
+	int i, res;
 
 	printf("Checking ROM file... (%s)\n", game_name);
-
-	_chdir(launchDir);
 
 	memory_region_gfx1 = NULL;
 	memory_length_gfx1 = 0;
@@ -1551,9 +1549,7 @@ void convert_rom(char *game_name, int pause)
 		case 2: printf("ERROR: ROM not found. (zip file name incorrect)\n"); break;
 		case 3: printf("ERROR: rominfo.cps2 not found.\n"); break;
 		}
-		printf("Press any key.\n");
-		getch();
-		return;
+		return 0;
 	}
 
 	if (!strcmp(game_name, "ssf2ta")
@@ -1592,106 +1588,147 @@ void convert_rom(char *game_name, int pause)
 		i++;
 	}
 
-	if (cacheinfo == NULL)
+	if (cacheinfo)
+	{
+		if (load_rom_gfx1())
+		{
+			cps2_gfx_decode();
+			clear_empty_blocks();
+			if (calc_pen_usage())
+			{
+				set_mask_flags();
+				return 1;
+			}
+		}
+		printf("ERROR: Could not allocate memory.\n");
+	}
+	else
 	{
 		printf("ERROR: Unknown romset.\n");
-		printf("Press any key to exit.\n");
-		getch();
-		goto error;
 	}
 
-	if (load_rom_gfx1() == 0)
+	return 0;
+}
+
+
+
+static int create_raw_cache(char *game_name, int pause)
+{
+	FILE *fp;
+	int i;
+	const char version[8] = "CPS2V08\0";
+	u32 base, block[0x200];
+	char fname[MAX_PATH];
+
+	_chdir("cache");
+
+	base = 8;
+	base += gfx_total_elements[TILE08];
+	base += gfx_total_elements[TILE16];
+	base += gfx_total_elements[TILE32];
+	base += 0x200 * sizeof(u32);
+
+	for (i = 0; i < 0x200; i++)
 	{
-		goto error;
+		if (block_empty[i])
+		{
+			block[i] = 0xffffffff;
+		}
+		else
+		{
+			block[i] = base;
+			base += 0x10000;
+		}
 	}
 
-	cps2_gfx_decode();
-	clear_empty_blocks();
-	if (!calc_pen_usage())
+	sprintf(fname, "%s.cache", game_name);
+	if ((fp = fopen(fname, "wb")) == NULL)
 	{
-		printf("ERROR: Could not allocate memory.\n");
-		printf("Press any key to exit.\n");
-		getch();
-		goto error;
+		_chdir("..");
+		printf("ERROR: Could not create file.\n");
+		return 0;
 	}
-	set_mask_flags();
 
-	_chdir(launchDir);
-	_chdir("temp");
+	printf("Create cache file...\n");
+
+	fwrite(version, 1, 8, fp);
+	fwrite(gfx_pen_usage[TILE08], sizeof(u8), gfx_total_elements[TILE08], fp);
+	fwrite(gfx_pen_usage[TILE16], sizeof(u8), gfx_total_elements[TILE16], fp);
+	fwrite(gfx_pen_usage[TILE32], sizeof(u8), gfx_total_elements[TILE32], fp);
+	fwrite(block, sizeof(u32), 0x200, fp);
+
+	for (i = 0; i < 0x200; i++)
+	{
+		if (block_empty[i]) continue;
+
+		fwrite(&memory_region_gfx1[i << 16], 1, 0x10000, fp);
+	}
+
+	fclose(fp);
+
+	_chdir("..");
+
+	return 1;
+}
+
+
+static int create_zip_cache(char *game_name, int pause)
+{
+	FILE *fp;
+	u32 i, j, block, res = 0;
+	char fname[MAX_PATH], path[MAX_PATH], zipname[MAX_PATH], cmdline[MAX_PATH * 2];
+	char buffer[2048];
+
+	if (_chdir("temp") != 0)
+	{
+		if (_mkdir("temp") != 0)
+		{
+			printf("Error: Could not create directory \"temp\".\n");
+			printf("Press any key to exit.\n");
+			getch();
+			return 0;
+		}
+		else
+		{
+			_chdir("temp");
+		}
+	}
 
 	printf("Create cache file...\n");
 
 	for (block = 0; block < 0x200; block++)
 	{
-		if (block_empty[block])
-			continue;
+		if (block_empty[block]) continue;
 
 		sprintf(fname, "%03x", block);
-		if ((fp = fopen(fname, "wb")) == NULL)
-		{
-			printf("ERROR: Could not create file.\n");
-			printf("Press any key to exit.\n");
-			getch();
-			goto error2;
-		}
+		if ((fp = fopen(fname, "wb")) == NULL) goto error;
 		fwrite(&memory_region_gfx1[block << 16], 1, 0x10000, fp);
 		fclose(fp);
 	}
 
-	if ((fp = fopen("tile8_usage", "wb")) == NULL)
-	{
-		printf("ERROR: Could not create file.\n");
-		printf("Press any key to exit.\n");
-		getch();
-		goto error2;
-	}
+	if ((fp = fopen("tile8_usage", "wb")) == NULL) goto error;
 	fwrite(gfx_pen_usage[TILE08], 1, gfx_total_elements[TILE08], fp);
 	fclose(fp);
 
-	if ((fp = fopen("tile16_usage", "wb")) == NULL)
-	{
-		printf("ERROR: Could not create file.\n");
-		printf("Press any key to exit.\n");
-		getch();
-		goto error2;
-	}
+	if ((fp = fopen("tile16_usage", "wb")) == NULL) goto error;
 	fwrite(gfx_pen_usage[TILE16], 1, gfx_total_elements[TILE16], fp);
 	fclose(fp);
 
-	if ((fp = fopen("tile32_usage", "wb")) == NULL)
-	{
-		printf("ERROR: Could not create file.\n");
-		printf("Press any key to exit.\n");
-		getch();
-		goto error2;
-	}
+	if ((fp = fopen("tile32_usage", "wb")) == NULL) goto error;
 	fwrite(gfx_pen_usage[TILE32], 1, gfx_total_elements[TILE32], fp);
 	fclose(fp);
 
-	if ((fp = fopen("block_empty", "wb")) == NULL)
-	{
-		printf("ERROR: Could not create file.\n");
-		printf("Press any key to exit.\n");
-		getch();
-		goto error2;
-	}
+	if ((fp = fopen("block_empty", "wb")) == NULL) goto error;
 	fwrite(block_empty, 1, 0x200, fp);
 	fclose(fp);
 
-	if ((fp = fopen("response.txt", "w")) == NULL)
-	{
-		printf("ERROR: Could not create file.\n");
-		printf("Press any key to exit.\n");
-		getch();
-		goto error2;
-	}
+	if ((fp = fopen("response.txt", "w")) == NULL) goto error;
 
 	sprintf(path, "%s\\temp\\", launchDir);
 
 	for (block = 0; block < 0x200; block++)
 	{
-		if (block_empty[block])
-			continue;
+		if (block_empty[block]) continue;
 
 		sprintf(fname, "%03x", block);
 		fprintf(fp, "-D -j -r -9 \"%s\" \"%s\"\n", path, fname);
@@ -1710,25 +1747,13 @@ void convert_rom(char *game_name, int pause)
 	remove(zipname);
 
 	sprintf(cmdline, "\"%s\" @\"%s\\response.txt\"", zipname, path);
-	if (Zip(NULL, cmdline, NULL, 0) != 0)
+	if (Zip(NULL, cmdline, NULL, 0) == 0)
 	{
-		printf("ERROR: Could not create zip file.\n");
-		printf("Press any key to exit.\n");
-		getch();
-		goto error2;
+		res = 1;
 	}
 
-	if (pause)
-	{
-		printf("complete.\n");
-		printf("Please copy this file to directory \"/PSP/GAMES/cps2psp/cache\".\n");
-		printf("Press any key to exit.\n");
-		getch();
-	}
-
-error2:
-	_chdir(launchDir);
-	_chdir("temp");
+error:
+	if (!res) printf("ERROR: Could not create file.\n");
 
 	remove("response.txt");
 	for (i = 0; i < 0x200; i++)
@@ -1741,27 +1766,59 @@ error2:
 	remove("tile32_usage");
 	remove("block_empty");
 
-error:
-	if (memory_region_gfx1) free(memory_region_gfx1);
-	if (gfx_pen_usage[TILE08]) free(gfx_pen_usage[TILE08]);
-	if (gfx_pen_usage[TILE16]) free(gfx_pen_usage[TILE16]);
-	if (gfx_pen_usage[TILE32]) free(gfx_pen_usage[TILE32]);
+	_chdir("..");
+
+	return res;
 }
 
 
 int main(int argc, char *argv[])
 {
 	char *p, path[MAX_PATH];
-	int all = 0;
+	int i, path_found = 0, all = 0, zip = 0, pause = 1, res = 1;
 
 	printf("-------------------------------------------\n");
-	printf(" ROM converter for CPS2 Emulator ver.7\n");
+	printf(" ROM converter for CPS2 Emulator ver.8\n");
 	printf("-------------------------------------------\n\n");
 
-	if (argc > 1 && strcmp(argv[1], "all") != 0)
+	if (_chdir("cache") != 0)
 	{
-		strcpy(launchDir, argv[0]);
-		*(strrchr(launchDir, '\\') + 1) = '\0';
+		if (_mkdir("cache") != 0)
+		{
+			printf("Error: Could not create directory \"cache\".\n");
+			goto error;
+		}
+	}
+	else _chdir("..");
+
+	if (argc > 1)
+	{
+		for (i = 1; i < argc; i++)
+		{
+			if (!stricmp(argv[i], "-all") || !stricmp(argv[i], "/all"))
+			{
+				all = 1;
+			}
+			else if (!stricmp(argv[i], "-zip") || !stricmp(argv[i], "/zip"))
+			{
+				zip = 1;
+			}
+			else if (!stricmp(argv[i], "-batch") || !stricmp(argv[i], "/batch"))
+			{
+				pause = 0;
+			}
+			else if (strchr(argv[i], ':') != NULL)
+			{
+				path_found = i;
+			}
+		}
+	}
+
+	strcpy(launchDir, argv[0]);
+	p = strrchr(launchDir, '\\');
+	if (p)
+	{
+		*(p + 1) = '\0';
 	}
 	else
 	{
@@ -1769,69 +1826,17 @@ int main(int argc, char *argv[])
 		strcat(launchDir, "\\");
 	}
 
-	if (_chdir("cache") != 0)
-	{
-		if (_mkdir("cache") != 0)
-		{
-			printf("Error: Could not create directory \"cache\".\n");
-			printf("Press any key to exit.\n");
-			getch();
-			return 0;
-		}
-	}
-	else _chdir("..");
-
-	if (_chdir("temp") != 0)
-	{
-		if (_mkdir("temp") != 0)
-		{
-			printf("Error: Could not create directory \"temp\".\n");
-			printf("Press any key to exit.\n");
-			getch();
-			return 0;
-		}
-	}
-	else _chdir("..");
-
-	if (argc == 2 && argv[1] != NULL)
-	{
-		if (strcmp(argv[1], "all") == 0)
-		{
-			if (!folder_dialog(NULL, zip_dir))
-			{
-				printf("Press any key to exit.\n");
-				getch();
-				return 0;
-			}
-			all = 1;
-		}
-		else
-		{
-			strcpy(path, argv[1]);
-			strcpy(game_dir, strtok(path, "\""));
-		}
-	}
-	else
-	{
-		printf("Please select ROM file.\n");
-
-		if (!file_dialog(NULL, "zip file (*.zip)\0*.zip\0", game_dir, OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY))
-		{
-			printf("Press any key to exit.\n");
-			getch();
-			return 0;
-		}
-	}
-
 	if (all)
 	{
-		int i;
+		if (!folder_dialog(NULL, zip_dir)) goto error;
 
 		strcpy(game_dir, zip_dir);
 		strcat(game_dir, "\\");
 
 		for (i = 0; CPS2_cacheinfo[i].name; i++)
 		{
+			res = 1;
+
 			strcpy(game_name, CPS2_cacheinfo[i].name);
 
 			printf("\n-------------------------------------------\n");
@@ -1845,16 +1850,44 @@ int main(int argc, char *argv[])
 				continue;
 			}
 
-			convert_rom(game_name, 0);
+			_chdir(launchDir);
+			if (!convert_rom(game_name))
+			{
+				printf("ERROR: Convert failed. - Skip\n\n");
+			}
+			else
+			{
+				if (zip)
+					res = create_zip_cache(game_name, 0);
+				else
+					res = create_raw_cache(game_name, 0);
+
+				if (!res)
+				{
+					printf("ERROR: Create cache failed. - Skip\n\n");
+				}
+			}
+			free_memory();
 		}
 
 		printf("\ncomplete.\n");
 		printf("Please copy these files to directory \"/PSP/GAMES/cps2psp/cache\".\n");
-		printf("Press any key to exit.\n");
-		getch();
 	}
 	else
 	{
+		if (!path_found)
+		{
+			printf("Please select ROM file.\n");
+
+			if (!file_dialog(NULL, "zip file (*.zip)\0*.zip\0", game_dir, OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY))
+				goto error;
+		}
+		else
+		{
+			strcpy(path, argv[path_found]);
+			strcpy(game_dir, strtok(path, "\""));
+		}
+
 		if ((p = strrchr(game_dir, '\\')) != NULL)
 		{
 			strcpy(game_name, p + 1);
@@ -1875,19 +1908,44 @@ int main(int argc, char *argv[])
 		}
 
 		printf("path: %s\n", zip_dir);
-		printf("filename: %s\n", game_name);
+		printf("file name: %s\n", game_name);
+		if (zip)
+			printf("cache name: cache\\%s_cache.zip\n", game_name);
+		else
+			printf("cache name: cache\\%s.cache\n", game_name);
 
 		if ((p = strrchr(game_name, '.')) == NULL)
 		{
 			printf("Please input correct path.\n");
-			printf("Press any key to exit.\n");
-			getch();
-			return 0;
+			goto error;
 		}
 		*p = '\0';
 
-		convert_rom(game_name, 1);
+		_chdir(launchDir);
+		if (!convert_rom(game_name))
+		{
+			res = 0;
+		}
+		else
+		{
+			if (zip)
+				res = create_zip_cache(game_name, pause);
+			else
+				res = create_raw_cache(game_name, pause);
+		}
+		if (res && pause)
+		{
+			printf("complete.\n");
+			printf("Please copy \"cache\\%s.cache\" to directory \"/PSP/GAMES/cps2psp/cache\".\n", game_name);
+		}
+		free_memory();
 	}
 
-	return 1;
+error:
+	if (pause)
+	{
+		printf("Press any key to exit.\n");
+		getch();
+	}
+	return res;
 }

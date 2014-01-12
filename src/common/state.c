@@ -35,7 +35,7 @@ static const char *current_version_str = "CPS1SV04";
 #elif (EMU_SYSTEM == CPS2)
 static const char *current_version_str = "CPS2SV07";
 #elif (EMU_SYSTEM == MVS)
-static const char *current_version_str = "MVSSV003";
+static const char *current_version_str = "MVSSV005";
 #endif
 
 
@@ -275,11 +275,7 @@ int state_load(int slot)
 #endif
 		fclose(fp);
 
-#if (EMU_SYSTEM == CPS2)
-		blit_update_all_cache();
-#elif (EMU_SYSTEM == MVS)
-//		blit_update_all_cache();
-
+#if (EMU_SYSTEM == MVS)
 		if (state_reload_bios)
 		{
 			state_reload_bios = 0;

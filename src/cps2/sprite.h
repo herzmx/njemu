@@ -33,6 +33,4 @@ void blit_update_scroll3(int x, int y, u32 code, u32 attr);
 void blit_draw_scroll3(int x, int y, u32 code, u32 attr);
 void blit_finish_scroll3(void);
 
-void blit_update_all_cache(void);
-
 #endif /* CPS2_SPRITE_H */

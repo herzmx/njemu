@@ -39,14 +39,14 @@ static s8 *jpn_z14_pitch;
 	fread(&jpnfont[offset], 1, size, fp);	\
 	name = (type *)&jpnfont[offset];		\
 	offset += size;							\
-	offset = (offset + 4) & ~3;				\
+	offset = (offset + 1) & ~1;				\
 }
 
 int load_jpnfont(void)
 {
 	FILE *fp;
 	char path[MAX_PATH];
-	int size;
+	int fontsize, size;
 
 	if (jpnfont) return 1;
 
@@ -59,12 +59,15 @@ int load_jpnfont(void)
 	}
 
 	fseek(fp, 0, SEEK_END);
-	size = ftell(fp);
+	fontsize = ftell(fp);
 	fseek(fp, 0, SEEK_SET);
 
-	if ((jpnfont = (u8 *)calloc(1, size + 64)) != NULL)
+	fontsize += 16;
+	if ((jpnfont = memalign(64, fontsize)) != NULL)
 	{
 		u32 offset = 0;
+
+		memset(jpnfont, 0, fontsize);
 
 		set_font(sjis_table,     u16)
 

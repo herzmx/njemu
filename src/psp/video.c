@@ -91,7 +91,7 @@ void video_init(void)
 	sceGuViewport(2048, 2048, SCR_WIDTH, SCR_HEIGHT);
 
 	sceGuEnable(GU_SCISSOR_TEST);
-	sceGuScissor(0, 0, BUF_WIDTH, SCR_HEIGHT);
+	sceGuScissor(0, 0, SCR_WIDTH, SCR_HEIGHT);
 
 	sceGuDisable(GU_ALPHA_TEST);
 	sceGuAlphaFunc(GU_LEQUAL, 0, 1);

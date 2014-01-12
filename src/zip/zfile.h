@@ -19,8 +19,5 @@ int zread(int fd, void *buf, unsigned size);
 int zgetc(int fd);
 int zclose(int fd);
 int zsize(int fd);
-int zcrc(int fd);
-
-int zlength(const char *filename);
 
 #endif

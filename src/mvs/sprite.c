@@ -14,7 +14,7 @@
 ******************************************************************************/
 
 #define MAKE_FIX_KEY(code, color)	(code | (color << 24))
-#define MAKE_SPR_KEY(code, attr)	(code | ((attr & 0xff00) << 16) | ((attr & 0x0c) << 20))
+#define MAKE_SPR_KEY(code, attr)	(code | ((attr & 0xff00) << 16))
 
 
 /******************************************************************************
@@ -96,7 +96,7 @@ static u8 fix_palette_is_dirty;
 #define SPR_TEXTURE_SIZE	((BUF_WIDTH/16)*((512*2)/16))
 #define SPR_HASH_MASK		0x1ff
 #define SPR_HASH_SIZE		0x200
-#define SPR_MAX_SPRITES		0x3000
+#define SPR_MAX_SPRITES		0x2800
 #define SPR_AUTOANIME		(3 << 20)
 #define SPR_AUTOANIME4		(1 << 20)
 #define SPR_AUTOANIME8		(2 << 20)
@@ -384,107 +384,41 @@ static int spr_insert_sprite(u32 key)
 	SPRテクスチャから一定時間を経過したスプライトを削除
 ------------------------------------------------------------------------*/
 
-static void spr_delete_sprite(int delay, int clear_all)
+static void spr_delete_sprite(int delay)
 {
 	int i;
 	SPRITE *p, *prev_p;
 
-	if (clear_all)
+	for (i = 0; i < SPR_HASH_SIZE; i++)
 	{
-		for (i = 0; i < SPR_HASH_SIZE; i++)
+		prev_p = NULL;
+		p = spr_head[i];
+
+		while (p)
 		{
-			prev_p = NULL;
-			p = spr_head[i];
-
-			while (p)
+			if (frames_displayed - p->used > delay)
 			{
-				if (frames_displayed - p->used > delay)
-				{
-					spr_texture_num--;
+				spr_texture_num--;
 
-					if (!prev_p)
-					{
-						spr_head[i] = p->next;
-						p->next = spr_free_head;
-						spr_free_head = p;
-						p = spr_head[i];
-					}
-					else
-					{
-						prev_p->next = p->next;
-						p->next = spr_free_head;
-						spr_free_head = p;
-						p = prev_p->next;
-					}
+				if (!prev_p)
+				{
+					spr_head[i] = p->next;
+					p->next = spr_free_head;
+					spr_free_head = p;
+					p = spr_head[i];
 				}
 				else
 				{
-					prev_p = p;
-					p = p->next;
+					prev_p->next = p->next;
+					p->next = spr_free_head;
+					spr_free_head = p;
+					p = prev_p->next;
 				}
 			}
-		}
-	}
-	else
-	{
-		int unused_frames;
-
-		for (i = 0; i < SPR_HASH_SIZE; i++)
-		{
-			prev_p = NULL;
-			p = spr_head[i];
-
-			while (p)
+			else
 			{
-				unused_frames = frames_displayed - p->used;
-
-				if (unused_frames > delay)
-				{
-					int clear = 1;
-
-					switch (p->key & SPR_AUTOANIME)
-					{
-					case SPR_AUTOANIME4:
-						if (unused_frames <= (neogeo_frame_counter << 2))
-							clear = 0;
-						break;
-
-					case SPR_AUTOANIME8:
-						if (unused_frames <= (neogeo_frame_counter << 3))
-							clear = 0;
-						break;
-					}
-
-					if (clear)
-					{
-						spr_texture_num--;
-
-						if (!prev_p)
-						{
-							spr_head[i] = p->next;
-							p->next = spr_free_head;
-							spr_free_head = p;
-							p = spr_head[i];
-						}
-						else
-						{
-							prev_p->next = p->next;
-							p->next = spr_free_head;
-							spr_free_head = p;
-							p = prev_p->next;
-						}
-					}
-					else
-					{
-						prev_p = p;
-						p = p->next;
-					}
-				}
-				else
-				{
-					prev_p = p;
-					p = p->next;
-				}
+				prev_p = p;
+				p = p->next;
 			}
 		}
 	}
@@ -631,8 +565,6 @@ void blit_start(void)
 	if (spr_palette_is_dirty) spr_delete_dirty_palette();
 	memset(palette_is_dirty, 0, sizeof(palette_is_dirty));
 
-	if (neogeo_selected_vectors) spr_disable_this_frame = 0;
-
 	sceGuStart(GU_DIRECT, gulist);
 	sceGuDrawBufferList(GU_PSM_5551, draw_frame, BUF_WIDTH);
 	sceGuScissor(0, 0, 512, 272);
@@ -641,7 +573,7 @@ void blit_start(void)
 	sceGuScissor(0, 0, 512, 256);
 	sceGuClear(GU_COLOR_BUFFER_BIT);
 	sceGuScissor(8, 16, 312, 240);
-	sceGuClearColor(CNVCOL15TO32(video_palette16[4095]));
+	sceGuClearColor(CNVCOL15TO32(video_palette[4095]));
 	sceGuClear(GU_COLOR_BUFFER_BIT);
 	sceGuClearColor(0);
 	sceGuEnable(GU_ALPHA_TEST);
@@ -663,6 +595,8 @@ void blit_partial_start(int start, int end)
 
 	fix_num = 0;
 	spr_num = 0;
+
+	if (neogeo_selected_vectors) spr_disable_this_frame = 0;
 
 	if (start == FIRST_VISIBLE_LINE)
 		blit_start();
@@ -704,7 +638,7 @@ void blit_draw_fix(int x, int y, u32 code, u32 attr)
 
 		idx = fix_insert_sprite(key);
 		gfx = (u32 *)&fix_memory[code << 5];
-		pal = &video_palette16[attr << 4];
+		pal = &video_palette[attr << 4];
 		dst = SWIZZLED_8x8(tex_fix, idx);
 
 		while (lines--)
@@ -776,7 +710,7 @@ void blit_draw_spr(int x, int y, int w, int h, u32 code, u32 attr)
 	u32 key;
 
 	if (spr_disable_this_frame) return;
-	if (spr_num == SPR_MAX_SPRITES) return;
+	if (spr_num == SPR_MAX_SPRITES * 2) return;
 
 	key = MAKE_SPR_KEY(code, attr);
 
@@ -788,7 +722,7 @@ void blit_draw_spr(int x, int y, int w, int h, u32 code, u32 attr)
 
 		if (spr_texture_num == SPR_TEXTURE_SIZE - 1)
 		{
-			spr_delete_sprite(0, 0);
+			spr_delete_sprite(0);
 
 			if (spr_texture_num == SPR_TEXTURE_SIZE - 1)
 			{
@@ -800,7 +734,7 @@ void blit_draw_spr(int x, int y, int w, int h, u32 code, u32 attr)
 		idx  = spr_insert_sprite(key);
 		offs = (*read_cache)(code << 7);
 		gfx  = (u32 *)&memory_region_gfx3[offs];
-		pal  = &video_palette16[(attr & 0xff00) >> 4];
+		pal  = &video_palette[(attr & 0xff00) >> 4];
 		dst  = SWIZZLED_16x16(tex_spr1, idx);
 
 		while (lines--)
@@ -835,11 +769,11 @@ void blit_draw_spr(int x, int y, int w, int h, u32 code, u32 attr)
 	if (vertices[0].v & 512)
 	{
 		vertices[0].v = vertices[1].v &= 511;
-		vertices[0].z = vertices[1].z = 1;
+		vertices[0].z = 1;
 	}
 	else
 	{
-		vertices[0].z = vertices[1].z = 0;
+		vertices[0].z = 0;
 	}
 
 	attr ^= 0x03;

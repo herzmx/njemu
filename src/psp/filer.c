@@ -76,7 +76,7 @@ static int nfiles;
 static int load_zipname(void)
 {
 	FILE *fp;
-	char path[MAX_PATH], buf[128];
+	char path[MAX_PATH], buf[256];
 	int size, found = 0;
 
 	sprintf(path, "%szipnamej." EXT, launchDir);
@@ -108,9 +108,9 @@ static int load_zipname(void)
 		char *title;
 		char *flag;
 
-		memset(buf, 0, 128);
+		memset(buf, 0, 256);
 
-		if (!fgets(buf, 127, fp)) break;
+		if (!fgets(buf, 255, fp)) break;
 
 		linebuf = strtok(buf, "\r\n");
 
@@ -283,6 +283,9 @@ static void getDir(const char *path)
 
 		if (dir.d_stat.st_attr == FIO_SO_IFDIR)
 		{
+#if (EMU_SYSTEM == MVS)
+			if (stricmp(dir.d_name, "memcard") == 0) continue;
+#endif
 			if (stricmp(dir.d_name, "cache") == 0) continue;
 			if (stricmp(dir.d_name, "config") == 0) continue;
 			if (stricmp(dir.d_name, "snap") == 0) continue;
@@ -546,6 +549,9 @@ void file_browser(void)
 	checkDir("config");
 	checkDir("nvram");
 	checkDir("snap");
+#if (EMU_SYSTEM == MVS)
+	checkDir("memcard");
+#endif
 #ifdef SAVE_STATE
 	checkDir("state");
 #endif
@@ -587,6 +593,7 @@ void file_browser(void)
 
 			free_zipname();
 			set_cpu_clock(psp_cpuclock);
+
 #ifdef SOUND_TEST
 			if (sound_test)
 				soundtest_main();
@@ -772,6 +779,7 @@ void file_browser(void)
 		else if (pad_pressed(PSP_CTRL_LTRIGGER))
 		{
 			strcpy(game_dir, curr_dir);
+			*strrchr(game_dir, '/') = '\0';
 			bios_select(0);
 			update = 1;
 		}

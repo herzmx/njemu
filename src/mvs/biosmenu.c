@@ -35,6 +35,7 @@ const char *bios_name[BIOS_MAX] =
 	"Unibios MVS (Hack, Ver. 2.0)",
 	"Unibios MVS (Hack, Ver. 2.1)",
 	"Unibios MVS (Hack, Ver. 2.2)",
+//	"Unibios MVS (Hack, Ver. 2.3)",
 
 	"Debug MVS (Hack?)"
 };
@@ -61,6 +62,7 @@ const u32 bios_crc[BIOS_MAX] =
 	0x0c12c2ad,	// Unibios V2.0
 	0x8dabf76b,	// Unibios V2.1
 	0x2d50996a,	// Unibios V2.2
+//	0x00000000,	// Unibios V2.3
 
 	0x698ebb7d	// Debug BIOS
 };
@@ -85,6 +87,7 @@ const u32 bios_patch_address[BIOS_MAX] =
 	0x000000,	// Unibios V2.0
 	0x000000,	// Unibios V2.1
 	0x000000,	// Unibios V2.2
+//	0x000000,	// Unibios V2.3
 	0x000000	// Debug BIOS
 };
 

@@ -71,6 +71,15 @@ static int scanline;
 
 
 /******************************************************************************
+	プロトタイプ
+******************************************************************************/
+
+void (*timer_update_cpu)(void);
+static void timer_update_cpu_normal(void);
+static void timer_update_cpu_raster(void);
+
+
+/******************************************************************************
 	ローカル関数
 ******************************************************************************/
 
@@ -144,6 +153,19 @@ void timer_reset(void)
 	cpu[CPU_Z80].cycles    = 0;
 	cpu[CPU_Z80].suspended = 0;
 	cpu[CPU_Z80].cycles_per_usec = 4;
+}
+
+
+/*------------------------------------------------------
+	CPU更新ハンドラを設定
+------------------------------------------------------*/
+
+void timer_set_update_handler(void)
+{
+	if (neogeo_driver_type == NORMAL)
+		timer_update_cpu = timer_update_cpu_normal;
+	else
+		timer_update_cpu = timer_update_cpu_raster;
 }
 
 
@@ -249,20 +271,10 @@ int timer_getscanline(void)
 
 
 /*------------------------------------------------------
-	現在のフレームを取得
-------------------------------------------------------*/
-
-u32 timer_getcurrentframe(void)
-{
-	return current_frame;
-}
-
-
-/*------------------------------------------------------
 	CPUを更新
 ------------------------------------------------------*/
 
-void timer_update_cpu(void)
+static void timer_update_cpu_normal(void)
 {
 	int i, time;
 
@@ -293,8 +305,8 @@ void timer_update_cpu(void)
 
 		if (Loop != LOOP_EXEC) return;
 
-		for (i = 0; i < MAX_CPU; i++)
-			cpu_execute(i);
+		cpu_execute(CPU_M68000);
+		cpu_execute(CPU_Z80);
 
 		frame_base += timer_ticks;
 		timer_left -= timer_ticks;
@@ -315,6 +327,8 @@ void timer_update_cpu(void)
 		}
 	}
 
+	if (!skip_this_frame()) neogeo_screenrefresh();
+
 	current_frame++;
 }
 
@@ -323,7 +337,7 @@ void timer_update_cpu(void)
 	CPUを更新 (ラスタドライバ用)
 ------------------------------------------------------*/
 
-void timer_update_cpu_raster(void)
+static void timer_update_cpu_raster(void)
 {
 	int i, time;
 
@@ -357,8 +371,8 @@ void timer_update_cpu_raster(void)
 
 			if (Loop != LOOP_EXEC) return;
 
-			for (i = 0; i < MAX_CPU; i++)
-				cpu_execute(i);
+			cpu_execute(CPU_M68000);
+			cpu_execute(CPU_Z80);
 
 			frame_base += timer_ticks;
 			timer_left -= timer_ticks;
@@ -379,6 +393,8 @@ void timer_update_cpu_raster(void)
 				timer[i].expire -= 1000000;
 		}
 	}
+
+	if (!skip_this_frame()) neogeo_raster_screenrefresh();
 
 	current_frame++;
 }

@@ -153,12 +153,12 @@ READ16_HANDLER( cps1_output_r )
 {
 	offset &= 0x7f;
 
-	switch (offset << 1)
+	switch (offset)
 	{
-	case CPS2_PROT_RESULT_LO:
+	case CPS2_PROT_RESULT_LO/2:
 		return (cps1_port(CPS2_PROT_FACTOR1) * cps1_port(CPS2_PROT_FACTOR2)) & 0xffff;
 
-	case CPS2_PROT_RESULT_HI:
+	case CPS2_PROT_RESULT_HI/2:
 		return (cps1_port(CPS2_PROT_FACTOR1) * cps1_port(CPS2_PROT_FACTOR2)) >> 16;
 	}
 
@@ -170,14 +170,14 @@ WRITE16_HANDLER( cps1_output_w )
 	offset &= 0x7f;
 	data = COMBINE_DATA(&cps1_output[offset]);
 
-	switch (offset << 1)
+	switch (offset)
 	{
-	case CPS2_SCANLINE1:
+	case CPS2_SCANLINE1/2:
 		cps1_port(CPS2_SCANLINE1) &= 0x1ff;
 		scanline1 = data & 0x1ff;
 		break;
 
-	case CPS2_SCANLINE2:
+	case CPS2_SCANLINE2/2:
 		cps1_port(CPS2_SCANLINE2) &= 0x1ff;
 		scanline2 = data & 0x1ff;
 		break;

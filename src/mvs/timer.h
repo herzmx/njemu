@@ -34,7 +34,10 @@
 
 #define TIMER_CALLBACK(name)	void name(int param)
 
+extern void (*timer_update_cpu)(void);
+
 void timer_reset(void);
+void timer_set_update_handler(void);
 void timer_suspend_cpu(int cpunum, int state, int reason);
 int timer_enable(int which, int enable);
 void timer_adjust(int which, int duration, int param, void (*callback)(int raram));
@@ -42,9 +45,6 @@ void timer_set(int which, int duration, int param, void (*callback)(int param));
 float timer_get_time(void);
 float timer_timeelapsed(void);
 int timer_getscanline(void);
-u32 timer_getcurrentframe(void);
-void timer_update_cpu(void);
-void timer_update_cpu_raster(void);
 #ifdef SOUND_TEST
 void timer_update_subcpu(void);
 #endif

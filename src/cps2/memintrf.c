@@ -133,6 +133,7 @@ static void error_rom(const char *rom_name)
 }
 
 
+
 /******************************************************************************
 	ROM“Ç‚Ýž‚Ý
 ******************************************************************************/
@@ -217,6 +218,8 @@ static int load_rom_cpu2(void)
 
 static int load_rom_gfx1(void)
 {
+	int fd, found = 0;
+
 	msg_printf("Loading cache information data...\n");
 
 	gfx_total_elements[TILE08] = (memory_length_gfx1 - 0x800000) >> 6;
@@ -242,37 +245,60 @@ static int load_rom_gfx1(void)
 		return 0;
 	}
 
-	if (cachefile_open("tile8_usage") == -1)
+	if ((fd = cachefile_open(NULL)) >= 0)
 	{
-		error_file("tile8_usage (scroll1 pen usage)");
-		return 0;
-	}
-	file_read(gfx_pen_usage[TILE08], gfx_total_elements[TILE08]);
-	file_close();
+		char version_str[8];
 
-	if (cachefile_open("tile16_usage") == -1)
-	{
-		error_file("tile16_usage (scroll2 / object pen usage)");
-		return 0;
-	}
-	file_read(gfx_pen_usage[TILE16], gfx_total_elements[TILE16]);
-	file_close();
+		sceIoRead(fd, version_str, 8);
 
-	if (cachefile_open("tile32_usage") == -1)
-	{
-		error_file("tile32_usage (scroll3 pen usage)");
-		return 0;
+		if (strcmp(version_str, "CPS2V08") == 0)
+		{
+			sceIoRead(fd, gfx_pen_usage[TILE08], gfx_total_elements[TILE08]);
+			sceIoRead(fd, gfx_pen_usage[TILE16], gfx_total_elements[TILE16]);
+			sceIoRead(fd, gfx_pen_usage[TILE32], gfx_total_elements[TILE32]);
+			sceIoRead(fd, block_offset, 0x200 * sizeof(u32));
+			found = 1;
+		}
+		else
+		{
+			msg_printf("version strings error\n");
+		}
+		sceIoClose(fd);
 	}
-	file_read(gfx_pen_usage[TILE32], gfx_total_elements[TILE32]);
-	file_close();
+	if (!found)
+	{
+		if (cachefile_open("tile8_usage") == -1)
+		{
+			error_file("tile8_usage (scroll1 pen usage)");
+			return 0;
+		}
+		file_read(gfx_pen_usage[TILE08], gfx_total_elements[TILE08]);
+		file_close();
 
-	if (cachefile_open("block_empty") == -1)
-	{
-		error_file("block_empty (cache block skip flags)");
-		return 0;
+		if (cachefile_open("tile16_usage") == -1)
+		{
+			error_file("tile16_usage (scroll2 / object pen usage)");
+			return 0;
+		}
+		file_read(gfx_pen_usage[TILE16], gfx_total_elements[TILE16]);
+		file_close();
+
+		if (cachefile_open("tile32_usage") == -1)
+		{
+			error_file("tile32_usage (scroll3 pen usage)");
+			return 0;
+		}
+		file_read(gfx_pen_usage[TILE32], gfx_total_elements[TILE32]);
+		file_close();
+
+		if (cachefile_open("block_empty") == -1)
+		{
+			error_file("block_empty (cache block skip flags)");
+			return 0;
+		}
+		file_read(block_empty, MAX_CACHE_BLOCKS);
+		file_close();
 	}
-	file_read(block_empty, MAX_CACHE_BLOCKS);
-	file_close();
 
 	memory_length_gfx1 = driver->cache_size;
 

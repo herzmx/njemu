@@ -60,17 +60,6 @@ typedef void *unzFile;
 #define UNZ_INTERNALERROR       (-104)
 #define UNZ_CRCERROR            (-105)
 
-/* tm_unz contain date/time info */
-typedef struct tm_unz_s 
-{
-	uInt tm_sec;            /* seconds after the minute - [0,59] */
-	uInt tm_min;            /* minutes after the hour - [0,59] */
-	uInt tm_hour;           /* hours since midnight - [0,23] */
-	uInt tm_mday;           /* day of the month - [1,31] */
-	uInt tm_mon;            /* months since January - [0,11] */
-	uInt tm_year;           /* years - [1980..2044] */
-} tm_unz;
-
 /* unz_global_info structure contain global data about the ZIPfile
    These data comes from the end of central dir */
 typedef struct unz_global_info_s
@@ -99,21 +88,8 @@ typedef struct unz_file_info_s
     uLong disk_num_start;       /* disk number start               2 bytes */
     uLong internal_fa;          /* internal file attributes        2 bytes */
     uLong external_fa;          /* external file attributes        4 bytes */
-
-    tm_unz tmu_date;
 } unz_file_info;
 
-
-
-int unzStringFileNameCompare(const char* fileName1, const char* fileName2, int iCaseSensitivity);
-/*
-   Compare two filename (fileName1,fileName2).
-   If iCaseSenisivity = 1, comparision is case sensitivity (like strcmp)
-   If iCaseSenisivity = 2, comparision is not case sensitivity (like strcmpi
-								or strcasecmp)
-   If iCaseSenisivity = 0, case sensitivity is defaut of your operating system
-	(like 1 on Unix, 2 on Windows)
-*/
 
 
 unzFile unzOpen(const char *path);
@@ -134,20 +110,6 @@ int unzClose(unzFile file);
     these files MUST be closed with unzipCloseCurrentFile before call unzipClose.
   return UNZ_OK if there is no problem. */
 
-int unzGetGlobalInfo(unzFile file, unz_global_info *pglobal_info);
-/*
-  Write info about the ZipFile in the *pglobal_info structure.
-  No preparation of the structure is needed
-  return UNZ_OK if there is no problem. */
-
-
-int unzGetGlobalComment(unzFile file, char *szComment, uLong uSizeBuf);
-/*
-  Get the global comment string of the ZipFile, in the szComment buffer.
-  uSizeBuf is the size of the szComment buffer.
-  return the number of byte copied or an error code <0
-*/
-
 
 /******************************************************************************/
 /* Unzip package allow you browse the directory of the zipfile */
@@ -165,7 +127,7 @@ int unzGoToNextFile(unzFile file);
   return UNZ_END_OF_LIST_OF_FILE if the actual file was the latest.
 */
 
-int unzLocateFile(unzFile file, const char *szFileName, int iCaseSensitivity);
+int unzLocateFile(unzFile file, const char *szFileName);
 /*
   Try locate the file szFileName in the zipfile.
   For the iCaseSensitivity signification, see unzStringFileNameCompare
@@ -179,11 +141,7 @@ int unzLocateFile(unzFile file, const char *szFileName, int iCaseSensitivity);
 int unzGetCurrentFileInfo(unzFile file,
 					     unz_file_info *pfile_info,
 					     char *szFileName,
-					     uLong fileNameBufferSize,
-					     void *extraField,
-					     uLong extraFieldBufferSize,
-					     char *szComment,
-					     uLong commentBufferSize);
+					     uLong fileNameBufferSize);
 /*
   Get Info about the current file
   if pfile_info!=NULL, the *pfile_info structure will contain somes info about
@@ -224,30 +182,6 @@ int unzReadCurrentFile(unzFile file, void *buf, unsigned len);
   return 0 if the end of file was reached
   return <0 with error code if there is an error
     (UNZ_ERRNO for IO error, or zLib error for uncompress error)
-*/
-
-z_off_t unztell(unzFile file);
-/*
-  Give the current position in uncompressed data
-*/
-
-int unzeof(unzFile file);
-/*
-  return 1 if the end of file was reached, 0 elsewhere 
-*/
-
-int unzGetLocalExtrafield(unzFile file, void *buf, unsigned len);
-/*
-  Read extra field from the current file (opened by unzOpenCurrentFile)
-  This is the local-header version of the extra field (sometimes, there is
-    more info in the local-header version than in the central-header)
-
-  if buf==NULL, it return the size of the local extra field
-
-  if buf!=NULL, len is the size of the buffer, the extra header is copied in
-	buf.
-  the return value is the number of bytes copied in buf, or (if <0) 
-	the error code
 */
 
 #ifdef __cplusplus

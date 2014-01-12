@@ -143,6 +143,7 @@ int cachefile_open(const char *fname)
 {
 	char path[MAX_PATH];
 
+#if (EMU_SYSTEM == MVS)
 	sprintf(path, "%s/%s_cache", cache_dir, game_name);
 	zip_open(path);
 	if ((rom_fd = zopen(fname)) != -1)
@@ -158,6 +159,26 @@ int cachefile_open(const char *fname)
 		cache_type = CACHE_RAWFILE;
 		return rom_fd;
 	}
+#else
+	if (!fname)
+	{
+		sprintf(path, "%s/%s.cache", cache_dir, game_name);
+		if ((rom_fd = sceIoOpen(path, PSP_O_RDONLY, 0777)) >= 0)
+		{
+			cache_type = CACHE_RAWFILE;
+			return rom_fd;
+		}
+
+		sprintf(path, "%s/%s.cache", cache_dir, cache_parent_name);
+		if ((rom_fd = sceIoOpen(path, PSP_O_RDONLY, 0777)) >= 0)
+		{
+			cache_type = CACHE_RAWFILE;
+			return rom_fd;
+		}
+
+		return -1;
+	}
+#endif
 
 	sprintf(path, "%s/%s_cache.zip", cache_dir, game_name);
 	if (zip_open(path) != -1)

@@ -2,7 +2,7 @@
 
 	vidhrdw.c
 
-	NEOGEO / NEOGEO CDZ video emulation
+	MVSビデオエミュレーション
 
 ***************************************************************************/
 
@@ -20,12 +20,11 @@ extern u16 *neogeo_paletteram16;
 extern u16 neogeo_palettebank16[2][0x2000 / 2];
 extern u32 neogeo_palette_index;
 
-extern u16 *video_palette16;
-extern u16 video_palettebank16[2][0x2000 / 2];
+extern u16 *video_palette;
+extern u16 video_palettebank[2][0x2000 / 2];
 extern u16 video_clut16[0x8000];
 
-extern u8  *video_fix_usage[2];
-extern u8  *video_spr_usage;
+extern u8  *gfx_pen_usage[3];
 
 extern int fix_bank;
 extern u8  *fix_usage;
@@ -39,8 +38,6 @@ void neogeo_video_reset(void);
 void neogeo_screenrefresh(void);
 void neogeo_partial_screenrefresh(int current_line);
 void neogeo_raster_screenrefresh(void);
-
-void video_check_initialize(void);
 
 #ifdef SAVE_STATE
 STATE_SAVE( video );

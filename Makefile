@@ -8,8 +8,8 @@
 # Configration
 #------------------------------------------------------------------------------
 
-BUILD_CPS1PSP = 1
-#BUILD_CPS2PSP = 1
+#BUILD_CPS1PSP = 1
+BUILD_CPS2PSP = 1
 #BUILD_MVSPSP = 1
 
 SAVE_STATE = 1
@@ -23,18 +23,20 @@ RELEASE = 1
 #------------------------------------------------------------------------------
 
 VERSION_MAJOR = 1
-VERSION_MINOR = 2
+VERSION_MINOR = 5
 VERSION_BUILD = 1
 
 ifdef BUILD_CPS1PSP
 BUILD_CPS2PSP=
 BUILD_MVSPSP=
+SOUND_TEST=
 TARGET = CPS1PSP
 PSP_EBOOT_ICON = data/cps1.png
 endif
 
 ifdef BUILD_CPS2PSP
 BUILD_MVSPSP=
+SOUND_TEST=
 TARGET = CPS2PSP
 PSP_EBOOT_ICON = data/cps2.png
 endif
@@ -75,17 +77,6 @@ CDEFS = -DINLINE='static __inline' \
 	-DVERSION_BUILD=$(VERSION_BUILD) \
 	-DPSP
 
-ifdef BUILD_CPS1PSP
-BUILD_CPS2PSP =
-BUILD_MVSPSP =
-SOUND_TEST =
-endif
-
-ifdef BUILD_CPS2PSP
-BUILD_MVSPSP =
-SOUND_TEST =
-endif
-
 ifdef KERNEL_MODE
 CDEFS += -DKERNEL_MODE=1
 endif
@@ -100,6 +91,8 @@ endif
 
 ifdef RELEASE
 CDEFS += -DRELEASE=1
+else
+CDEFS += -DRELEASE=0
 endif
 
 #------------------------------------------------------------------------------
