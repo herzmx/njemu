@@ -31,11 +31,6 @@ int  YM2610Write(int addr, u8 value);
 u8   YM2610Read(int addr);
 int  YM2610TimerOver(int channel);
 
-void YM2610Update(int p);
-#ifdef SOUND_TEST
-void YM2610Update_SoundTest(int p);
-#endif
-
 #ifdef SAVE_STATE
 STATE_SAVE( ym2610 );
 STATE_LOAD( ym2610 );

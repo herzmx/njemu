@@ -76,8 +76,10 @@ static int ini_version;
 static cfg_type default_options[] =
 {
 	{ CFG_NONE,	"[System Settings]", },
-	{ CFG_INT,	"INIFileVersion",	&ini_version,	INIVERSION,	INIVERSION		},
-	{ CFG_INT,	"PSPClock",			&psp_cpuclock,	PSPCLOCK_333,PSPCLOCK_333	},
+	{ CFG_INT,	"INIFileVersion",	&ini_version,		INIVERSION,		INIVERSION		},
+	{ CFG_INT,	"PSPClock",			&psp_cpuclock,		PSPCLOCK_333,	PSPCLOCK_333	},
+	{ CFG_INT,	"PSPRefreshRate",	&psp_refreshrate,	0,				60000000		},
+	{ CFG_INT,	"PSPSampleRate",	&psp_samplerate,	0,				44100			},
 #if (EMU_SYSTEM == MVS)
 	{ CFG_NONE,	"[Emulation Settings]", },
 	{ CFG_INT,	"NeogeoBIOS",			&neogeo_bios, -1, BIOS_MAX-1 },
@@ -412,9 +414,9 @@ void load_settings(void)
 				*default_options[i].value = default_options[i].def;
 		}
 
-		remove(inifile_name);
-		delete_files("nvram","nv");
-		delete_files("config","ini");
+		sceIoRemove(inifile_name);
+		delete_files("nvram", "nv");
+		delete_files("config", "ini");
 
 		save_settings();
 	}

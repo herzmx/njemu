@@ -55,6 +55,7 @@ wonder3,Wonder 3 (Japan 910520)
 kod,The King of Dragons (World 910711)
 kodu,The King of Dragons (US 910910)
 kodj,The King of Dragons (Japan 910805)
+kodb,The King of Dragons (bootleg),GAME_NOTWORK|GAME_BOOTLEG
 captcomm,Captain Commando (World 911014)
 captcomu,Captain Commando (US 910928)
 captcomj,Captain Commando (Japan 911202)
@@ -66,6 +67,20 @@ sf2ceua,Street Fighter II' - Champion Edition (US 920313)
 sf2ceub,Street Fighter II' - Champion Edition (US 920513)
 sf2ceuc,Street Fighter II' - Champion Edition (US 920803)
 sf2cej,Street Fighter II' - Champion Edition (Japan 920513)
+sf2rb,Street Fighter II' - Champion Edition (Rainbow set 1),GAME_BOOTLEG
+sf2rb2,Street Fighter II' - Champion Edition (Rainbow set 2),GAME_BOOTLEG
+sf2red,Street Fighter II' - Champion Edition (Red Wave),GAME_BOOTLEG
+sf2v004,Street Fighter II! - Champion Edition (V004),GAME_NOT_WORK|GAME_BOOTLEG
+sf2accp2,Street Fighter II' - Champion Edition (Accelerator Pt.II),GAME_BOOTLEG
+sf2m1,Street Fighter II' - Champion Edition (M1),GAME_NOT_WORK|GAME_BOOTLEG
+sf2m2,Street Fighter II' - Champion Edition (M2),GAME_NOT_WORK|GAME_BOOTLEG
+sf2m3,Street Fighter II' - Champion Edition (M3),GAME_NOT_WORK|GAME_BOOTLEG
+sf2m4,Street Fighter II' - Champion Edition (M4),GAME_BOOTLEG
+sf2m5,Street Fighter II' - Champion Edition (M5),GAME_BOOTLEG
+sf2m6,Street Fighter II' - Champion Edition (M6),GAME_BOOTLEG
+sf2m7,Street Fighter II' - Champion Edition (M7),GAME_BOOTLEG
+sf2yyc,Street Fighter II' - Champion Edition (YYC),GAME_BOOTLEG
+sf2koryu,Street Fighter II' - Champion Edition (Kouryu),GAME_BOOTLEG
 varth,Varth - Operation Thunderstorm (World 920714)
 varthr1,Varth - Operation Thunderstorm (World 920612)
 varthu,Varth - Operation Thunderstorm (US 920612)

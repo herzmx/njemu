@@ -63,8 +63,4 @@ extern volatile int Loop;
 extern volatile int Sleep;
 extern char launchDir[MAX_PATH];
 
-#ifdef KERNEL_MODE
-void main_thread_set_priority(int priority);
-#endif
-
 #endif /* PSP_MAIN_H */

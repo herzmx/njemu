@@ -46,8 +46,6 @@ static QSOUND_SRC_SAMPLE *qsound_sample_rom;
 
 static float qsound_frq_ratio;
 static int qsound_data;
-static int qsound_samplerate;
-static int qsound_sample_length;
 static int qsound_resample_count;
 static int qsound_stream_type;
 static int qsound_volume_shift;
@@ -61,9 +59,6 @@ static const int ALIGN_DATA qsound_pan_table[33] =
 	256
 };
 
-static QSOUND_SAMPLE_MIX ALIGN_DATA qsound_buffer[2][SOUND_SAMPLES];
-static void  (*qsound_update_stream)(void);
-
 
 /******************************************************************************
 	ローカル関数
@@ -73,9 +68,11 @@ static void  (*qsound_update_stream)(void);
 	サウンドストリーム生成 (通常)
 --------------------------------------------------------*/
 
-static void qsound_update_stream_normal(void)
+static void qsound_update_normal(s32 *buffer, int length)
 {
 	int ch;
+
+	memset(buffer, 0, length << 3);
 
 	for (ch = 0; ch < QSOUND_CHANNELS; ch++)
 	{
@@ -84,13 +81,12 @@ static void qsound_update_stream_normal(void)
 		if (pC->key)
 		{
 			int i;
-			QSOUND_SRC_SAMPLE *pST  = qsound_sample_rom + pC->bank;
-			QSOUND_SAMPLE_MIX *bufL = qsound_buffer[0];
-			QSOUND_SAMPLE_MIX *bufR = qsound_buffer[1];
-			QSOUND_SAMPLE_MIX rvol  = (pC->rvol * pC->vol) >> qsound_volume_shift;
-			QSOUND_SAMPLE_MIX lvol  = (pC->lvol * pC->vol) >> qsound_volume_shift;
+			QSOUND_SRC_SAMPLE *pST = qsound_sample_rom + pC->bank;
+			QSOUND_SAMPLE_MIX *buf = buffer;
+			QSOUND_SAMPLE_MIX rvol = (pC->rvol * pC->vol) >> qsound_volume_shift;
+			QSOUND_SAMPLE_MIX lvol = (pC->lvol * pC->vol) >> qsound_volume_shift;
 
-			for (i = 0; i < qsound_sample_length; i++)
+			for (i = 0; i < length; i++)
 			{
 				int count = (pC->offset) >> 16;
 
@@ -113,8 +109,8 @@ static void qsound_update_stream_normal(void)
 					pC->lastdt = pST[pC->address];
 				}
 
-				*bufL++ += (pC->lastdt * lvol) >> 6;
-				*bufR++ += (pC->lastdt * rvol) >> 6;
+				*buf++ += (pC->lastdt * lvol) >> 6;
+				*buf++ += (pC->lastdt * rvol) >> 6;
 				pC->offset += pC->pitch;
 			}
 		}
@@ -126,9 +122,11 @@ static void qsound_update_stream_normal(void)
 	サウンドストリーム生成 (リサンプリング処理)
 --------------------------------------------------------*/
 
-static void qsound_update_stream_resample(void)
+static void qsound_update_resample(s32 *buffer, int length)
 {
 	int ch;
+
+	memset(buffer, 0, length << 3);
 
 	for (ch = 0; ch < QSOUND_CHANNELS; ch++)
 	{
@@ -137,13 +135,12 @@ static void qsound_update_stream_resample(void)
 		if (pC->key)
 		{
 			int i, j;
-			QSOUND_SRC_SAMPLE *pST  = qsound_sample_rom + pC->bank;
-			QSOUND_SAMPLE_MIX *bufL = qsound_buffer[0];
-			QSOUND_SAMPLE_MIX *bufR = qsound_buffer[1];
-			QSOUND_SAMPLE_MIX rvol  = (pC->rvol * pC->vol) >> qsound_volume_shift;
-			QSOUND_SAMPLE_MIX lvol  = (pC->lvol * pC->vol) >> qsound_volume_shift;
+			QSOUND_SRC_SAMPLE *pST = qsound_sample_rom + pC->bank;
+			QSOUND_SAMPLE_MIX *buf = buffer;
+			QSOUND_SAMPLE_MIX rvol = (pC->rvol * pC->vol) >> qsound_volume_shift;
+			QSOUND_SAMPLE_MIX lvol = (pC->lvol * pC->vol) >> qsound_volume_shift;
 
-			for (i = 0; i < qsound_sample_length; i++)
+			for (i = 0; i < length; i++)
 			{
 				for (j = 0; j < qsound_resample_count; j++)
 				{
@@ -174,8 +171,8 @@ static void qsound_update_stream_resample(void)
 					pC->offset += pC->pitch;
 				}
 
-				*bufL++ += (pC->lastdt * lvol) >> 6;
-				*bufR++ += (pC->lastdt * rvol) >> 6;
+				*buf++ += (pC->lastdt * lvol) >> 6;
+				*buf++ += (pC->lastdt * rvol) >> 6;
 
 				if (!pC->key) break;
 			}
@@ -194,9 +191,8 @@ static void qsound_update_stream_resample(void)
 
 void qsound_sh_start(void)
 {
-	sound->stack    = 0x1000;
-	sound->stereo   = 1;
-	sound->callback = qsound_update;
+	sound->stack  = 0x1000;
+	sound->stereo = 1;
 
 	qsound_sample_rom   = (QSOUND_SRC_SAMPLE *)memory_region_sound1;
 	qsound_stream_type  = 0;
@@ -240,7 +236,7 @@ void qsound_sh_start(void)
 	||	!strcmp(driver->name, "spf2t")
 	||	!strcmp(driver->name, "gigawing")
 	||	!strcmp(driver->name, "mpangj")
-	||	!strcmp(driver->name, "pzloop2j"))
+	||	!strcmp(driver->name, "puzloop2"))
 	{
 		qsound_volume_shift = 7;
 	}
@@ -266,7 +262,6 @@ void qsound_sh_stop(void)
 void qsound_sh_reset(void)
 {
 	memset(&qsound_channel, 0, sizeof(qsound_channel));
-	memset(qsound_buffer, 0, sizeof(qsound_buffer));
 	qsound_data = 0;
 }
 
@@ -277,22 +272,18 @@ void qsound_sh_reset(void)
 
 void qsound_set_samplerate(void)
 {
-	int samplerate = 44100;
+	int samplerate = PSP_SAMPLERATE;
 
-	qsound_samplerate = option_samplerate;
-
-	if (!qsound_stream_type || qsound_samplerate == 2)
+	if (!qsound_stream_type || option_samplerate == 2)
 	{
 		samplerate >>= (2 - option_samplerate);
-		qsound_update_stream = qsound_update_stream_normal;
+		sound->callback = qsound_update_normal;
 	}
 	else
 	{
-		qsound_resample_count = 1 << (2 - qsound_samplerate);
-		qsound_update_stream = qsound_update_stream_resample;
+		qsound_resample_count = 1 << (2 - option_samplerate);
+		sound->callback = qsound_update_resample;
 	}
-
-	qsound_sample_length = SOUND_SAMPLES >> (2 - qsound_samplerate);
 
 	qsound_frq_ratio = ((float)QSOUND_CLOCK / (float)QSOUND_CLOCKDIV) / (float)samplerate;
 	qsound_frq_ratio *= 16.0;
@@ -408,75 +399,6 @@ WRITE8_HANDLER( qsound_cmd_w )
 		if (qsound_data > 32) qsound_data = 32;
 		qsound_channel[ch].rvol = qsound_pan_table[qsound_data];
 		qsound_channel[ch].lvol = qsound_pan_table[32 - qsound_data];
-		break;
-	}
-}
-
-
-/******************************************************************************
-	ストリーム更新コールバック関数
-******************************************************************************/
-
-void qsound_update(int p)
-{
-	int i;
-	s16 *buffer = (s16 *)p;
-	QSOUND_SAMPLE_MIX lt, rt;
-
-	memset(qsound_buffer, 0, sizeof(qsound_buffer));
-
-	(*qsound_update_stream)();
-
-	switch (qsound_samplerate)
-	{
-	case 0:
-		for (i = 0; i < SOUND_SAMPLES >> 2; i++)
-		{
-			lt = qsound_buffer[0][i];
-			rt = qsound_buffer[1][i];
-
-			Limit(lt, MAXOUT, MINOUT);
-			Limit(rt, MAXOUT, MINOUT);
-
-			*buffer++ = lt;
-			*buffer++ = rt;
-			*buffer++ = lt;
-			*buffer++ = rt;
-			*buffer++ = lt;
-			*buffer++ = rt;
-			*buffer++ = lt;
-			*buffer++ = rt;
-		}
-		break;
-
-	case 1:
-		for (i = 0; i < SOUND_SAMPLES >> 1; i++)
-		{
-			lt = qsound_buffer[0][i];
-			rt = qsound_buffer[1][i];
-
-			Limit(lt, MAXOUT, MINOUT);
-			Limit(rt, MAXOUT, MINOUT);
-
-			*buffer++ = lt;
-			*buffer++ = rt;
-			*buffer++ = lt;
-			*buffer++ = rt;
-		}
-		break;
-
-	case 2:
-		for (i = 0; i < SOUND_SAMPLES; i++)
-		{
-			lt = qsound_buffer[0][i];
-			rt = qsound_buffer[1][i];
-
-			Limit(lt, MAXOUT, MINOUT);
-			Limit(rt, MAXOUT, MINOUT);
-
-			*buffer++ = lt;
-			*buffer++ = rt;
-		}
 		break;
 	}
 }

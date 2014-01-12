@@ -20,6 +20,7 @@ char date_str[16];
 char time_str[16];
 char stver_str[16];
 int  state_version;
+u8   *state_buffer;
 int  current_state_version;
 #if (EMU_SYSTEM == MVS)
 int  state_reload_bios;
@@ -31,6 +32,7 @@ int  state_reload_bios;
 ******************************************************************************/
 
 #if (EMU_SYSTEM == CPS1)
+static u8 state_buf[0x60000];
 static const char *current_version_str = "CPS1SV04";
 #elif (EMU_SYSTEM == CPS2)
 static const char *current_version_str = "CPS2SV08";
@@ -47,7 +49,7 @@ static const char *current_version_str = "MVSSV007";
 	サムネイルをワーク領域からファイルに保存
 ------------------------------------------------------*/
 
-static void save_thumbnail(FILE *fp)
+static void save_thumbnail(void)
 {
 	int x, y, w, h;
 	u16 *src = video_frame_addr(tex_frame, 152, 0);
@@ -67,7 +69,7 @@ static void save_thumbnail(FILE *fp)
 	{
 		for (x = 0; x < w; x++)
 		{
-			fwrite(&src[x], 1, 2, fp);
+			state_save_word(&src[x], 1);
 		}
 		src += BUF_WIDTH;
 	}
@@ -98,7 +100,7 @@ static void load_thumbnail(FILE *fp)
 	{
 		for (x = 0; x < w; x++)
 		{
-			fread(&dst[x], 1, 2, fp);
+			state_load_word(&dst[x], 1);
 		}
 		dst += BUF_WIDTH;
 	}
@@ -146,17 +148,31 @@ static void clear_thumbnail(void)
 
 int state_save(int slot)
 {
-	FILE *fp = NULL;
+	SceUID fd;
+	u32 size;
 	char path[MAX_PATH];
+	u8 *state_buffer_base;
 
 	sprintf(path, "%sstate/%s.sv%d", launchDir, game_name, slot);
-	remove(path);
+	sceIoRemove(path);
 
-	if ((fp = fopen(path, "wb")) != NULL)
+	if ((fd = sceIoOpen(path, PSP_O_WRONLY | PSP_O_CREAT, 0777)) >= 0)
 	{
 		pspTime nowtime;
 
 		sceRtcGetCurrentClockLocalTime(&nowtime);
+
+#if (EMU_SYSTEM == CPS1)
+		state_buffer_base = state_buffer = state_buf;
+#else
+		state_buffer_base = state_buffer = cache_alloc_state_buffer(STATE_BUFFER_SIZE);
+		if (!state_buffer)
+		{
+			sceIoClose(fd);
+			sceIoRemove(path);
+			goto error;
+		}
+#endif
 
 		// ヘッダ (0x20 bytes)
 		state_draw_progress(2);
@@ -165,48 +181,58 @@ int state_save(int slot)
 
 		// サムネイル (152 * 112 * 2 bytes)
 		state_draw_progress(3);
-		save_thumbnail(fp);
+		save_thumbnail();
 
 		// ステートデータ
 		state_draw_progress(4);
-		state_save_memory(fp);
-		state_save_m68000(fp);
-		state_save_z80(fp);
-		state_save_input(fp);
-		state_save_timer(fp);
-		state_save_driver(fp);
-		state_save_video(fp);
+		state_save_memory();
+		state_save_m68000();
+		state_save_z80();
+		state_save_input();
+		state_save_timer();
+		state_save_driver();
+		state_save_video();
 #if (EMU_SYSTEM == CPS1 || EMU_SYSTEM == CPS2)
-		state_save_coin(fp);
+		state_save_coin();
 #endif
 #if (EMU_SYSTEM == CPS1)
 		switch (machine_driver_type)
 		{
 		case MACHINE_qsound:
-			state_save_qsound(fp);
-			state_save_eeprom(fp);
+			state_save_qsound();
+			state_save_eeprom();
 			break;
 
 		case MACHINE_pang3:
-			state_save_eeprom(fp);
+			state_save_eeprom();
 
 		default:
-			state_save_ym2151(fp);
+			state_save_ym2151();
 			break;
 		}
 #elif (EMU_SYSTEM == CPS2)
-		state_save_qsound(fp);
-		state_save_eeprom(fp);
+		state_save_qsound();
+		state_save_eeprom();
 #elif (EMU_SYSTEM == MVS)
-		state_save_ym2610(fp);
-		state_save_pd4990a(fp);
+		state_save_ym2610();
+		state_save_pd4990a();
 #endif
-		fclose(fp);
+
+		size = (u32)state_buffer - (u32)state_buffer_base;
+		sceIoWrite(fd, state_buffer_base, size);
+		sceIoClose(fd);
+
+#if (EMU_SYSTEM != CPS1)
+		cache_free_state_buffer(STATE_BUFFER_SIZE);
+#endif
 
 		state_draw_progress(5);
 		return 1;
 	}
 
+#if (EMU_SYSTEM != CPS1)
+error:
+#endif
 	ui_popup("Error: Could not open file \"%s.sv%d\"", game_name, slot);
 
 	return 0;

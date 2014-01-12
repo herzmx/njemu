@@ -15,7 +15,7 @@
 
 void YM2151_sh_start(int type)
 {
-	int samplerate = 736 * 60;
+	int samplerate = PSP_SAMPLERATE;
 
 	samplerate >>= (2 - option_samplerate);
 

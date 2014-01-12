@@ -733,4 +733,48 @@ void cache_sleep(int flag)
 	}
 }
 
+
+#ifdef STATE_SAVE
+
+/*------------------------------------------------------
+	ステートセーブ領域を一時的に確保する
+------------------------------------------------------*/
+
+u8 *cache_alloc_state_buffer(u32 size)
+{
+	SceUID fd;
+	char path[MAX_PATH];
+
+	sprintf(path, "%sstate/cache.tmp", launchDir);
+
+	if ((fd = sceIoOpen(path, PSP_O_WRONLY|PSP_O_CREAT, 0777)) >= 0)
+	{
+		sceIoWrite(fd, GFX_MEMORY, size);
+		sceIoClose(fd);
+		return GFX_MEMORY;
+	}
+	return NULL;
+}
+
+/*------------------------------------------------------
+	セーブ領域を解放し、退避したキャッシュを戻す
+------------------------------------------------------*/
+
+void cache_free_state_buffer(u32 size)
+{
+	SceUID fd;
+	char path[MAX_PATH];
+
+	sprintf(path, "%sstate/cache.tmp", launchDir);
+
+	if ((fd = sceIoOpen(path, PSP_O_RDONLY, 0777)) >= 0)
+	{
+		sceIoRead(fd, GFX_MEMORY, size);
+		sceIoClose(fd);
+	}
+	sceIoRemove(path);
+}
+
+#endif /* STATE_SAVE */
+
 #endif /* USE_CACHE */

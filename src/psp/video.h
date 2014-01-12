@@ -85,6 +85,7 @@ extern void *draw_frame;
 extern void *work_frame;
 extern void *tex_frame;
 extern RECT full_rect;
+extern int psp_refreshrate;
 
 void video_wait_vsync(void);
 void video_flip_screen(int vsync);
@@ -103,5 +104,7 @@ void video_copy_rect(void *src, void *dst, RECT *src_rect, RECT *dst_rect);
 void video_copy_rect_flip(void *src, void *dst, RECT *src_rect, RECT *dst_rect);
 void video_copy_rect_alpha(void *src, void *dst, RECT *src_rect, RECT *dst_rect);
 void video_copy_rect_rotate(void *src, void *dst, RECT *src_rect, RECT *dst_rect);
+
+void video_calc_refreshrate(void);
 
 #endif /* PSP_VIDE_H */

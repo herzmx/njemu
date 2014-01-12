@@ -2748,14 +2748,8 @@ static void OPNB_ADPCMB_write(ADPCMB *adpcmb, int r, int v)
 
 /* YM2610(OPNB) */
 
-#ifdef SOUND_TEST
-static s16 mixing_buffer[2][746*2];
-#else
-static s16 mixing_buffer[2][SOUND_SAMPLES];
-#endif
-
 /* Generate samples for one of the YM2610s */
-static void YM2610Update_stream(int length)
+static void YM2610Update(s32 *buffer, int length)
 {
 	FM_OPN *OPN = &YM2610.OPN;
 	int i, j, outn;
@@ -2860,71 +2854,11 @@ static void YM2610Update_stream(int length)
 		lt += (out_fm[5] >> 1) & OPN->pan[10];
 		rt += (out_fm[5] >> 1) & OPN->pan[11];
 
-		lt *= 1.5;
-		rt *= 1.5;
-
-		Limit(lt, MAXOUT, MINOUT);
-		Limit(rt, MAXOUT, MINOUT);
-
-		mixing_buffer[0][i] = lt;
-		mixing_buffer[1][i] = rt;
+		*buffer++ = lt;
+		*buffer++ = rt;
 	}
 }
 
-
-#ifdef SOUND_TEST
-
-static int stream_pos;
-static int samples_generate;
-static int samples_left;
-
-static float samples_per_frame;
-static float samples_left_over;
-static u32   samples_this_frame;
-
-void YM2610Update_SoundTest(int p)
-{
-	int i, length;
-	s16 *buffer = (s16 *)p;
-
-	length = SOUND_SAMPLES;
-
-	if (samples_left)
-	{
-		for (i = 0; i < samples_left; i++)
-		{
-			*buffer++ = mixing_buffer[0][stream_pos];
-			*buffer++ = mixing_buffer[1][stream_pos];
-			stream_pos++;
-			length--;
-		}
-	}
-
-next_frame:
-	stream_pos = 0;
-	samples_generate = samples_this_frame;
-	samples_left = samples_this_frame;
-
-	samples_left_over += samples_per_frame;
-	samples_this_frame = (u32)samples_left_over;
-	samples_left_over -= (float)samples_this_frame;
-
-	timer_update_subcpu();
-	YM2610Update_stream(samples_left);
-
-	for (i = 0; i < samples_generate; i++)
-	{
-		*buffer++ = mixing_buffer[0][stream_pos];
-		*buffer++ = mixing_buffer[1][stream_pos];
-		stream_pos++;
-		samples_left--;
-
-		if (--length == 0) break;
-	}
-	if (length) goto next_frame;
-}
-
-#endif
 
 void YM2610Init(int clock, int rate,
 				void *pcmroma, int pcmsizea,
@@ -2933,23 +2867,7 @@ void YM2610Init(int clock, int rate,
 {
 	sound->stack    = 0x10000;
 	sound->stereo   = 1;
-#ifdef SOUND_TEST
-	if (sound_test)
-		sound->callback = YM2610Update_SoundTest;
-	else
-#endif
-		sound->callback = YM2610Update;
-
-#ifdef SOUND_TEST
-	stream_pos = 0;
-	samples_left = 0;
-
-	samples_per_frame  = 44100.0f * 264.0f / 15625.0f;
-
-	samples_left_over  = samples_per_frame;
-	samples_this_frame = (u32)samples_left_over;
-	samples_left_over -= (float)samples_this_frame;
-#endif
+	sound->callback = YM2610Update;
 
 	/* clear */
 	memset(&YM2610, 0, sizeof(YM2610));
@@ -3237,55 +3155,6 @@ int YM2610TimerOver(int ch)
 	return ST->irq;
 }
 
-
-void YM2610Update(int p)
-{
-	int i;
-	s16 *buffer = (s16 *)p;
-	s16 lt, rt;
-
-	switch (option_samplerate)
-	{
-	case 0:
-		YM2610Update_stream(SOUND_SAMPLES >> 2);
-		for (i = 0; i < SOUND_SAMPLES >> 2; i++)
-		{
-			lt = mixing_buffer[0][i];
-			rt = mixing_buffer[1][i];
-			*buffer++ = lt;
-			*buffer++ = rt;
-			*buffer++ = lt;
-			*buffer++ = rt;
-			*buffer++ = lt;
-			*buffer++ = rt;
-			*buffer++ = lt;
-			*buffer++ = rt;
-		}
-		break;
-
-	case 1:
-		YM2610Update_stream(SOUND_SAMPLES >> 1);
-		for (i = 0; i < SOUND_SAMPLES >> 1; i++)
-		{
-			lt = mixing_buffer[0][i];
-			rt = mixing_buffer[1][i];
-			*buffer++ = lt;
-			*buffer++ = rt;
-			*buffer++ = lt;
-			*buffer++ = rt;
-		}
-		break;
-
-	case 2:
-		YM2610Update_stream(SOUND_SAMPLES);
-		for (i = 0; i < SOUND_SAMPLES; i++)
-		{
-			*buffer++ = mixing_buffer[0][i];
-			*buffer++ = mixing_buffer[1][i];
-		}
-		break;
-	}
-}
 
 #ifdef SAVE_STATE
 

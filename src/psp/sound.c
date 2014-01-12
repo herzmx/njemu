@@ -20,7 +20,7 @@ static SceUID sound_thread;
 static int sound_volume;
 static int sound_enable;
 static int sound_pause;
-static s16 sound_buffer[2][SOUND_BUFFER_SIZE];
+static s16 ALIGN_DATA sound_buffer[2][SOUND_BUFFER_SIZE];
 
 static struct sound_t sound_info;
 
@@ -30,6 +30,7 @@ static struct sound_t sound_info;
 ******************************************************************************/
 
 struct sound_t *sound = &sound_info;
+int psp_samplerate;
 
 
 /******************************************************************************
@@ -58,7 +59,7 @@ static int sound_update_thread(SceSize args, void *argp)
 
 		if (sound_enable)
 		{
-			(*sound->callback)((int)sound_buffer[flip]);
+			(*sound->update)(sound_buffer[flip]);
 			sceAudioOutputPannedBlocking(sound_handle, sound_volume, sound_volume, (char *)sound_buffer[flip]);
 		}
 		else
@@ -142,8 +143,6 @@ void sound_thread_set_volume(void)
 
 int sound_thread_start(void)
 {
-	int priority = option_vsync ? 0x12 : 0x08;
-
 	sound_active = 0;
 	sound_thread = -1;
 	sound_handle = -1;
@@ -162,7 +161,7 @@ int sound_thread_start(void)
 		return 0;
 	}
 
-	sound_thread = sceKernelCreateThread("Sound thread", sound_update_thread, priority, sound->stack, 0, NULL);
+	sound_thread = sceKernelCreateThread("Sound thread", sound_update_thread, 0x08, sound->stack, 0, NULL);
 	if (sound_thread < 0)
 	{
 		fatalerror("Could not start sound thread.");
@@ -200,14 +199,4 @@ void sound_thread_stop(void)
 		sceAudioChRelease(sound_handle);
 		sound_handle = -1;
 	}
-}
-
-
-/*--------------------------------------------------------
-	サウンドスレッドプライオリティ変更
---------------------------------------------------------*/
-
-void sound_thread_set_priority(int priority)
-{
-	sceKernelChangeThreadPriority(sound_thread, priority);
 }

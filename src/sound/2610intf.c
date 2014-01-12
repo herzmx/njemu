@@ -40,12 +40,7 @@ void YM2610_sh_start(void)
 		pcmsizeb = memory_length_sound1;
 	}
 
-#ifdef SOUND_TEST
-	if (sound_test)
-		samplerate = 44100;
-	else
-#endif
-		samplerate = (736 * 60) >> (2 - option_samplerate);
+	samplerate = PSP_SAMPLERATE >> (2 - option_samplerate);
 	YM2610Init(8000000, samplerate, pcmbufa, pcmsizea, pcmbufb, pcmsizeb, TimerHandler, neogeo_sound_irq);
 }
 

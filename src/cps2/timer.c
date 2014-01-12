@@ -28,8 +28,7 @@ static TIMER ALIGN_DATA timer[MAX_TIMER];
 	ÉçÅ[ÉJÉãïœêî
 ******************************************************************************/
 
-static const float time_slice = 1000000.0 / FPS;
-
+static float time_slice;
 static float base_time;
 static float frame_base;
 static float timer_ticks;
@@ -105,6 +104,8 @@ void timer_reset(void)
 	base_time     = 0;
 	frame_base    = 0;
 	z80_suspended = 0;
+
+	time_slice = 1000000.0 / video_fps;
 
 	timer_set(QSOUND_INTERRUPT, TIME_IN_HZ(251), 0, qsound_interrupt);
 }

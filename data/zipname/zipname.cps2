@@ -96,6 +96,7 @@ ddsomur1,Dungeons & Dragons: Shadow over Mystara (US 960209)
 ddsomj,Dungeons & Dragons: Shadow over Mystara (Japan 960619)
 ddsomjr1,Dungeons & Dragons: Shadow over Mystara (Japan 960206)
 ddsoma,Dungeons & Dragons: Shadow over Mystara (Asia 960619)
+ddsomb,Dungeons & Dragons: Shadow over Mystara (Brazil 960223),GAME_NOT_WORK
 megaman2,Mega Man 2: The Power Fighters (US 960708)
 megamn2a,Mega Man 2: The Power Fighters (Asia 960708),GAME_NOT_WORK
 rckman2j,Rockman 2: The Power Fighters (Japan 960708)
@@ -171,12 +172,14 @@ sfz3jr1,Street Fighter Zero 3 (Japan 980727)
 sfz3jr2,Street Fighter Zero 3 (Japan 980629)
 sfz3a,Street Fighter Zero 3 (Asia 980904),GAME_NOT_WORK
 sfz3ar1,Street Fighter Zero 3 (Asia 980701)
+jyangoku,Jyangokushi: Haoh no Saihai (Japan 990527),GAME_NOT_WORK
 gigawing,Giga Wing (US 990222)
 gwingj,Giga Wing (Japan 990223)
 gwinga,Giga Wing (Asia 990222),GAME_NOT_WORK
 mmatrix,Mars Matrix: Hyper Solid Shooting (US 000412)
 mmatrixj,Mars Matrix: Hyper Solid Shooting (Japan 000412)
 mpangj,Mighty! Pang (Japan 001011)
+puzloop2,Puzz Loop 2 (Euro 010302)
 pzloop2j,Puzz Loop 2 (Japan 010205)
 choko,Choko (Japan 010820),GAME_NOT_WORK
 dimahoo,Dimahoo (US 000121)
@@ -186,6 +189,6 @@ gmahou,Great Mahou Daisakusen (Japan 000121)
 progear,Progear (US 010117)
 progearj,Progear no Arashi (Japan 010117)
 progeara,Progear (Asia 010117),GAME_NOT_WORK
-hsf2a,Hyper Street Fighter II: The Anniversary Edition (Asia 040202),GAME_NOT_WORK
+hsf2a,Hyper Street Fighter II: The Anniversary Edition (Asia 040202)
 hsf2j,Hyper Street Fighter II: The Anniversary Edition (Japan 031222),GAME_NOT_WORK
-hsf2d,Hyper Street Fighter II: The Anniversary Edition (Phoenix Edition / bootleg)
+hsf2d,Hyper Street Fighter II: The Anniversary Edition (Phoenix Edition / bootleg),GAME_BOOTLEG

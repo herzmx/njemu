@@ -55,8 +55,7 @@ static CPUINFO cpu[MAX_CPU];
 	ÉçÅ[ÉJÉãïœêî
 ******************************************************************************/
 
-static const float time_slice = 1000000.0 / FPS;
-
+static float time_slice;
 static float global_offset;
 static float base_time;
 static float frame_base;
@@ -149,6 +148,8 @@ void timer_reset(void)
 
 	active_cpu = CPU_NOTACTIVE;
 	memset(&timer, 0, sizeof(timer));
+
+	time_slice = 1000000.0 / video_fps;
 
 	cpu[CPU_M68000].execute   = m68000_execute;
 	cpu[CPU_M68000].icount    = &C68K.ICount;

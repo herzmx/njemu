@@ -687,13 +687,12 @@ void blit_finish_fix(void)
 
 	sceGuStart(GU_DIRECT, gulist);
 
-	vertices = (struct Vertex *)sceGuGetMemory(fix_num * sizeof(struct Vertex));
-	memcpy(vertices, vertices_fix, fix_num * sizeof(struct Vertex));
-
 	sceGuDrawBufferList(GU_PSM_5551, work_frame, BUF_WIDTH);
 	sceGuScissor(8, 16, 312, 240);
 	sceGuTexImage(0, 512, 512, BUF_WIDTH, tex_fix);
 
+	vertices = (struct Vertex *)sceGuGetMemory(fix_num * sizeof(struct Vertex));
+	memcpy(vertices, vertices_fix, fix_num * sizeof(struct Vertex));
 	sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, fix_num, 0, vertices);
 
 	sceGuFinish();
@@ -802,13 +801,12 @@ void blit_finish_spr(void)
 
 		sceGuStart(GU_DIRECT, gulist);
 
-		vertices = (struct Vertex *)sceGuGetMemory(spr_num[page] * sizeof(struct Vertex));
-
-		memcpy(vertices, vertices_spr[page], spr_num[page] * sizeof(struct Vertex));
-
 		sceGuDrawBufferList(GU_PSM_5551, work_frame, BUF_WIDTH);
 		sceGuScissor(8, clip_min_y, 312, clip_max_y);
 		sceGuTexImage(0, 512, 512, BUF_WIDTH, tex_spr[page]);
+
+		vertices = (struct Vertex *)sceGuGetMemory(spr_num[page] * sizeof(struct Vertex));
+		memcpy(vertices, vertices_spr[page], spr_num[page] * sizeof(struct Vertex));
 
 		sceGuEnable(GU_DEPTH_TEST);
 		sceGuDepthMask(GU_FALSE);

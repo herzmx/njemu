@@ -13,6 +13,7 @@
 #define MAX_ENTRY 1024
 
 #define GAME_NOT_WORK	1
+#define GAME_BOOTLEG	2
 
 
 /******************************************************************************
@@ -31,7 +32,7 @@ struct dirent
 	u32 type;
 	int icon;
 	int bad;
-	int not_work;
+	int flag;
 	char *title;
 	char name[128];
 };
@@ -124,8 +125,10 @@ static int load_zipname(void)
 		strcpy(zipname[zipname_num].title, title);
 		if (flag)
 		{
-			if (!strcmp(flag, "GAME_NOT_WORK"))
-				zipname[zipname_num].flag = GAME_NOT_WORK;
+			if (strstr(flag, "GAME_BOOTLEG"))
+				zipname[zipname_num].flag |= GAME_BOOTLEG;
+			if (strstr(flag, "GAME_NOT_WORK"))
+				zipname[zipname_num].flag |= GAME_NOT_WORK;
 		}
 		zipname_num++;
 	}
@@ -273,8 +276,11 @@ static void getDir(const char *path)
 			if (stricmp(ext, ".zip") == 0)
 			{
 				strcpy(files[nfiles].name, dir.d_name);
-				if ((files[nfiles].title = get_zipname(dir.d_name, &files[nfiles].not_work)) == NULL)
+				if ((files[nfiles].title = get_zipname(dir.d_name, &files[nfiles].flag)) == NULL)
 					files[nfiles].title = files[nfiles].name;
+#if RELEASE
+				if (files[nfiles].flag & GAME_BOOTLEG) continue;
+#endif
 				files[nfiles].type = 2;
 				files[nfiles].icon = ICON_ZIPFILE;
 				nfiles++;
@@ -341,7 +347,7 @@ static void getDir(const char *path)
 	{
 		if (files[i].icon == ICON_ZIPFILE)
 		{
-			if ((files[i].title = get_zipname(files[i].name, &files[i].not_work)) != NULL)
+			if ((files[i].title = get_zipname(files[i].name, &files[i].flag)) != NULL)
 			{
 				files[i].bad = 0;
 			}
@@ -354,7 +360,7 @@ static void getDir(const char *path)
 		else
 		{
 			files[i].title = files[i].name;
-			files[i].not_work = 0;
+			files[i].flag = 0;
 			files[i].bad = 0;
 		}
 	}
@@ -567,6 +573,8 @@ void file_browser(void)
  	checkStartupDir();
 	getDir(curr_dir);
 
+	video_calc_refreshrate();
+
 	pad_wait_press(3000);
 
 	load_background();
@@ -593,21 +601,13 @@ void file_browser(void)
 #endif
 
 			free_zipname();
-			set_cpu_clock(psp_cpuclock);
 
-#ifdef SOUND_TEST
-			if (sound_test)
-				soundtest_main();
-			else
-#endif
-				emu_main();
+			set_cpu_clock(psp_cpuclock);
+			emu_main();
 			set_cpu_clock(PSPCLOCK_222);
 
 			if (Loop)
 			{
-#ifdef KERNEL_MODE
-				main_thread_set_priority(0x11);
-#endif
 				load_zipname();
 				load_background();
 				getDir(curr_dir);
@@ -636,8 +636,10 @@ void file_browser(void)
 					small_icon(6, 38 + i * 20, UI_COLOR(UI_PAL_SELECT), files[sel].icon);
 					if (files[sel].bad)
 						uifont_print(36, 40 + i * 20, COLOR_RED, files[sel].title);
-					else if (files[sel].not_work)
+					else if (files[sel].flag & GAME_NOT_WORK)
 						uifont_print(36, 40 + i * 20, COLOR_GRAY, files[sel].title);
+					else if (files[sel].flag & GAME_BOOTLEG)
+						uifont_print(36, 40 + i * 20, COLOR_YELLOW, files[sel].title);
 					else
 						uifont_print(36, 40 + i * 20, UI_COLOR(UI_PAL_SELECT), files[sel].title);
 				}
@@ -646,8 +648,10 @@ void file_browser(void)
 					small_icon(6, 38 + i * 20, UI_COLOR(UI_PAL_NORMAL), files[top + i].icon);
 					if (files[top + i].bad)
 						uifont_print(36, 40 + i * 20, COLOR_DARKRED, files[top + i].title);
-					else if (files[top + i].not_work)
+					else if (files[top + i].flag & GAME_NOT_WORK)
 						uifont_print(36, 40 + i * 20, COLOR_DARKGRAY, files[top + i].title);
+					else if (files[top + i].flag & GAME_BOOTLEG)
+						uifont_print(36, 40 + i * 20, COLOR_DARKYELLOW, files[top + i].title);
 					else
 						uifont_print(36, 40 + i * 20, UI_COLOR(UI_PAL_NORMAL), files[top + i].title);
 				}
@@ -728,7 +732,7 @@ void file_browser(void)
 			case ICON_ZIPFILE:
 				if (!files[sel].bad)
 				{
-					if (files[sel].not_work)
+					if (files[sel].flag & GAME_NOT_WORK)
 					{
 						messagebox(MB_GAMENOTWORK);
 					}
@@ -753,21 +757,6 @@ void file_browser(void)
 			}
 			update = 1;
 		}
-#ifdef SOUND_TEST
-		else if (pad_pressed(PSP_CTRL_SQUARE))
-		{
-			if (files[sel].icon == ICON_ZIPFILE)
-			{
-				if (messagebox(MB_SOUNDTEST))
-				{
-					sound_test = 1;
-					run_emulation = 1;
-				}
-				update = 1;
-				pad_wait_clear();
-			}
-		}
-#endif
 		else if (pad_pressed(PSP_CTRL_SELECT))
 		{
 			if (files[sel].icon == ICON_FOLDER)

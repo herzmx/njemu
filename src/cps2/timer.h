@@ -21,7 +21,7 @@
 
 #define SEC_TO_USEC(secs)		((secs) * 1000000.0)
 
-#define USECS_PER_SCANLINE		((1000000.0/FPS)/(float)RASTER_LINES)
+#define USECS_PER_SCANLINE		((1000000.0/video_fps)/(float)RASTER_LINES)
 
 #define SUSPEND_REASON_HALT		0x0001
 #define SUSPEND_REASON_RESET	0x0002

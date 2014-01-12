@@ -1039,46 +1039,35 @@ int memory_init(void)
 	pad_wait_clear();
 	video_clear_screen();
 
-#ifdef SOUND_TEST
-	if (sound_test)
+	msg_screen_init("Load ROM");
+
+	load_gamecfg(game_name);
+
+	msg_printf("Checking BIOS...\n");
+
+	res = neogeo_bios;
+	if (res != -1)
 	{
-		msg_screen_init("Load ROM (Sound Test)");
+		res = file_open("neogeo", NULL, bios_crc[neogeo_bios], NULL);
+		file_close();
 	}
-	else
+	if (res == -1)
 	{
-#endif
+		pad_wait_clear();
+		video_clear_screen();
+		bios_select(1);
+		if (neogeo_bios == -1)
+		{
+			Loop = LOOP_BROWSER;
+			return 0;
+		}
+
+		pad_wait_clear();
+		video_clear_screen();
 		msg_screen_init("Load ROM");
-
-		load_gamecfg(game_name);
-
 		msg_printf("Checking BIOS...\n");
-
-		res = neogeo_bios;
-		if (res != -1)
-		{
-			res = file_open("neogeo", NULL, bios_crc[neogeo_bios], NULL);
-			file_close();
-		}
-		if (res == -1)
-		{
-			pad_wait_clear();
-			video_clear_screen();
-			bios_select(1);
-			if (neogeo_bios == -1)
-			{
-				Loop = LOOP_BROWSER;
-				return 0;
-			}
-
-			pad_wait_clear();
-			video_clear_screen();
-			msg_screen_init("Load ROM");
-			msg_printf("Checking BIOS...\n");
-			msg_printf("All NVRAM files are removed.\n");
-		}
-#ifdef SOUND_TEST
+		msg_printf("All NVRAM files are removed.\n");
 	}
-#endif
 
 	msg_printf("Checking ROM info...\n");
 
@@ -1101,165 +1090,146 @@ int memory_init(void)
 	else
 		msg_printf("ROM set \"%s\".\n", game_name);
 
-#ifdef SOUND_TEST
-	if (sound_test)
+	// Brezzasoft用の設定 - メモリを確保するので先に処理
+	if (machine_init_type == INIT_vliner || machine_init_type == INIT_jockeygp)
 	{
-		option_sound_enable = 1;	// Enable
-		option_samplerate   = 2;	// 44100Hz
-		option_sound_volume = 10;	// 100%
+		msg_printf("Allocate \"brza_sram\" memory.\n");
+		if ((brza_sram = (u16 *)malloc(0x2000)) == NULL)
+		{
+			msg_printf("ERROR: Could not allocate \"brza_sram\" memory.\n");
+			msg_printf("Press any button.\n");
+			pad_wait_press(PAD_WAIT_INFINITY);
+			Loop = LOOP_BROWSER;
+			return 0;
+		}
+		memset(brza_sram, 0, 0x2000);
+	}
+	else brza_sram = NULL;
 
-		disable_sound = 0;
-		neogeo_save_sound_flag = 0;
-		brza_sram = NULL;
+	if (load_rom_user1(0) == 0) return 0;
+	if (load_rom_cpu1() == 0) return 0;
+	if (load_rom_cpu2() == 0) return 0;
+	if (load_rom_sound1() == 0) return 0;
+	if (load_rom_sound2() == 0) return 0;
+	if (load_rom_gfx1() == 0) return 0;
+	if (load_rom_gfx2() == 0) return 0;
+	if (load_rom_gfx3() == 0) return 0;
 
-		if (load_rom_cpu2() == 0) return 0;
-		if (load_rom_sound1() == 0) return 0;
-		if (load_rom_sound2() == 0) return 0;
+	if (disable_sound)
+	{
+		msg_printf("This game only work without sound.\n");
+		neogeo_save_sound_flag = option_sound_enable;
+		option_sound_enable = 0;
 	}
 	else
-#endif
 	{
-		// Brezzasoft用の設定 - メモリを確保するので先に処理
-		if (machine_init_type == INIT_vliner || machine_init_type == INIT_jockeygp)
-		{
-			msg_printf("Allocate \"brza_sram\" memory.\n");
-			if ((brza_sram = (u16 *)malloc(0x2000)) == NULL)
-			{
-				msg_printf("ERROR: Could not allocate \"brza_sram\" memory.\n");
-				msg_printf("Press any button.\n");
-				pad_wait_press(PAD_WAIT_INFINITY);
-				Loop = LOOP_BROWSER;
-				return 0;
-			}
-			memset(brza_sram, 0, 0x2000);
-		}
-		else brza_sram = NULL;
-
-		if (load_rom_user1(0) == 0) return 0;
-		if (load_rom_cpu1() == 0) return 0;
-		if (load_rom_cpu2() == 0) return 0;
-		if (load_rom_sound1() == 0) return 0;
-		if (load_rom_sound2() == 0) return 0;
-		if (load_rom_gfx1() == 0) return 0;
-		if (load_rom_gfx2() == 0) return 0;
-		if (load_rom_gfx3() == 0) return 0;
-
-		if (disable_sound)
-		{
-			msg_printf("This game only work without sound.\n");
-			neogeo_save_sound_flag = option_sound_enable;
-			option_sound_enable = 0;
-		}
-		else
-		{
-			neogeo_save_sound_flag = 0;
-		}
-
-		// FIXバンクタイプ設定
-		switch (machine_init_type)
-		{
-		case INIT_garou:
-		case INIT_garouo:
-		case INIT_mslug4:
-		case INIT_mslug3:
-		case INIT_mslug3n:
-		case INIT_samsho5:
-		case INIT_samsh5sp:
-			neogeo_fix_bank_type = 1;
-			break;
-
-		case INIT_kof2000:
-		case INIT_kof2000n:
-		case INIT_matrim:
-		case INIT_svcpcb:
-		case INIT_svchaosa:
-		case INIT_kf2k3pcb:
-		case INIT_kof2003:
-			neogeo_fix_bank_type = 2;
-			break;
-
-		default:
-			neogeo_fix_bank_type = 0;
-			break;
-		}
-
-		switch (machine_init_type)
-		{
-		case INIT_fatfury2:
-			neogeo_protection_16_r = fatfury2_protection_16_r;
-			neogeo_protection_16_w = fatfury2_protection_16_w;
-			break;
-
-		case INIT_kof98:
-			neogeo_protection_16_r = neogeo_secondbank_16_r;
-			neogeo_protection_16_w = kof98_protection_16_w;
-			break;
-
-		case INIT_mslugx:
-			mslugx_install_protection();
-			neogeo_protection_16_r = neogeo_secondbank_16_r;
-			neogeo_protection_16_w = neogeo_secondbank_16_w;
-			break;
-
-		case INIT_kof99:
-			neogeo_protection_16_r = kof99_protection_16_r;
-			neogeo_protection_16_w = kof99_protection_16_w;
-			break;
-
-		case INIT_garou:
-			neogeo_protection_16_r = garou_protection_16_r;
-			neogeo_protection_16_w = garou_protection_16_w;
-			break;
-
-		case INIT_garouo:
-			neogeo_protection_16_r = garou_protection_16_r;
-			neogeo_protection_16_w = garouo_protection_16_w;
-			break;
-
-		case INIT_mslug3:
-			neogeo_protection_16_r = mslug3_protection_16_r;
-			neogeo_protection_16_w = mslug3_protection_16_w;
-			break;
-
-		case INIT_kof2000:
-			neogeo_protection_16_r = kof2000_protection_16_r;
-			neogeo_protection_16_w = kof2000_protection_16_w;
-			break;
-
-		case INIT_mslug5:
-		case INIT_ms5pcb:
-		case INIT_svcpcb:
-		case INIT_svchaosa:
-		case INIT_kof2003:
-		case INIT_kf2k3pcb:
-			neogeo_protection_16_r = pvc_protection_16_r;
-			neogeo_protection_16_w = pvc_protection_16_w;
-			break;
-
-		case INIT_vliner:
-			neogeo_protection_16_r = vliner_16_r;
-			neogeo_protection_16_w = brza_sram_16_w;
-			neogeo_ngh = NGH_vliner;
-			break;
-
-		case INIT_jockeygp:
-			neogeo_protection_16_r = brza_sram_16_r;
-			neogeo_protection_16_w = brza_sram_16_w;
-			neogeo_ngh = NGH_jockeygp;
-			break;
-
-		default:
-			neogeo_protection_16_r = neogeo_secondbank_16_r;
-			neogeo_protection_16_w = neogeo_secondbank_16_w;
-			break;
-		}
-
-		memset(neogeo_memcard, 0, 0x800);
-		memset(neogeo_ram, 0, 0x10000);
-		memset(neogeo_sram16, 0, 0x10000);
-
-		neogeo_sram = (u8 *)neogeo_sram16;
+		neogeo_save_sound_flag = 0;
 	}
+
+	// FIXバンクタイプ設定
+	switch (machine_init_type)
+	{
+	case INIT_garou:
+	case INIT_garouo:
+	case INIT_mslug4:
+	case INIT_mslug3:
+	case INIT_mslug3n:
+	case INIT_samsho5:
+	case INIT_samsh5sp:
+		neogeo_fix_bank_type = 1;
+		break;
+
+	case INIT_kof2000:
+	case INIT_kof2000n:
+	case INIT_matrim:
+	case INIT_svcpcb:
+	case INIT_svchaosa:
+	case INIT_kf2k3pcb:
+	case INIT_kof2003:
+		neogeo_fix_bank_type = 2;
+		break;
+
+	default:
+		neogeo_fix_bank_type = 0;
+		break;
+	}
+
+	switch (machine_init_type)
+	{
+	case INIT_fatfury2:
+		neogeo_protection_16_r = fatfury2_protection_16_r;
+		neogeo_protection_16_w = fatfury2_protection_16_w;
+		break;
+
+	case INIT_kof98:
+		neogeo_protection_16_r = neogeo_secondbank_16_r;
+		neogeo_protection_16_w = kof98_protection_16_w;
+		break;
+
+	case INIT_mslugx:
+		mslugx_install_protection();
+		neogeo_protection_16_r = neogeo_secondbank_16_r;
+		neogeo_protection_16_w = neogeo_secondbank_16_w;
+		break;
+
+	case INIT_kof99:
+		neogeo_protection_16_r = kof99_protection_16_r;
+		neogeo_protection_16_w = kof99_protection_16_w;
+		break;
+
+	case INIT_garou:
+		neogeo_protection_16_r = garou_protection_16_r;
+		neogeo_protection_16_w = garou_protection_16_w;
+		break;
+
+	case INIT_garouo:
+		neogeo_protection_16_r = garou_protection_16_r;
+		neogeo_protection_16_w = garouo_protection_16_w;
+		break;
+
+	case INIT_mslug3:
+		neogeo_protection_16_r = mslug3_protection_16_r;
+		neogeo_protection_16_w = mslug3_protection_16_w;
+		break;
+
+	case INIT_kof2000:
+		neogeo_protection_16_r = kof2000_protection_16_r;
+		neogeo_protection_16_w = kof2000_protection_16_w;
+		break;
+
+	case INIT_mslug5:
+	case INIT_ms5pcb:
+	case INIT_svcpcb:
+	case INIT_svchaosa:
+	case INIT_kof2003:
+	case INIT_kf2k3pcb:
+		neogeo_protection_16_r = pvc_protection_16_r;
+		neogeo_protection_16_w = pvc_protection_16_w;
+		break;
+
+	case INIT_vliner:
+		neogeo_protection_16_r = vliner_16_r;
+		neogeo_protection_16_w = brza_sram_16_w;
+		neogeo_ngh = NGH_vliner;
+		break;
+
+	case INIT_jockeygp:
+		neogeo_protection_16_r = brza_sram_16_r;
+		neogeo_protection_16_w = brza_sram_16_w;
+		neogeo_ngh = NGH_jockeygp;
+		break;
+
+	default:
+		neogeo_protection_16_r = neogeo_secondbank_16_r;
+		neogeo_protection_16_w = neogeo_secondbank_16_w;
+		break;
+	}
+
+	memset(neogeo_memcard, 0, 0x800);
+	memset(neogeo_ram, 0, 0x10000);
+	memset(neogeo_sram16, 0, 0x10000);
+
+	neogeo_sram = (u8 *)neogeo_sram16;
 
 	msg_printf("Done.\n");
 

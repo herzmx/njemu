@@ -49,11 +49,7 @@ const static UI_HELP help_mes[HELP_NUM_MAX] =
 			HELP_ENABLE(FONT_LEFTARROW FONT_RIGHTARROW,"Scroll 1 page"),
 			HELP_ENABLE(FONT_CIRCLE, "Launch game"),
 			HELP_DISABLE(FONT_CROSS),
-#ifdef SOUND_TEST
-			HELP_ENABLE(FONT_LTRIGGER, "Launch sound test"),
-#else
 			HELP_DISABLE(FONT_SQUARE),
-#endif
 			HELP_ENABLE(FONT_TRIANGLE, "Exit emulator"),
 #if (EMU_SYSTEM == MVS)
 			HELP_ENABLE(FONT_LTRIGGER, "Show BIOS select menu"),
@@ -137,25 +133,6 @@ const static UI_HELP help_mes[HELP_NUM_MAX] =
 			HELP_EOM
 		}
 	},
-#endif
-#ifdef SOUND_TEST
-	// HELP_SOUNDTEST
-	{
-		"Sound test",
-		{
-			HELP_ENABLE(FONT_UPARROW FONT_DOWNARROW, "Scroll"),
-			HELP_ENABLE(FONT_LEFTARROW FONT_RIGHTARROW,"Scroll 1 page"),
-			HELP_ENABLE(FONT_CIRCLE, "Play music"),
-			HELP_ENABLE(FONT_CROSS, "Stop music"),
-			HELP_DISABLE(FONT_SQUARE),
-			HELP_ENABLE(FONT_TRIANGLE, "Exit sound test"),
-			HELP_DISABLE(FONT_LTRIGGER),
-			HELP_DISABLE(FONT_RTRIGGER),
-			HELP_DISABLE("START"),
-			HELP_DISABLE("SELECT"),
-			HELP_EOM
-		}
-	}
 #endif
 };
 

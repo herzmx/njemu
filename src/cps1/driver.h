@@ -16,6 +16,7 @@
 #define CPS1_KLUDGE_MERCS		3
 #define CPS1_KLUDGE_3WONDERS	4
 #define CPS1_KLUDGE_PANG3		5
+#define CPS1_KLUDGE_SF2CEB		6
 
 enum
 {

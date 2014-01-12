@@ -49,15 +49,16 @@ struct driver_t CPS2_driver[] =
 	{ "gigawing", 0xf90000,  464, 208, 272, 288, 0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
 	{ "mmatrix",  0x1d70000, 512,  48, 288, 384, CPS2_KLUDGE_MMATRIX, 0,   0x11, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
 	{ "mpangj",   0x790000,  512,  32, 304, 384, 0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
-	{ "pzloop2j", 0xab0000,  512, 144, 288, 288, CPS2_KLUDGE_PUZLOOP2,0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
+	{ "puzloop2", 0xab0000,  512, 144, 288, 288, CPS2_KLUDGE_PUZLOOP2,0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
 	{ "choko",    0,         512, 208, 256, 256, 0,                   0,   0x00, { COIN_NONE } },
 	{ "dimahoo",  0xfb0000,  512,  96, 304, 320, CPS2_KLUDGE_DIMAHOO, 0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
 	{ "1944",     0x1390000, 512,  80, 288, 352, 0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
 	{ "progear",  0xfe0000,  464, 224, 224, 320, 0,                   0,   0x05, { COIN_2P2C, COIN_2P2C, COIN_2P1C } },
 #if !RELEASE
 	{ "hsf2d",    0x2000000, 512, 192, 240, 288, CPS2_KLUDGE_HSF2D,   1,   0x00, { COIN_NONE } },
-	{ "hsf2a",    0x2000000, 512, 192, 240, 288, CPS2_KLUDGE_SSF2T,   1,   0x00, { COIN_NONE } },
 #endif
+	{ "hsf2a",    0x2000000, 512, 192, 240, 288, CPS2_KLUDGE_SSF2T,   1,   0x00, { COIN_NONE } },
+	{ "jyangoku", 0,         512, 208, 256, 256, 0,                   0,   0x00, { COIN_NONE } },
 	{ NULL }
 };
 

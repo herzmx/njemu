@@ -470,6 +470,21 @@ int cps1_video_init(void)
 	cps1_has_stars = driver->has_stars;
 	cps1_kludge    = driver->kludge;
 
+#if !RELEASE
+	if (strcmp(game_name, "sf2rb") == 0)
+	{
+		/* Patch out protection check */
+		u16 *rom = (u16 *)memory_region_cpu1;
+		rom[0xe5464 >> 1] = 0x6012;
+	}
+	if (strcmp(game_name, "sf2rb2") == 0)
+	{
+		/* Patch out protection check */
+		u16 *rom = (u16 *)memory_region_cpu1;
+		rom[0xe5332 >> 1] = 0x6014;
+	}
+#endif
+
 	cps1_init_tables();
 
 	return cps1_gfx_decode();
@@ -514,6 +529,11 @@ void cps1_video_reset(void)
 	cps1_port(CPS1_SCROLL3_BASE) = 0x9080;
 	cps1_port(CPS1_OTHER_BASE)   = 0x9100;
 	cps1_port(CPS1_PALETTE_BASE) = 0x90c0;
+
+#if !RELEASE
+	if (cps1_kludge == CPS1_KLUDGE_SF2CEB)
+		cps1_port(CPS1_OBJ_BASE) = 0x9100;
+#endif
 
 	cps_layer_enabled[0] = 1;
 
@@ -624,20 +644,22 @@ static void cps1_build_palette(void)
 	•`‰æ
 ------------------------------------------------------*/
 
+static struct cps1_object_t *object1;
 
 static void cps1_render_object(void)
 {
 	int x, y, sx, sy, nx, ny, nsx, nsy;
 	u32 code, ncode, attr;
-	struct cps1_object_t *object = cps1_last_object;
 
-	while (object >= cps1_object)
+	object1 = cps1_last_object;
+
+	while (object1 >= cps1_object)
 	{
-		sx   = object->sx;
-		sy   = object->sy;
-		code = object->code;
-		attr = object->attr;
-		object--;
+		sx   = object1->sx;
+		sy   = object1->sy;
+		code = object1->code;
+		attr = object1->attr;
+		object1--;
 
 		SCAN_OBJECT(blit_draw_object)
 	}
@@ -654,7 +676,7 @@ void cps1_scan_object(void)
 {
 	int x, y, sx, sy, nx, ny, nsx, nsy;
 	u32 code, ncode, attr;
-	struct cps1_object_t *object = cps1_last_object;
+	struct cps1_object_t *object = object1;
 
 	while (object >= cps1_object)
 	{
@@ -1348,6 +1370,15 @@ void cps1_screenrefresh(void)
 	cps_scroll3x = cps1_port(CPS1_SCROLL3_SCROLLX);
 	cps_scroll3y = cps1_port(CPS1_SCROLL3_SCROLLY);
 
+#if !RELEASE
+	if (cps1_kludge == CPS1_KLUDGE_SF2CEB)
+	{
+		cps_scroll1x -= 0x0c;
+		cps_scroll2x -= 0x0e;
+		cps_scroll3x -= 0x10;
+	}
+#endif
+
 	layer_ctrl = cps1_port(driver->layer_control);
 	l0 = (layer_ctrl >> 0x06) & 03;
 	l1 = (layer_ctrl >> 0x08) & 03;
@@ -1418,19 +1449,52 @@ void cps1_objram_latch(void)
 	u16 *end  = base + (cps1_obj_size >> 1);
 	struct cps1_object_t *object = cps1_object;
 
-	while (base < end)
+#if !RELEASE
+	if (cps1_kludge == CPS1_KLUDGE_SF2CEB)
 	{
-		if ((base[3] & 0xff00) == 0xff00)
-			break;
+		u16 *end2;
 
-		object->sx   = base[0];
-		object->sy   = base[1];
-		object->code = base[2];
-		object->attr = base[3];
-		object++;
+		cps1_port(CPS1_OBJ_BASE) = 0x9100;
+		base = cps1_base(CPS1_OBJ_BASE, cps1_obj_mask);
+		end  = base + (cps1_obj_size >> 1);
+		end2 = base;
 
-		base += 4;
+		while (end2 < end)
+		{
+			if ((end2[3] & 0xff00) == 0xff00) break;
+			end2 += 4;
+		}
+		end2 -= 4;
+
+		while (end2 >= base)
+		{
+			object->sx   = end2[0];
+			object->sy   = end2[1];
+			object->code = end2[2];
+			object->attr = end2[3];
+			object++;
+
+			end2 -= 4;
+		}
 	}
+	else
+#endif
+	{
+		while (base < end)
+		{
+			if ((base[3] & 0xff00) == 0xff00)
+				break;
+
+			object->sx   = base[0];
+			object->sy   = base[1];
+			object->code = base[2];
+			object->attr = base[3];
+			object++;
+
+			base += 4;
+		}
+	}
+
 	cps1_last_object = --object;
 
 	cps1_build_palette();

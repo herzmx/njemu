@@ -828,7 +828,7 @@ static void state_delete_slot(void)
 		char path[MAX_PATH];
 
 		sprintf(path, "%sstate/%s.sv%d", launchDir, game_name, state_sel);
-		if (remove(path) != 0)
+		if (sceIoRemove(path) < 0)
 		{
 			ui_popup("Error: faild to delete file \"%s\".", strrchr(path, '/') + 1);
 		}
@@ -873,6 +873,9 @@ int state_draw_progress(int progress)
 		state_draw_thumbnail();
 		if (machine_screen_type)
 		{
+			RECT rect = { 300, 198, 479, 271 };
+
+			ui_fill_rect(draw_frame, UI_PAL_BG2, &rect);
 			uifont_print(300, 198, UI_COLOR(UI_PAL_NORMAL), "Play Date");
 			uifont_print(378, 198, UI_COLOR(UI_PAL_NORMAL), date_str);
 			uifont_print(300, 218, UI_COLOR(UI_PAL_NORMAL), "Save Time");
@@ -882,6 +885,9 @@ int state_draw_progress(int progress)
 		}
 		else
 		{
+			RECT rect = { 290, 190, 479, 271 };
+
+			ui_fill_rect(draw_frame, UI_PAL_BG2, &rect);
 			uifont_print(290, 190, UI_COLOR(UI_PAL_NORMAL), "Play Date");
 			uifont_print(368, 190, UI_COLOR(UI_PAL_NORMAL), date_str);
 			uifont_print(290, 210, UI_COLOR(UI_PAL_NORMAL), "Save Time");
@@ -945,11 +951,6 @@ int state_draw_progress(int progress)
 				uifont_print(90, 62 + 18*4, UI_COLOR(UI_PAL_SELECT), "Complete.");
 				uifont_print_center(221, UI_COLOR(UI_PAL_SELECT), "Press " FONT_CROSS " to return to game.");
 				uifont_print_center(239, UI_COLOR(UI_PAL_SELECT), "Press other button to return to menu.");
-			}
-			else
-			{
-				uifont_print_center(221, UI_COLOR(UI_PAL_WARNING), "Save state is very slow.");
-				uifont_print_center(239, UI_COLOR(UI_PAL_WARNING), "Please wait for a while.");
 			}
 			video_flip_screen(1);
 
@@ -1420,11 +1421,6 @@ void showmenu(void)
 
 	autoframeskip_reset();
 	blit_clear_all_sprite();
-
-	sound_thread_set_priority(option_vsync ? 0x12 : 0x08);
-#ifdef KERNEL_MODE
-	main_thread_set_priority(option_vsync ? 0x08 : 0x11);
-#endif
 
 	pad_wait_clear();
 	ui_popup_reset(POPUP_GAME);

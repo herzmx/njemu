@@ -139,6 +139,7 @@
 
 #define SET_PC(A)															\
 	CPU->BasePC = CPU->Fetch[((A) >> C68K_FETCH_SFT) & C68K_FETCH_MASK];	\
+	CPU->BasePC -= (A) & 0xff000000;										\
 	PC = (A) + CPU->BasePC;
 
 #define ADJUST_PC()				PC -= CPU->BasePC;

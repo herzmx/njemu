@@ -21,6 +21,8 @@ void *tex_frame;
 
 RECT full_rect = { 0, 0, SCR_WIDTH, SCR_HEIGHT };
 
+int psp_refreshrate;
+
 
 /******************************************************************************
 	ローカル関数
@@ -478,4 +480,39 @@ void video_copy_rect_rotate(void *src, void *dst, RECT *src_rect, RECT *dst_rect
 
 	sceGuFinish();
 	sceGuSync(0, 0);
+}
+
+
+/*--------------------------------------------------------
+	PSPのリフレッシュレートを計算
+--------------------------------------------------------*/
+
+void video_calc_refreshrate(void)
+{
+	int i;
+	TICKER a, b;
+	float rate;
+
+	for (i = 0; i < 60; i++)
+	{
+		sceDisplayWaitVblankStart();
+		a = ticker();
+	}
+
+	for (i = 0; i < 100000; i++) { /* wait */ }
+
+	sceDisplayWaitVblankStart();
+	b = ticker();
+
+	rate = (float)1000000 / (b - a);
+	if (psp_refreshrate == 0)
+	{
+		psp_refreshrate = (int)(rate * 1000000);
+	}
+	else
+	{
+		psp_refreshrate += (int)(rate * 1000000);
+		psp_refreshrate /= 2;
+	}
+	psp_samplerate = (int)((float)44100 * FPS / rate);
 }

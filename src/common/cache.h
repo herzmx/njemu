@@ -44,6 +44,11 @@ u8 pcm_cache_read(int ch, u32 offset);
 u8 *pcm_get_cache(int ch);
 #endif
 
+#ifdef STATE_SAVE
+u8 *cache_alloc_state_buffer(u32 size);
+void cache_free_state_buffer(u32 size);
+#endif
+
 #endif /* USE_CACHE */
 
 #endif /* MEMORY_CACHE_H */

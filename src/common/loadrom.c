@@ -83,6 +83,35 @@ int file_open(const char *fname1, const char *fname2, const u32 crc, char *fname
 
 			if (!found) zip_close();
 		}
+
+		if (!found)
+		{
+			sprintf(path, "%sroms/%s.zip", launchDir, fname2);
+
+			if (zip_open(path) != -1)
+			{
+				if (zip_findfirst(&file))
+				{
+					if (file.crc32 == crc)
+					{
+						found = 1;
+					}
+					else
+					{
+						while (zip_findnext(&file))
+						{
+							if (file.crc32 == crc)
+							{
+								found = 1;
+								break;
+							}
+						}
+					}
+				}
+
+				if (!found) zip_close();
+			}
+		}
 	}
 
 	if (found)

@@ -111,13 +111,6 @@ static int SetupCallbacks(void)
 
 #ifdef KERNEL_MODE
 
-static SceUID main_thread;
-
-void main_thread_set_priority(int priority)
-{
-	sceKernelChangeThreadPriority(main_thread, priority);
-}
-
 static int user_main(SceSize args, void *argp)
 {
 	SetupCallbacks();
@@ -135,6 +128,7 @@ static int user_main(SceSize args, void *argp)
 int main(int argc, char *argv[])
 {
 	char *p;
+	SceUID main_thread;
 
 	memset(launchDir, 0, sizeof(launchDir));
 	strncpy(launchDir, argv[0], MAX_PATH - 1);

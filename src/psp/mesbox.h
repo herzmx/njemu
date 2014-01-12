@@ -19,9 +19,6 @@ enum
 #ifdef SAVE_STATE
 	MB_DELETESTATE,
 #endif
-#ifdef SOUND_TEST
-	MB_SOUNDTEST,
-#endif
 	MB_GAMENOTWORK,
 	MB_NUM_MAX
 };

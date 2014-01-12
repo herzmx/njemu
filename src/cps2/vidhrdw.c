@@ -449,23 +449,26 @@ static void cps2_build_palette_delay(void)
 	í èÌï`âÊ
 ------------------------------------------------------*/
 
+static struct cps2_object_t *object1;
+
 static void cps2_render_object(void)
 {
 	int x, y, sx, sy, code, attr, pri;
 	int nx, ny, nsx, nsy, ncode;
 	int xoffs = 64 - cps2_object_xoffs;
 	int yoffs = 16 - cps2_object_yoffs;
-	struct cps2_object_t *object = cps2_object;
 	u8 *pen_usage = cps_pen_usage[TILE16];
 
-	while (object < cps2_last_object)
+	object1 = cps2_object;
+
+	while (object1 < cps2_last_object)
 	{
-		sx   = object->sx;
-		sy   = object->sy;
-		code = object->code;
-		attr = object->attr;
-		pri  = object->pri;
-		object++;
+		sx   = object1->sx;
+		sy   = object1->sy;
+		code = object1->code;
+		attr = object1->attr;
+		pri  = object1->pri;
+		object1++;
 
 #define BLIT_FUNC(x, y, c)	blit_draw_object(x & 0x3ff, y & 0x3ff, pri, c, attr)
 		SCAN_OBJECT()
@@ -484,7 +487,7 @@ void cps2_scan_object_callback(void)
 	int nx, ny, nsx, nsy, ncode;
 	int xoffs = 64 - cps2_object_xoffs;
 	int yoffs = 16 - cps2_object_yoffs;
-	struct cps2_object_t *object = cps2_object;
+	struct cps2_object_t *object = object1;
 	u8 *pen_usage = cps_pen_usage[TILE16];
 
 	while (object < cps2_last_object)

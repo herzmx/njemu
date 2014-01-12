@@ -50,6 +50,8 @@ int machine_sound_type;
 u32 frames_displayed;
 int fatal_error;
 
+float video_fps;
+
 
 /******************************************************************************
 	ÉçÅ[ÉJÉãïœêî
@@ -103,6 +105,12 @@ static void show_battery_warning(void);
 
 void emu_main(void)
 {
+#if (EMU_SYSTEM == MVS)
+	video_fps = FPS;
+#else
+	video_fps = (float)psp_refreshrate / 1000000;
+#endif
+
 	snap_no = -1;
 	sound_thread_init();
 	machine_main();
@@ -124,7 +132,11 @@ void autoframeskip_reset(void)
 	frames_since_last_fps = 0;
 
 	game_speed_percent = 100;
+#if (EMU_SYSTEM == MVS)
 	frames_per_second = FPS;
+#else
+	frames_per_second = 60;
+#endif
 
 	frames_displayed = 0;
 
@@ -164,7 +176,7 @@ void update_screen(void)
 #if (EMU_SYSTEM == MVS)
 		last_skipcount0_time = ticker() - FRAMESKIP_LEVELS * TICKS_PER_FRAME;
 #else
-		last_skipcount0_time = ticker() - (int)((float)FRAMESKIP_LEVELS * 1000000.0 / FPS);
+		last_skipcount0_time = ticker() - (int)((float)FRAMESKIP_LEVELS * 1000000.0 / video_fps);
 #endif
 		warming_up = 0;
 	}
@@ -173,7 +185,7 @@ void update_screen(void)
 #if (EMU_SYSTEM == MVS)
 		this_frame_base = last_skipcount0_time + FRAMESKIP_LEVELS * TICKS_PER_FRAME;
 #else
-		this_frame_base = last_skipcount0_time + (int)((float)FRAMESKIP_LEVELS * 1000000.0 / FPS);
+		this_frame_base = last_skipcount0_time + (int)((float)FRAMESKIP_LEVELS * 1000000.0 / video_fps);
 #endif
 
 	frames_displayed++;
@@ -188,16 +200,32 @@ void update_screen(void)
 #if (EMU_SYSTEM == MVS)
 			TICKER target = this_frame_base + frameskip_counter * TICKS_PER_FRAME;
 #else
-			TICKER target = this_frame_base + (int)((float)frameskip_counter * 1000000.0 / FPS);
+			TICKER target = this_frame_base + (int)((float)frameskip_counter * 1000000.0 / video_fps);
 #endif
 
-			while (curr < target)
+			if (option_vsync)
 			{
-				curr = ticker();
+				if (curr < target)
+					video_flip_screen(1);
+				else
+					video_flip_screen(0);
+
+				while (curr < target)
+				{
+					curr = ticker();
+				}
+			}
+			else
+			{
+				while (curr < target)
+				{
+					curr = ticker();
+				}
+				video_flip_screen(0);
 			}
 		}
-
-		video_flip_screen(option_vsync);
+		else
+			video_flip_screen(0);
 
 		rendered_frames_since_last_fps++;
 
@@ -206,7 +234,7 @@ void update_screen(void)
 			float seconds_elapsed = (float)(curr - last_skipcount0_time) * (1.0 / 1000000.0);
 			float frames_per_sec = (float)frames_since_last_fps / seconds_elapsed;
 
-			game_speed_percent = (int)(100.0 * frames_per_sec / FPS + 0.5);
+			game_speed_percent = (int)(100.0 * frames_per_sec / video_fps + 0.5);
 			frames_per_second = (int)((float)rendered_frames_since_last_fps / seconds_elapsed + 0.5);
 
 			last_skipcount0_time = curr;

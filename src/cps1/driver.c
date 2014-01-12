@@ -40,6 +40,7 @@
 #define QSOUND_3 0x4e,0x0c00, 0x00,0x00,0x00,0x00, {0x54,0x56,0x48,0x4a}, {0x04,0x02,0x20,0x00,0x00}, 0x52, 0x4c
 #define QSOUND_4 0x6e,0x0c01, 0x00,0x00,0x00,0x00, {0x40,0x42,0x68,0x6a}, {0x04,0x08,0x10,0x00,0x00}, 0x56, 0x6c
 #define QSOUND_5 0x5e,0x0c02, 0x00,0x00,0x00,0x00, {0x6c,0x6e,0x70,0x72}, {0x04,0x08,0x10,0x00,0x00}, 0x6a, 0x5c
+#define HACK_B_1 0x00,0x0000, 0x00,0x00,0x00,0x00, {0x52,0x50,0x4e,0x4c}, {0xff,0xff,0xff,0x00,0x00}, 0x54, 0x5c
 
 //                      stars banks  gfx limit  scroll1 limit    scroll2 limit    scroll3 limit
 #define GFX_FORGOTTN	1,    0,0,0, 0,        {0xf000,0xffff}, {0x0800,0x1fff}, {0x0800,0x0fff}
@@ -168,6 +169,9 @@ struct driver_t CPS1_driver[] =
 	{"kod",     BATTRY_2, 0,                    GFX_KOD,      SPR_KOD      },
 	{"kodu",    BATTRY_2, 0,                    GFX_KOD,      SPR_KOD      },
 	{"kodj",    BATTRY_2, 0,                    GFX_KOD,      SPR_KOD      },
+#if !RELEASE
+	{"kodb",    BATTRY_2, 0,                    GFX_KOD,      SPR_KOD      },
+#endif
 	{"captcomm",BATTRY_3, 0,                    GFX_CAPTCOMM, SPR_CAPTCOMM },
 	{"captcomu",BATTRY_3, 0,                    GFX_CAPTCOMM, SPR_CAPTCOMM },
 	{"captcomj",BATTRY_3, 0,                    GFX_CAPTCOMM, SPR_CAPTCOMM },
@@ -179,6 +183,22 @@ struct driver_t CPS1_driver[] =
 	{"sf2ceub", NOBATTRY, 0,                    GFX_SF2,      SPR_SF2      },
 	{"sf2ceuc", NOBATTRY, 0,                    GFX_SF2,      SPR_SF2      },
 	{"sf2cej",  NOBATTRY, 0,                    GFX_SF2,      SPR_SF2      },
+#if !RELEASE
+	{"sf2rb",   NOBATTRY, 0,                    GFX_SF2,      SPR_SF2      },
+	{"sf2rb2",  NOBATTRY, 0,                    GFX_SF2,      SPR_SF2      },
+	{"sf2red",  NOBATTRY, 0,                    GFX_SF2,      SPR_SF2      },
+	{"sf2v004", NOBATTRY, 0,                    GFX_SF2,      SPR_SF2      },
+	{"sf2accp2",NOBATTRY, 0,                    GFX_SF2,      SPR_SF2      },
+	{"sf2m1",   NOBATTRY, 0,                    GFX_SF2,      SPR_SF2      },
+	{"sf2m2",   NOBATTRY, 0,                    GFX_SF2,      SPR_SF2      },
+	{"sf2m3",   NOBATTRY, 0,                    GFX_SF2,      SPR_SF2      },
+	{"sf2m4",   HACK_B_1, CPS1_KLUDGE_SF2CEB,   GFX_SF2,      SPR_SF2      },
+	{"sf2m5",   NOBATTRY, CPS1_KLUDGE_SF2CEB,   GFX_SF2,      SPR_SF2      },
+	{"sf2m6",   NOBATTRY, CPS1_KLUDGE_SF2CEB,   GFX_SF2,      SPR_SF2      },
+	{"sf2m7",   NOBATTRY, CPS1_KLUDGE_SF2CEB,   GFX_SF2,      SPR_SF2      },
+	{"sf2yyc",  NOBATTRY, CPS1_KLUDGE_SF2CEB,   GFX_SF2,      SPR_SF2      },
+	{"sf2koryu",NOBATTRY, CPS1_KLUDGE_SF2CEB,   GFX_SF2,      SPR_SF2      },
+#endif
 	{"varth",   CPS_B_04, 0,                    GFX_VARTH,    SPR_VARTH    },
 	{"varthr1", CPS_B_04, 0,                    GFX_VARTH,    SPR_VARTH    },
 	{"varthu",  CPS_B_04, 0,                    GFX_VARTH,    SPR_VARTH    },

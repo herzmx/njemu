@@ -396,64 +396,6 @@ static void timer_update_cpu_raster(void)
 }
 
 
-/*------------------------------------------------------
-	サブCPUのみ更新 (サウンドテストで使用)
-------------------------------------------------------*/
-
-#ifdef SOUND_TEST
-void timer_update_subcpu(void)
-{
-	int i, time;
-
-	frame_base = 0;
-	timer_left = time_slice;
-
-	while (timer_left > 0)
-	{
-		timer_ticks = timer_left;
-		time = base_time + frame_base;
-
-		for (i = 0; i < MAX_TIMER; i++)
-		{
-			if (timer[i].enable)
-			{
-				if (timer[i].expire - time <= 0)
-				{
-					timer[i].enable = 0;
-					timer[i].callback(timer[i].param);
-				}
-			}
-			if (timer[i].enable)
-			{
-				if (timer[i].expire - time < timer_ticks)
-					timer_ticks = timer[i].expire - time;
-			}
-		}
-
-		cpu_execute(CPU_Z80);
-
-		frame_base += timer_ticks;
-		timer_left -= timer_ticks;
-	}
-
-	base_time += time_slice;
-	if (base_time >= 1000000)
-	{
-		global_offset++;
-		base_time -= 1000000;
-
-		for (i = 0; i < MAX_TIMER; i++)
-		{
-			if (timer[i].enable)
-				timer[i].expire -= 1000000;
-		}
-	}
-
-	soundtest_sound_update();
-}
-#endif
-
-
 /******************************************************************************
 	セーブ/ロード ステート
 ******************************************************************************/

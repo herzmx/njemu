@@ -91,12 +91,13 @@ struct cacheinfo_t CPS2_cacheinfo[] =
 	{ "gigawing", 0x000000, 0x7fffff, 0x800000, 0x87ffff, 0x880000, 0xa7ffff, 0xa80000, 0xdcffff, 0xe00000,  0xffffff, },
 	{ "mmatrix",  0x000000, 0x7fffff, 0x800000, 0x8fffff, 0x800000, 0xd677ff, 0x800000, 0xd677ff, 0x1000000, 0x1ffffff },
 	{ "mpangj",   0x000000, 0x000000, 0x800000, 0x82ffff, 0x840000, 0x9dffff, 0xa00000, 0xbdffff, 0xc00000,  0xffffff, },
-	{ "pzloop2j", 0x000000, 0x81ffff, 0x800000, 0x97ffff, 0xa00000, 0xc8ffff, 0xd80000, 0xebffff, 0,         0,        },
+	{ "puzloop2", 0x000000, 0x81ffff, 0x800000, 0x97ffff, 0xa00000, 0xc8ffff, 0xd80000, 0xebffff, 0,         0,        },
 	{ "choko",    0x000000, 0x7fffff, 0x800000, 0xffffff, 0x800000, 0xffffff, 0x800000, 0xffffff, 0,         0,        },
 	{ "dimahoo",  0x000000, 0x7fffff, 0x800000, 0x8bffff, 0xb80000, 0xffffff, 0x8e0000, 0xb6ffff, 0,         0,        },
 	{ "1944",     0x000000, 0x7fffff, 0x800000, 0x87ffff, 0x880000, 0xcdffff, 0xd00000, 0xfeffff, 0x1000000, 0x13bffff },
 	{ "progear",  0x000000, 0x7fffff, 0x800000, 0xa0afff, 0xa0b000, 0xd86fff, 0xd87000, 0xffffff, 0,         0,        },
 	{ "hsf2a",    0x000000, 0x7fffff, 0x800000, 0x1ffffff,0x800000, 0x1ffffff,0x800000, 0x1ffffff,0,         0,        },
+	{ "jyangoku", 0x000000, 0x7fffff, 0x800000, 0xffffff, 0x800000, 0xffffff, 0x800000, 0xffffff, 0,         0,        },
 	{ NULL }
 };
 
@@ -435,7 +436,7 @@ static void clear_empty_blocks(void)
 		for (i = 0xd7; i <= 0xff; i++)
 			memset(&memory_region_gfx1[i << 16], 0xff, 0x10000);
 	}
-	else if (!strcmp(cacheinfo->name, "pzloop2j"))
+	else if (!strcmp(cacheinfo->name, "puzloop2"))
 	{
 		memset(&memory_region_gfx1[0x170000 + 16*16*128], 0xff, 16*16*128);
 		memset(&memory_region_gfx1[0x1c0000 + 16* 9*128], 0xff, 16*23*128);
@@ -563,7 +564,7 @@ static int calc_pen_usage(void)
 		int s5 = 0x000000;
 		int e5 = 0x000000;
 
-		if (!strcmp(cacheinfo->name, "pzloop2j"))
+		if (!strcmp(cacheinfo->name, "puzloop2"))
 		{
 			s5 = 0x802800;
 			e5 = 0x87ffff;
@@ -1269,7 +1270,7 @@ int main(int argc, char *argv[])
 	int i, path_found = 0, all = 0, zip = 0, pause = 1, res = 1;
 
 	printf("-------------------------------------------\n");
-	printf(" ROM converter for CPS2 Emulator ver.9.1\n");
+	printf(" ROM converter for CPS2 Emulator ver.9.2\n");
 	printf("-------------------------------------------\n\n");
 
 	if (_chdir("cache") != 0)
@@ -1334,7 +1335,8 @@ int main(int argc, char *argv[])
 			printf("  ROM set: %s\n", game_name);
 			printf("-------------------------------------------\n\n");
 
-			if (!strcmp(game_name, "choko"))
+			if (!strcmp(game_name, "choko")
+			||	!strcmp(game_name, "jyangoku"))
 			{
 				printf("\nSkip \"%s\". - GAME_NOT_WORK\n\n", game_name);
 				continue;

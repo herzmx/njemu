@@ -50,8 +50,6 @@ typedef struct
 	u8 *rom_base;
 	u8 *sample_rom[OKIM6295_VOICES];
 
-	s32 buffer[SOUND_SAMPLES];
-
 } okim6295_t;
 
 static u32 ALIGN_DATA volume_tables[16];
@@ -154,8 +152,6 @@ void OKIM6295Reset(void)
 	okim6295->status = 0;
 	okim6295->command = -1;
 	okim6295->stream_pos = 0;
-
-	memset(okim6295->buffer, 0, sizeof(okim6295->buffer));
 }
 
 
@@ -165,13 +161,13 @@ void OKIM6295Reset(void)
 
 ***********************************************************************************************/
 
-static void OKIM6295Update(int length)
+static void OKIM6295Update(s32 *buffer, int length)
 {
 	int prev_sample = okim6295->prev_sample;
 	int curr_sample = okim6295->curr_sample;
 	int stream_pos  = okim6295->stream_pos;
 	int i, nibble, signal;
-	s32 *buf = okim6295->buffer;
+	s32 *buf = buffer;
 
 	while (length--)
 	{
@@ -246,7 +242,7 @@ static void OKIM6295Update(int length)
 		/* interpolate sample */
 		signal = prev_sample + (((curr_sample - prev_sample) * stream_pos) >> FRAC_BIT);
 
-		*buf++ = signal;
+		*buf++ += signal;
 
 		stream_pos += okim6295->source_step;
 	}

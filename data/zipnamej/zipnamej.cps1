@@ -10,8 +10,8 @@ stridrja,ストライダー飛竜 (Japan set 2)
 dynwar,天地を喰らう [Dynasty Wars] (World)
 dynwarj,天地を喰らう (Japan)
 willow,ウィロー (US)
-willowj,ウィロー (Japan, Japanese)
-willowje,ウィロー (Japan, English)
+willowj,ウィロー (Japan - Japanese)
+willowje,ウィロー (Japan - English)
 unsquad,エリア88 [U.N. Squadron] (US)
 area88,エリア88 (Japan)
 ffight,ファイナルファイト (World)
@@ -55,6 +55,7 @@ wonder3,ワンダー3 (Japan 910520)
 kod,キング・オブ・ドラゴンズ [The King of Dragons] (World 910711)
 kodu,キング・オブ・ドラゴンズ [The King of Dragons] (US 910910)
 kodj,キング・オブ・ドラゴンズ (Japan 910805)
+kodb,キング・オブ・ドラゴンズ [The King of Dragons] (bootleg),GAME_NOT_WORK|GAME_BOOTLEG
 captcomm,キャプテンコマンドー (World 911014)
 captcomu,キャプテンコマンドー (US 910928)
 captcomj,キャプテンコマンドー (Japan 911202)
@@ -66,6 +67,20 @@ sf2ceua,ストリートファイターⅡ' - Champion Edition (US 920313)
 sf2ceub,ストリートファイターⅡ' - Champion Edition (US 920513)
 sf2ceuc,ストリートファイターⅡ' - Champion Edition (US 920803)
 sf2cej,ストリートファイターⅡ' - Champion Edition (Japan 920513)
+sf2rb,ストリートファイターⅡ' - Champion Edition (Rainbow set 1),GAME_BOOTLEG
+sf2rb2,ストリートファイターⅡ' - Champion Edition (Rainbow set 2),GAME_BOOTLEG
+sf2red,ストリートファイターⅡ' - Champion Edition (Red Wave),GAME_BOOTLEG
+sf2v004,ストリートファイターⅡ! - Champion Edition (V004),GAME_NOT_WORK|GAME_BOOTLEG
+sf2accp2,ストリートファイターⅡ' - Champion Edition (Accelerator Pt.II),GAME_BOOTLEG
+sf2m1,ストリートファイターⅡ' - Champion Edition (M1),GAME_NOT_WORK|GAME_BOOTLEG
+sf2m2,ストリートファイターⅡ' - Champion Edition (M2),GAME_NOT_WORK|GAME_BOOTLEG
+sf2m3,ストリートファイターⅡ' - Champion Edition (M3),GAME_NOT_WORK|GAME_BOOTLEG
+sf2m4,ストリートファイターⅡ' - Champion Edition (M4),GAME_BOOTLEG
+sf2m5,ストリートファイターⅡ' - Champion Edition (M5),GAME_BOOTLEG
+sf2m6,ストリートファイターⅡ' - Champion Edition (M6),GAME_BOOTLEG
+sf2m7,ストリートファイターⅡ' - Champion Edition (M7),GAME_BOOTLEG
+sf2yyc,ストリートファイターⅡ' - Champion Edition (YYC),GAME_BOOTLEG
+sf2koryu,ストリートファイターⅡ' - Champion Edition (降龍),GAME_BOOTLEG
 varth,バース - Operation Thunderstorm (World 920714)
 varthr1,バース - Operation Thunderstorm (World 920612)
 varthu,バース - Operation Thunderstorm (US 920612)

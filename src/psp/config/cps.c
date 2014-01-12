@@ -39,7 +39,7 @@ static cfg_type gamecfg_2buttons[] =
 
 	{ CFG_NONE,	"[Video Settings]", },
 	{ CFG_INT,	"StretchScreen",		&option_stretch,		2,	3	},
-	{ CFG_BOOL,	"WaitVsync",			&option_vsync,			0,	0	},
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	0	},
 	{ CFG_BOOL,	"AutoFrameSkip",		&option_autoframeskip,	0,	1	},
 	{ CFG_INT,	"FrameSkipLevel",		&option_frameskip,		0,	11	},
 	{ CFG_BOOL,	"ShowFPS",				&option_showfps,		0,	1	},
@@ -92,7 +92,7 @@ static cfg_type gamecfg_2buttons_rot[] =
 	{ CFG_NONE,	"[Video Settings]", },
 	{ CFG_INT,	"RotateScreen",			&cps_rotate_screen,		1,	1	},
 	{ CFG_INT,	"StretchScreen",		&option_stretch,		2,	3	},
-	{ CFG_BOOL,	"WaitVsync",			&option_vsync,			0,	0	},
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	0	},
 	{ CFG_BOOL,	"AutoFrameSkip",		&option_autoframeskip,	0,	1	},
 	{ CFG_INT,	"FrameSkipLevel",		&option_frameskip,		0,	11	},
 	{ CFG_BOOL,	"ShowFPS",				&option_showfps,		0,	1	},
@@ -144,7 +144,7 @@ static cfg_type gamecfg_3buttons[] =
 
 	{ CFG_NONE,	"[Video Settings]", },
 	{ CFG_INT,	"StretchScreen",		&option_stretch,		2,	3	},
-	{ CFG_BOOL,	"WaitVsync",			&option_vsync,			0,	0	},
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	0	},
 	{ CFG_BOOL,	"AutoFrameSkip",		&option_autoframeskip,	0,	1	},
 	{ CFG_INT,	"FrameSkipLevel",		&option_frameskip,		0,	11	},
 	{ CFG_BOOL,	"ShowFPS",				&option_showfps,		0,	1	},
@@ -200,7 +200,7 @@ static cfg_type gamecfg_3buttons_rot[] =
 	{ CFG_NONE,	"[Video Settings]", },
 	{ CFG_INT,	"RotateScreen",			&cps_rotate_screen,		1,	1	},
 	{ CFG_INT,	"StretchScreen",		&option_stretch,		2,	3	},
-	{ CFG_BOOL,	"WaitVsync",			&option_vsync,			0,	0	},
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	0	},
 	{ CFG_BOOL,	"AutoFrameSkip",		&option_autoframeskip,	0,	1	},
 	{ CFG_INT,	"FrameSkipLevel",		&option_frameskip,		0,	11	},
 	{ CFG_BOOL,	"ShowFPS",				&option_showfps,		0,	1	},
@@ -248,7 +248,7 @@ static cfg_type gamecfg_4buttons[] =
 
 	{ CFG_NONE,	"[Video Settings]", },
 	{ CFG_INT,	"StretchScreen",		&option_stretch,		2,	3	},
-	{ CFG_BOOL,	"WaitVsync",			&option_vsync,			0,	0	},
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	0	},
 	{ CFG_BOOL,	"AutoFrameSkip",		&option_autoframeskip,	0,	1	},
 	{ CFG_INT,	"FrameSkipLevel",		&option_frameskip,		0,	11	},
 	{ CFG_BOOL,	"ShowFPS",				&option_showfps,		0,	1	},
@@ -299,7 +299,7 @@ static cfg_type gamecfg_6buttons[] =
 
 	{ CFG_NONE,	"[Video Settings]", },
 	{ CFG_INT,	"StretchScreen",		&option_stretch,		2,	3	},
-	{ CFG_BOOL,	"WaitVsync",			&option_vsync,			0,	0	},
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	0	},
 	{ CFG_BOOL,	"AutoFrameSkip",		&option_autoframeskip,	0,	1	},
 	{ CFG_INT,	"FrameSkipLevel",		&option_frameskip,		0,	11	},
 	{ CFG_BOOL,	"ShowFPS",				&option_showfps,		0,	1	},
@@ -359,7 +359,7 @@ static cfg_type gamecfg_quiz[] =
 
 	{ CFG_NONE,	"[Video Settings]", },
 	{ CFG_INT,	"StretchScreen",		&option_stretch,		2,	3	},
-	{ CFG_BOOL,	"WaitVsync",			&option_vsync,			0,	0	},
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	0	},
 	{ CFG_BOOL,	"AutoFrameSkip",		&option_autoframeskip,	0,	1	},
 	{ CFG_INT,	"FrameSkipLevel",		&option_frameskip,		0,	11	},
 	{ CFG_BOOL,	"ShowFPS",				&option_showfps,		0,	1	},
@@ -405,7 +405,7 @@ static cfg_type gamecfg_forgottn[] =
 
 	{ CFG_NONE,	"[Video Settings]", },
 	{ CFG_INT,	"StretchScreen",		&option_stretch,		2,	3	},
-	{ CFG_BOOL,	"WaitVsync",			&option_vsync,			0,	0	},
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	0	},
 	{ CFG_BOOL,	"AutoFrameSkip",		&option_autoframeskip,	0,	1	},
 	{ CFG_INT,	"FrameSkipLevel",		&option_frameskip,		0,	11	},
 	{ CFG_BOOL,	"ShowFPS",				&option_showfps,		0,	1	},
@@ -458,7 +458,7 @@ static cfg_type gamecfg_sfzch[] =
 
 	{ CFG_NONE,	"[Video Settings]", },
 	{ CFG_INT,	"StretchScreen",		&option_stretch,		2,	3	},
-	{ CFG_BOOL,	"WaitVsync",			&option_vsync,			0,	0	},
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	0	},
 	{ CFG_BOOL,	"AutoFrameSkip",		&option_autoframeskip,	0,	1	},
 	{ CFG_INT,	"FrameSkipLevel",		&option_frameskip,		0,	11	},
 	{ CFG_BOOL,	"ShowFPS",				&option_showfps,		0,	1	},
@@ -516,7 +516,7 @@ static cfg_type gamecfg_progear[] =
 
 	{ CFG_NONE,	"[Video Settings]", },
 	{ CFG_INT,	"StretchScreen",		&option_stretch,		2,	3	},
-	{ CFG_BOOL,	"WaitVsync",			&option_vsync,			0,	0	},
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	0	},
 	{ CFG_BOOL,	"AutoFrameSkip",		&option_autoframeskip,	0,	1	},
 	{ CFG_INT,	"FrameSkipLevel",		&option_frameskip,		0,	11	},
 	{ CFG_BOOL,	"ShowFPS",				&option_showfps,		0,	1	},
@@ -566,7 +566,7 @@ static cfg_type gamecfg_puzloop2[] =
 
 	{ CFG_NONE,	"[Video Settings]", },
 	{ CFG_INT,	"StretchScreen",		&option_stretch,		2,	3	},
-	{ CFG_BOOL,	"WaitVsync",			&option_vsync,			0,	0	},
+	{ CFG_BOOL,	"VideoSync",			&option_vsync,			0,	0	},
 	{ CFG_BOOL,	"AutoFrameSkip",		&option_autoframeskip,	0,	1	},
 	{ CFG_INT,	"FrameSkipLevel",		&option_frameskip,		0,	11	},
 	{ CFG_BOOL,	"ShowFPS",				&option_showfps,		0,	1	},

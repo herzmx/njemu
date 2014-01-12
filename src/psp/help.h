@@ -20,9 +20,6 @@ enum
 #ifdef SAVE_STATE
 	HELP_STATE,
 #endif
-#ifdef SOUND_TEST
-	HELP_SOUNDTEST,
-#endif
 	HELP_NUM_MAX
 };
 

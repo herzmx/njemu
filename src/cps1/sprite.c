@@ -1446,12 +1446,12 @@ void blit_finish_object(void)
 
 	sceGuStart(GU_DIRECT, gulist);
 
-	vertices = (struct Vertex *)sceGuGetMemory(object_num * sizeof(struct Vertex));
-	memcpy(vertices, vertices_object, object_num * sizeof(struct Vertex));
 	sceGuDrawBufferList(GU_PSM_5551, work_frame, BUF_WIDTH);
 	sceGuScissor(64, 16, 448, 240);
 	sceGuTexImage(0, 512, 512, BUF_WIDTH, tex_object);
 
+	vertices = (struct Vertex *)sceGuGetMemory(object_num * sizeof(struct Vertex));
+	memcpy(vertices, vertices_object, object_num * sizeof(struct Vertex));
 	sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, object_num, 0, vertices);
 
 	sceGuFinish();
@@ -1555,13 +1555,12 @@ void blit_finish_scroll1(void)
 
 	sceGuStart(GU_DIRECT, gulist);
 
-	vertices = (struct Vertex *)sceGuGetMemory(scroll1_num * sizeof(struct Vertex));
-	memcpy(vertices, vertices_scroll1, scroll1_num * sizeof(struct Vertex));
-
 	sceGuDrawBufferList(GU_PSM_5551, work_frame, BUF_WIDTH);
 	sceGuScissor(64, 16, 448, 240);
 	sceGuTexImage(0, 512, 512, BUF_WIDTH, tex_scroll1);
 
+	vertices = (struct Vertex *)sceGuGetMemory(scroll1_num * sizeof(struct Vertex));
+	memcpy(vertices, vertices_scroll1, scroll1_num * sizeof(struct Vertex));
 	sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, scroll1_num, 0, vertices);
 
 	sceGuFinish();
@@ -1763,13 +1762,12 @@ void blit_finish_scroll2(void)
 
 	sceGuStart(GU_DIRECT, gulist);
 
-	vertices = (struct Vertex *)sceGuGetMemory(scroll2_num * sizeof(struct Vertex));
-	memcpy(vertices, vertices_scroll2, scroll2_num * sizeof(struct Vertex));
-
 	sceGuDrawBufferList(GU_PSM_5551, work_frame, BUF_WIDTH);
 	sceGuScissor(64, scroll2_min_y, 448, scroll2_max_y);
 	sceGuTexImage(0, 512, 512, BUF_WIDTH, tex_scroll2);
 
+	vertices = (struct Vertex *)sceGuGetMemory(scroll2_num * sizeof(struct Vertex));
+	memcpy(vertices, vertices_scroll2, scroll2_num * sizeof(struct Vertex));
 	sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, scroll2_num, 0, vertices);
 
 	sceGuFinish();
@@ -1899,13 +1897,12 @@ void blit_finish_scroll2h(void)
 
 	sceGuStart(GU_DIRECT, gulist);
 
-	vertices = (struct Vertex *)sceGuGetMemory(scrollh_num * sizeof(struct Vertex));
-	memcpy(vertices, vertices_scrollh, scrollh_num * sizeof(struct Vertex));
-
 	sceGuDrawBufferList(GU_PSM_5551, work_frame, BUF_WIDTH);
 	sceGuScissor(64, scroll2_min_y, 448, scroll2_max_y);
 	sceGuTexImage(0, 512, 512, BUF_WIDTH, tex_scrollh);
 
+	vertices = (struct Vertex *)sceGuGetMemory(scrollh_num * sizeof(struct Vertex));
+	memcpy(vertices, vertices_scrollh, scrollh_num * sizeof(struct Vertex));
 	sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, scrollh_num, 0, vertices);
 
 	sceGuFinish();
@@ -2037,13 +2034,12 @@ void blit_finish_scroll3(void)
 
 	sceGuStart(GU_DIRECT, gulist);
 
-	vertices = (struct Vertex *)sceGuGetMemory(scroll3_num * sizeof(struct Vertex));
-	memcpy(vertices, vertices_scroll3, scroll3_num * sizeof(struct Vertex));
-
 	sceGuDrawBufferList(GU_PSM_5551, work_frame, BUF_WIDTH);
 	sceGuScissor(64, 16, 448, 240);
 	sceGuTexImage(0, 512, 512, BUF_WIDTH, tex_scroll3);
 
+	vertices = (struct Vertex *)sceGuGetMemory(scroll3_num * sizeof(struct Vertex));
+	memcpy(vertices, vertices_scroll3, scroll3_num * sizeof(struct Vertex));
 	sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, scroll3_num, 0, vertices);
 
 	sceGuFinish();
@@ -2183,13 +2179,12 @@ void blit_finish_scrollh(void)
 
 	sceGuStart(GU_DIRECT, gulist);
 
-	vertices = (struct Vertex *)sceGuGetMemory(scrollh_num * sizeof(struct Vertex));
-	memcpy(vertices, vertices_scrollh, scrollh_num * sizeof(struct Vertex));
-
 	sceGuDrawBufferList(GU_PSM_5551, work_frame, BUF_WIDTH);
 	sceGuScissor(64, 16, 448, 240);
 	sceGuTexImage(0, 512, 512, BUF_WIDTH, tex_scrollh);
 
+	vertices = (struct Vertex *)sceGuGetMemory(scrollh_num * sizeof(struct Vertex));
+	memcpy(vertices, vertices_scrollh, scrollh_num * sizeof(struct Vertex));
 	sceGuDrawArray(GU_SPRITES, TEXTURE_FLAGS, scrollh_num, 0, vertices);
 
 	sceGuFinish();

@@ -29,10 +29,6 @@
 #include "mvs/mvs.h"
 #endif
 
-#ifdef SOUND_TEST
-#include "common/sndtest.h"
-#endif
-
 
 extern char game_name[16];
 extern char parent_name[16];
@@ -62,6 +58,8 @@ extern int machine_sound_type;
 
 extern u32 frames_displayed;
 extern int fatal_error;
+
+extern float video_fps;
 
 
 void emu_main(void);

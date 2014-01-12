@@ -109,18 +109,6 @@ const static UI_MESSAGEBOX mesbox[MB_NUM_MAX] =
 		}
 	},
 #endif
-#ifdef SOUND_TEST
-	// MB_SOUNDTEST
-	{
-		MB_YESNO,
-		{
-			MB_INFO("Start sound emulation."),
-			MB_SKIP,
-			MB_NORMAL(FONT_CIRCLE " to confirm, " FONT_CROSS " to cancel"),
-			MB_EOM
-		}
-	},
-#endif
 	// MB_GAMENOTWORK
 	{
 		MB_OKONLY,
