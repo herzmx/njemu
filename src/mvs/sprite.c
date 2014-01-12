@@ -21,7 +21,7 @@
 	ÉçÅ[ÉJÉãïœêî/ç\ë¢ëÃ
 ******************************************************************************/
 
-typedef struct sprite_t SPRITE ALIGN_DATA;
+typedef struct sprite_t SPRITE;
 
 struct sprite_t
 {
@@ -72,8 +72,8 @@ static u8 palette_is_dirty[256];
 #define FIX_HASH_SIZE		0x100
 #define FIX_MAX_SPRITES		((320/8) * (240/8))
 
-static SPRITE *fix_head[FIX_HASH_SIZE];
-static SPRITE fix_data[FIX_TEXTURE_SIZE];
+static SPRITE ALIGN_DATA *fix_head[FIX_HASH_SIZE];
+static SPRITE ALIGN_DATA fix_data[FIX_TEXTURE_SIZE];
 static SPRITE *fix_free_head;
 
 static u16 *tex_fix;
@@ -101,8 +101,8 @@ static u8 fix_palette_is_dirty;
 #define SPR_AUTOANIME4		(1 << 20)
 #define SPR_AUTOANIME8		(2 << 20)
 
-static SPRITE *spr_head[SPR_HASH_SIZE];
-static SPRITE spr_data[SPR_TEXTURE_SIZE];
+static SPRITE ALIGN_DATA *spr_head[SPR_HASH_SIZE];
+static SPRITE ALIGN_DATA spr_data[SPR_TEXTURE_SIZE];
 static SPRITE *spr_free_head;
 
 static u16 *tex_spr1;
@@ -112,7 +112,7 @@ static u16 spr_num;
 static u16 spr_texture_num;
 static u8 spr_texture_clear;
 static u8 spr_palette_is_dirty;
-static u8 spr_disable_this_frame;
+static u8 spr_disable;
 
 
 /******************************************************************************
@@ -490,7 +490,7 @@ void blit_clear_all_sprite(void)
 	fix_reset_sprite();
 	spr_reset_sprite();
 	memset(palette_is_dirty, 0, sizeof(palette_is_dirty));
-	spr_disable_this_frame = 0;
+	spr_disable = 0;
 }
 
 
@@ -548,7 +548,10 @@ void blit_reset(void)
 
 	blit_clear_all_sprite();
 
-	if (neogeo_bios != ASIA_AES) spr_disable_this_frame = 1;
+	if (neogeo_bios == ASIA_AES || neogeo_bios == DEBUG_BIOS)
+		spr_disable = 0;
+	else
+		spr_disable = 1;
 }
 
 
@@ -564,6 +567,8 @@ void blit_start(void)
 	if (fix_palette_is_dirty) fix_delete_dirty_palette();
 	if (spr_palette_is_dirty) spr_delete_dirty_palette();
 	memset(palette_is_dirty, 0, sizeof(palette_is_dirty));
+
+	if (neogeo_selected_vectors) spr_disable = 0;
 
 	sceGuStart(GU_DIRECT, gulist);
 	sceGuDrawBufferList(GU_PSM_5551, draw_frame, BUF_WIDTH);
@@ -595,8 +600,6 @@ void blit_partial_start(int start, int end)
 
 	fix_num = 0;
 	spr_num = 0;
-
-	if (neogeo_selected_vectors) spr_disable_this_frame = 0;
 
 	if (start == FIRST_VISIBLE_LINE)
 		blit_start();
@@ -709,7 +712,7 @@ void blit_draw_spr(int x, int y, int w, int h, u32 code, u32 attr)
 	struct Vertex *vertices;
 	u32 key;
 
-	if (spr_disable_this_frame) return;
+	if (spr_disable) return;
 	if (spr_num == SPR_MAX_SPRITES * 2) return;
 
 	key = MAKE_SPR_KEY(code, attr);
@@ -726,7 +729,7 @@ void blit_draw_spr(int x, int y, int w, int h, u32 code, u32 attr)
 
 			if (spr_texture_num == SPR_TEXTURE_SIZE - 1)
 			{
-				spr_disable_this_frame = 1;
+				spr_disable = 1;
 				return;
 			}
 		}

@@ -9,6 +9,13 @@
 #include "emumain.h"
 
 
+#if (EMU_SYSTEM == MVS)
+#define TICKS_PER_FRAME		16896		// 1000000 / 15625 * RASTER_LINES
+#else
+#define TICKS_PER_FRAME		(int)(1000000 / FPS)
+#endif
+
+
 /******************************************************************************
 	ÉOÉçÅ[ÉoÉãïœêî
 ******************************************************************************/
@@ -571,7 +578,7 @@ static void soundtest_run(void)
 				}
 
 				soundtest_updatescreen();
-				sceKernelDelayThread(1000000/60);
+				sceKernelDelayThread(TICKS_PER_FRAME);
 			}
 
 			video_clear_screen();

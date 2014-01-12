@@ -436,6 +436,9 @@ STATE_LOAD( video )
 
 	neogeo_paletteram16 = neogeo_palettebank16[neogeo_palette_index];
 	video_palette = video_palettebank[neogeo_palette_index];
+
+	fix_usage  = gfx_pen_usage[fix_bank];
+	fix_memory = (fix_bank) ? memory_region_gfx2 : memory_region_gfx1;
 }
 
 #endif /* SAVE_STATE */

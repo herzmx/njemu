@@ -196,19 +196,17 @@ TIMER_CALLBACK( cps2_raster_interrupt )
 	cps1_output[reg] = 0;
 	m68000_set_irq_line(4, HOLD_LINE);
 
-	if (!skip_this_frame())
+	if (scanline >= next_update_first_line && next_update_first_line <= LAST_VISIBLE_LINE)
 	{
-		if (scanline >= FIRST_VISIBLE_LINE && next_update_first_line <= LAST_VISIBLE_LINE)
+		if (!skip_this_frame())
 		{
-			int line = scanline;
-
-			if (line > LAST_VISIBLE_LINE) line = LAST_VISIBLE_LINE;
+			int line = (scanline > LAST_VISIBLE_LINE) ? LAST_VISIBLE_LINE : scanline;
 
 			cps2_screenrefresh(next_update_first_line, line);
 		}
-	}
 
-	next_update_first_line = scanline + 1;
+		next_update_first_line = scanline + 1;
+	}
 }
 
 TIMER_CALLBACK( cps2_vblank_interrupt )

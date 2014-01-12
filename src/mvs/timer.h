@@ -21,9 +21,9 @@
 #define TIME_NEVER				(0x7fffffff)
 #define TIME_IN_HZ(hz)			(1000000/hz)
 
-#define SEC_TO_USEC(secs)		(int)((secs) * 1000000.0)
+#define SEC_TO_USEC(secs)		(int)((float)(secs) * 1000000.0)
 
-#define USECS_PER_SCANLINE		((1000000/FPS)/RASTER_LINES)
+#define USECS_PER_SCANLINE		64		// = 1000000 / 15625
 
 #define SUSPEND_REASON_HALT		0x0001
 #define SUSPEND_REASON_RESET	0x0002
@@ -45,9 +45,6 @@ void timer_set(int which, int duration, int param, void (*callback)(int param));
 float timer_get_time(void);
 float timer_timeelapsed(void);
 int timer_getscanline(void);
-#ifdef SOUND_TEST
-void timer_update_subcpu(void);
-#endif
 
 #ifdef SAVE_STATE
 STATE_SAVE( timer );

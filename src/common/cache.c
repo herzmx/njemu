@@ -66,7 +66,7 @@ int pcm_cache_enable;
 static SceUID pcm_fd;
 static char pcm_cache_name[MAX_PATH];
 static u8 *pcm_cache[7];
-static u16 pcm_cache_block[7];
+static u16 ALIGN_DATA pcm_cache_block[7];
 #endif
 
 
@@ -502,7 +502,7 @@ int cache_start(void)
 
 			for (i = 0; i < 7; i++)
 			{
-				if ((pcm_cache[i] = memalign(64, 0x10000)) == NULL)
+				if ((pcm_cache[i] = memalign(MEM_ALIGN, 0x10000)) == NULL)
 				{
 					int j;
 
@@ -565,10 +565,10 @@ int cache_start(void)
 #endif
 
 #if (EMU_SYSTEM == CPS2)
-	if ((GFX_MEMORY = (u8 *)memalign(64, GFX_SIZE + CACHE_SAFETY)) != NULL)
+	if ((GFX_MEMORY = (u8 *)memalign(MEM_ALIGN, GFX_SIZE + CACHE_SAFETY)) != NULL)
 	{
 		free(GFX_MEMORY);
-		GFX_MEMORY = (u8 *)memalign(64, GFX_SIZE);
+		GFX_MEMORY = (u8 *)memalign(MEM_ALIGN, GFX_SIZE);
 		memset(GFX_MEMORY, 0, GFX_SIZE);
 
 		num_cache = GFX_SIZE >> 16;
@@ -589,7 +589,7 @@ int cache_start(void)
 		// 確保可能なサイズをチェック
 		for (i = GFX_SIZE >> 16; i >= MIN_CACHE_SIZE; i--)
 		{
-			if ((GFX_MEMORY = (u8 *)memalign(64, (i << 16) + CACHE_SAFETY)) != NULL)
+			if ((GFX_MEMORY = (u8 *)memalign(MEM_ALIGN, (i << 16) + CACHE_SAFETY)) != NULL)
 			{
 				size = i << 16;
 				free(GFX_MEMORY);
@@ -604,7 +604,7 @@ int cache_start(void)
 			return 0;
 		}
 
-		if ((GFX_MEMORY = (u8 *)memalign(64, size)) == NULL)
+		if ((GFX_MEMORY = (u8 *)memalign(MEM_ALIGN, size)) == NULL)
 		{
 			msg_printf("ERROR: Could not allocate cache memory.\n");
 			return 0;

@@ -280,7 +280,7 @@ static void neogeo_decode_fix(u8 *mem, u32 length, u8 *usage)
 
 static int load_rom_cpu1(void)
 {
-	if ((memory_region_cpu1 = memalign(64, memory_length_cpu1)) == NULL)
+	if ((memory_region_cpu1 = memalign(MEM_ALIGN, memory_length_cpu1)) == NULL)
 	{
 		error_memory("REGION_CPU1");
 		return 0;
@@ -335,7 +335,7 @@ static int load_rom_cpu2(void)
 	int i;
 	char fname[32], *parent;
 
-	if ((memory_region_cpu2 = memalign(64, memory_length_cpu2)) == NULL)
+	if ((memory_region_cpu2 = memalign(MEM_ALIGN, memory_length_cpu2)) == NULL)
 	{
 		error_memory("REGION_CPU2");
 		return 0;
@@ -372,14 +372,14 @@ static int load_rom_gfx1(void)
 {
 	char fname[32];
 
-	if ((memory_region_gfx1 = memalign(64, memory_length_gfx1)) == NULL)
+	if ((memory_region_gfx1 = memalign(MEM_ALIGN, memory_length_gfx1)) == NULL)
 	{
 		error_memory("REGION_GFX1");
 		return 0;
 	}
 	memset(memory_region_gfx1, 0, memory_length_gfx1);
 
-	if ((gfx_pen_usage[0] = memalign(64, memory_length_gfx1 / 32)) == NULL)
+	if ((gfx_pen_usage[0] = memalign(MEM_ALIGN, memory_length_gfx1 / 32)) == NULL)
 	{
 		error_memory("GFX_PEN_USAGE (sfix)");
 		return 0;
@@ -403,14 +403,14 @@ static int load_rom_gfx1(void)
 
 static int load_rom_gfx2(void)
 {
-	if ((memory_region_gfx2 = memalign(64, memory_length_gfx2)) == NULL)
+	if ((memory_region_gfx2 = memalign(MEM_ALIGN, memory_length_gfx2)) == NULL)
 	{
 		error_memory("REGION_GFX2");
 		return 0;
 	}
 	memset(memory_region_gfx2, 0, memory_length_gfx2);
 
-	if ((gfx_pen_usage[1] = memalign(64, memory_length_gfx2 / 32)) == NULL)
+	if ((gfx_pen_usage[1] = memalign(MEM_ALIGN, memory_length_gfx2 / 32)) == NULL)
 	{
 		error_memory("GFX_PEN_USAGE (fix)");
 		return 0;
@@ -469,7 +469,7 @@ static int load_rom_gfx2(void)
 
 static int load_rom_gfx3(void)
 {
-	if ((gfx_pen_usage[2] = memalign(64, memory_length_gfx3 / 128)) == NULL)
+	if ((gfx_pen_usage[2] = memalign(MEM_ALIGN, memory_length_gfx3 / 128)) == NULL)
 	{
 		error_memory("GFX_PEN_USAGE (spr)");
 		return 0;
@@ -481,7 +481,7 @@ static int load_rom_gfx3(void)
 	}
 	else
 	{
-		if ((memory_region_gfx3 = memalign(64, memory_length_gfx3)) != NULL)
+		if ((memory_region_gfx3 = memalign(MEM_ALIGN, memory_length_gfx3)) != NULL)
 		{
 			int i;
 			char fname[32], *parent;
@@ -552,7 +552,7 @@ static int load_rom_sound1(void)
 		return 1;
 	}
 
-	if ((memory_region_sound1 = memalign(64, memory_length_sound1)) == NULL)
+	if ((memory_region_sound1 = memalign(MEM_ALIGN, memory_length_sound1)) == NULL)
 	{
 		error_memory("REGION_SOUND1");
 		return 0;
@@ -611,7 +611,7 @@ static int load_rom_sound2(void)
 		return 1;
 	}
 
-	if ((memory_region_sound2 = memalign(64, memory_length_sound2)) == NULL)
+	if ((memory_region_sound2 = memalign(MEM_ALIGN, memory_length_sound2)) == NULL)
 	{
 		error_memory("REGION_SOUND2");
 		return 0;
@@ -650,7 +650,7 @@ static int load_rom_user1(int reload)
 
 	if (!reload)
 	{
-		if ((memory_region_user1 = memalign(1, memory_length_user1)) == NULL)
+		if ((memory_region_user1 = memalign(MEM_ALIGN, memory_length_user1)) == NULL)
 		{
 			error_memory("REGION_USER1");
 			return 0;

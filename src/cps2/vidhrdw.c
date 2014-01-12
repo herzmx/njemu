@@ -68,6 +68,16 @@ static struct cps2_object_t *cps2_last_object;
 static u16 cps2_object_xoffs;
 static u16 cps2_object_yoffs;
 
+struct cps_scroll2_t
+{
+	int value;
+	int start;
+	int end;
+};
+
+static struct cps_scroll2_t ALIGN_DATA scroll2[224];
+static int cps_scroll2_blocks;
+
 static int cps2_scanline_start;
 static int cps2_scanline_end;
 static int cps2_scroll3_base;
@@ -135,14 +145,6 @@ u16 ALIGN_DATA video_palette[cps2_palette_size >> 1];
 void (*cps2_build_palette)(void);
 static void cps2_build_palette_normal(void);
 static void cps2_build_palette_delay(void);
-
-/*------------------------------------------------------
-	CPS2スクロール2更新
-------------------------------------------------------*/
-
-static void (*cps2_render_scroll2_raster_disabled)(int otheroffs);
-static void cps2_render_scroll2_raster_disabled1(int otheroffs);
-static void cps2_render_scroll2_raster_disabled2(int otheroffs);
 
 
 /******************************************************************************
@@ -261,11 +263,6 @@ int cps2_video_init(void)
 	}
 	cps2_kludge = driver->kludge;
 	cps2_scroll3_base = (driver->kludge & (CPS2_KLUDGE_SSF2 | CPS2_KLUDGE_SSF2T)) ? 0x0000 : 0x4000;
-
-	if (driver->flags & 1)
-		cps2_render_scroll2_raster_disabled = cps2_render_scroll2_raster_disabled2;
-	else
-		cps2_render_scroll2_raster_disabled = cps2_render_scroll2_raster_disabled1;
 
 	if (driver->flags & 2)
 		cps2_build_palette = cps2_build_palette_delay;
@@ -428,7 +425,7 @@ static void cps2_build_palette_delay(void)
 																	\
 	if (!(attr & 0xff00))											\
 	{																\
-		if (cps_pen_usage[TILE16][code])							\
+		if (pen_usage[code])										\
 			BLIT_FUNC(sx, sy, code);								\
 		continue;													\
 	}																\
@@ -443,7 +440,7 @@ static void cps2_build_palette_delay(void)
 			ncode = (code & ~0xf) + ((code + x) & 0xf) + (y << 4);	\
 			ncode &= 0x3ffff;										\
 																	\
-			if (cps_pen_usage[TILE16][ncode])						\
+			if (pen_usage[ncode])									\
 			{														\
 				if (attr & 0x20)									\
 					nsx = sx + ((nx - x) << 4);						\
@@ -471,6 +468,7 @@ static void cps2_render_object(void)
 	int xoffs = 64 - cps2_object_xoffs;
 	int yoffs = 16 - cps2_object_yoffs;
 	struct cps2_object_t *object = cps2_object;
+	u8 *pen_usage = cps_pen_usage[TILE16];
 
 	while (object < cps2_last_object)
 	{
@@ -499,6 +497,7 @@ static void cps2_render_object_zb(const struct spr_mask_t *mask)
 	int xoffs = 64 - cps2_object_xoffs;
 	int yoffs = 16 - cps2_object_yoffs;
 	struct cps2_object_t *object = cps2_object;
+	u8 *pen_usage = cps_pen_usage[TILE16];
 
 	while (object < cps2_last_object)
 	{
@@ -549,6 +548,7 @@ void cps2_scan_object_callback(void)
 	int xoffs = 64 - cps2_object_xoffs;
 	int yoffs = 16 - cps2_object_yoffs;
 	struct cps2_object_t *object = cps2_object;
+	u8 *pen_usage = cps_pen_usage[TILE16];
 
 	while (object < cps2_last_object)
 	{
@@ -569,47 +569,38 @@ void cps2_scan_object_callback(void)
   Scroll 1 (8x8 layer)
 ******************************************************************************/
 
-/*------------------------------------------------------
-	スプライトのオフセット取得
-------------------------------------------------------*/
-
-INLINE u32 scroll1_offset(u32 col, u32 row)
-{
-	/* logical (col,row) -> memory offset */
-	return (row & 0x1f) + ((col & 0x3f) << 5) + ((row & 0x20) << 6);
-}
+#define scroll1_offset(col, row) (((row) & 0x1f) + (((col) & 0x3f) << 5) + (((row) & 0x20) << 6)) << 1
 
 #define SCAN_SCROLL1(blit_func)												\
-	int x, y, sx, sy, offs, code, attr;										\
+	int x, y, sx, sy, offs, code;											\
 	int logical_col = cps_scroll1x >> 3;									\
 	int logical_row = cps_scroll1y >> 3;									\
 	int scroll_col  = cps_scroll1x & 0x07;									\
 	int scroll_row  = cps_scroll1y & 0x07;									\
 	int min_x, max_x, min_y, max_y;											\
+	u8  *pen_usage = cps_pen_usage[TILE08];									\
 																			\
 	min_x = ( 64 + scroll_col) >> 3;										\
-	max_x = (448 + scroll_col) >> 3;										\
+	max_x = (447 + scroll_col) >> 3;										\
 																			\
 	min_y = cps2_scanline_start & ~0x07;									\
 	min_y = (min_y + scroll_row) >> 3;										\
 	max_y = cps2_scanline_end;												\
 	max_y = (max_y + scroll_row) >> 3;										\
 																			\
-	for (y = min_y; y <= max_y; y++)										\
-	{																		\
-		sy = (y << 3) - scroll_row;											\
+	sy = (min_y << 3) - scroll_row;											\
 																			\
-		for (x = min_x; x <= max_x; x++)									\
+	for (y = min_y; y <= max_y; y++, sy += 8)								\
+	{																		\
+		sx = (min_x << 3) - scroll_col;										\
+																			\
+		for (x = min_x; x <= max_x; x++, sx += 8)							\
 		{																	\
-			offs = scroll1_offset(logical_col + x, logical_row + y) << 1;	\
+			offs = scroll1_offset(logical_col + x, logical_row + y);		\
 			code = 0x20000 + cps_scroll1[offs];								\
 																			\
-			if (cps_pen_usage[TILE08][code])								\
-			{																\
-				attr = cps_scroll1[offs + 1];								\
-				sx = (x << 3) - scroll_col;									\
-				blit_func(sx, sy, code, attr);								\
-			}																\
+			if (pen_usage[code])											\
+				blit_func(sx, sy, code, cps_scroll1[offs + 1]);				\
 		}																	\
 	}
 
@@ -632,10 +623,7 @@ static void cps2_render_scroll1(void)
 
 void cps2_scan_scroll1_callback(void)
 {
-	if (cps_layer_enabled[LAYER_SCROLL1])
-	{
-		SCAN_SCROLL1(blit_update_scroll1)
-	}
+	SCAN_SCROLL1(blit_update_scroll1)
 }
 
 
@@ -643,174 +631,62 @@ void cps2_scan_scroll1_callback(void)
   Scroll 2 (16x16 layer)
 ******************************************************************************/
 
-/*------------------------------------------------------
-	スプライトのオフセット取得
-------------------------------------------------------*/
+#define scroll2_offset(col, row) (((row) & 0x0f) + (((col) & 0x3f) << 4) + (((row) & 0x30) << 6)) << 1
 
-INLINE u32 scroll2_offset(u32 col, u32 row)
-{
-	/* logical (col,row) -> memory offset */
-	return (row & 0x0f) + ((col & 0x3f) << 4) + ((row & 0x30) << 6);
-}
-
-/********************************************************
-	ラスタオペレーションなし
-********************************************************/
-
-#define SCAN_SCROLL2(blit_func)												\
-	int x, y, sx, sy, offs, code, attr;										\
-	int logical_col = cps_scroll2x >> 4;									\
+#define SCAN_SCROLL2()														\
+	int block;																\
+	int x, y, sx, sy, offs, code;											\
+	int logical_col, scroll_col;											\
 	int logical_row = cps_scroll2y >> 4;									\
-	int scroll_col  = cps_scroll2x & 0x0f;									\
-	int scroll_row  = cps_scroll2y & 0x0f;									\
+	int scroll_row = cps_scroll2y & 0x0f;									\
 	int min_x, max_x, min_y, max_y;											\
+	u8  *pen_usage = cps_pen_usage[TILE16];									\
 																			\
-	min_x = ( 64 + scroll_col) >> 4;										\
-	max_x = (448 + scroll_col) >> 4;										\
-																			\
-	min_y = cps2_scanline_start & ~0x0f;									\
-	min_y = (min_y + scroll_row) >> 4;										\
-	max_y = cps2_scanline_end;												\
-	max_y = (max_y + scroll_row) >> 4;										\
-																			\
-	for (y = min_y; y <= max_y; y++)										\
+	for (block = 0; block < cps_scroll2_blocks; block++)					\
 	{																		\
-		sy = (y << 4) - scroll_row;											\
+		cps_scroll2x = scroll2[block].value;								\
+		logical_col  = cps_scroll2x >> 4;									\
+		scroll_col   = cps_scroll2x & 0x0f;									\
 																			\
-		for (x = min_x; x <= max_x; x++)									\
+		min_x = ( 64 + scroll_col) >> 4;									\
+		max_x = (447 + scroll_col) >> 4;									\
+																			\
+		min_y = scroll2[block].start & ~0x0f;								\
+		min_y = (min_y + scroll_row) >> 4;									\
+		max_y = scroll2[block].end;											\
+		max_y = (max_y + scroll_row) >> 4;									\
+																			\
+		sy = (min_y << 4) - scroll_row;										\
+																			\
+		for (y = min_y; y <= max_y; y++, sy += 16)							\
 		{																	\
-			offs = scroll2_offset(logical_col + x, logical_row + y) << 1;	\
-			code = 0x10000 + cps_scroll2[offs];								\
+			sx = (min_x << 4) - scroll_col;									\
 																			\
-			if (cps_pen_usage[TILE16][code])								\
+			for (x = min_x; x <= max_x; x++, sx += 16)						\
 			{																\
-				attr = cps_scroll2[offs + 1];								\
-				sx = (x << 4) - scroll_col;									\
-				blit_func(sx, sy, code, attr);								\
+				offs = scroll2_offset(logical_col + x, logical_row + y);	\
+				code = 0x10000 + cps_scroll2[offs];							\
+																			\
+				if (pen_usage[code]) BLIT_FUNC								\
 			}																\
 		}																	\
+																			\
+		BLIT_FINISH_FUNC													\
 	}
 
 
 /*------------------------------------------------------
-	通常描画
+	描画
 ------------------------------------------------------*/
+
 
 static void cps2_render_scroll2(void)
 {
-	SCAN_SCROLL2(blit_draw_scroll2)
-
-	blit_finish_scroll2(cps2_scanline_start, cps2_scanline_end + 1);
-}
-
-
-/*------------------------------------------------------
-	使用中のスプライトをチェック
-------------------------------------------------------*/
-
-static void cps2_scan_scroll2(void)
-{
-	SCAN_SCROLL2(blit_update_scroll2)
-}
-
-
-/********************************************************
-	ラスタオペレーション(line scroll)あり
-********************************************************/
-
-#define SCAN_SCROLL2_DISTORT(blit_func)											\
-	int x, y, sx, sy, offs, code, attr;											\
-	int logical_col, scroll_col;												\
-	int logical_row = cps_scroll2y >> 4;										\
-	int scroll_row  = cps_scroll2y & 0x0f;										\
-	int min_x, max_x, min_y, max_y;												\
-	int line, scroll2x[256];													\
-																				\
-	for (line = cps2_scanline_start; line <= cps2_scanline_end; line++)			\
-		scroll2x[line] = cps_scroll2x + cps_other[(line + otheroffs) & 0x3ff];	\
-																				\
-	for (line = cps2_scanline_start; line <= cps2_scanline_end; )				\
-	{																			\
-		int start_line = line;													\
-		int end_line = line + 1;												\
-																				\
-		while (scroll2x[end_line] == scroll2x[start_line])						\
-		{																		\
-			end_line++;															\
-			if (end_line == cps2_scanline_end + 1) break;						\
-		}																		\
-																				\
-		logical_col = scroll2x[start_line] >> 4;								\
-		scroll_col = scroll2x[start_line] & 0x0f;								\
-																				\
-		min_x = ( 64 + scroll_col) >> 4;										\
-		max_x = (448 + scroll_col) >> 4;										\
-																				\
-		start_line &= ~0x0f;													\
-		min_y = ((start_line + scroll_row) & 0x3ff) >> 4;						\
-		max_y = ((end_line + scroll_row) & 0x3ff) >> 4;							\
-																				\
-		for (y = min_y; y <= max_y; y++)										\
-		{																		\
-			sy = (y << 4) - scroll_row;											\
-																				\
-			for (x = min_x; x <= max_x; x++)									\
-			{																	\
-				offs = scroll2_offset(logical_col + x, logical_row + y) << 1;	\
-				code = 0x10000 + cps_scroll2[offs];								\
-																				\
-				if (cps_pen_usage[TILE16][code])								\
-				{																\
-					attr = cps_scroll2[offs + 1];								\
-					sx = (x << 4) - scroll_col;									\
-					blit_func(sx, sy, code, attr);								\
-				}																\
-			}																	\
-		}																		\
-		BLIT_FINISH_FUNC														\
-		line = end_line;														\
-	}
-
-
-/*------------------------------------------------------
-	ラインスクロール描画
-------------------------------------------------------*/
-
-static void cps2_render_scroll2_distort(void)
-{
-	int otheroffs = cps1_port(CPS1_ROWSCROLL_OFFS);
-
-	if (cps_raster_enable)
-	{
-#define BLIT_FINISH_FUNC	blit_finish_scroll2(line, end_line);
-		SCAN_SCROLL2_DISTORT(blit_draw_scroll2)
+#define BLIT_FUNC			blit_draw_scroll2(sx, sy, code, cps_scroll2[offs + 1]);
+#define BLIT_FINISH_FUNC	blit_finish_scroll2(scroll2[block].start, scroll2[block].end + 1);
+	SCAN_SCROLL2()
 #undef BLIT_FINISH_FUNC
-	}
-	else
-	{
-		(*cps2_render_scroll2_raster_disabled)(otheroffs);
-	}
-}
-
-
-/*------------------------------------------------------
-	使用中のスプライトをチェック
-------------------------------------------------------*/
-
-static void cps2_scan_scroll2_distort(void)
-{
-	int otheroffs = cps1_port(CPS1_ROWSCROLL_OFFS);
-
-	if (cps_raster_enable)
-	{
-#define BLIT_FINISH_FUNC
-		SCAN_SCROLL2_DISTORT(blit_update_scroll2)
-#undef BLIT_FINISH_FUNC
-	}
-	else
-	{
-		cps2_scan_scroll2();
-	}
+#undef BLIT_FUNC
 }
 
 
@@ -820,84 +696,95 @@ static void cps2_scan_scroll2_distort(void)
 
 void cps2_scan_scroll2_callback(void)
 {
-	if (cps_layer_enabled[LAYER_SCROLL2])
-	{
-		int video_ctrl = cps1_port(CPS1_VIDEO_CONTROL);
-
-		if (video_ctrl & 0x0001)
-			cps2_scan_scroll2_distort();
-		else
-			cps2_scan_scroll2();
-	}
-}
-
-
-/********************************************************
-	Scroll 2 その他の処理
-********************************************************/
-
-/*------------------------------------------------------
-	Raster Effects Off時の描画
-------------------------------------------------------*/
-
-static void cps2_render_scroll2_raster_disabled1(int otheroffs)
-{
-	int line;
-
-	if (cps2_scanline_start == FIRST_VISIBLE_LINE)
-		line = ((cps2_scanline_end + 1) - cps2_scanline_start) >> 1;
-	else
-		line = 256/2;
-
-	cps_scroll2x += cps_other[(line + otheroffs) & 0x3ff];
-	cps2_render_scroll2();
+#define BLIT_FUNC			blit_update_scroll2(sx, sy, code, cps_scroll2[offs + 1]);
+#define BLIT_FINISH_FUNC
+	SCAN_SCROLL2()
+#undef BLIT_FINISH_FUNC
+#undef BLIT_FUNC
 }
 
 
 /*------------------------------------------------------
-	Raster Effects Off時の描画 (格闘ゲーム用)
+	ラインスクロール計算
 ------------------------------------------------------*/
 
-static void cps2_render_scroll2_raster_disabled2(int otheroffs)
+static void cps2_check_scroll2_distort(int distort)
 {
-	int line, first_scroll2x, scroll2x[256];
+	int line, block = 0;
 
 	line = cps2_scanline_start;
-	first_scroll2x = scroll2x[line] = cps_scroll2x + cps_other[(line + otheroffs) & 0x3ff];
-	line++;
+	scroll2[0].start = line;
+	scroll2[0].end   = line;
 
-	for (; line <= cps2_scanline_end; line++)
+	if (distort)
 	{
-		scroll2x[line] = cps_scroll2x + cps_other[(line + otheroffs) & 0x3ff];
-		if (scroll2x[line] != first_scroll2x)
-			break;
-	}
+		int otheroffs = cps1_port(CPS1_ROWSCROLL_OFFS);
 
-	if (line != cps2_scanline_end && line - cps2_scanline_start > 16)
-	{
-		// 途中まで同じ場合は、2回に分けて描画
-		int save_start, save_end;
+		scroll2[0].value = cps_scroll2x + cps_other[(line + otheroffs) & 0x3ff];
 
-		save_start = cps2_scanline_start;
-		save_end = cps2_scanline_end;
+		if (!cps_raster_enable && !(driver->flags & 1))
+		{
+			line  = ((cps2_scanline_end + 1) - cps2_scanline_start) >> 1;
+			line += cps2_scanline_start;
+			scroll2[0].value = cps_scroll2x + cps_other[(line + otheroffs) & 0x3ff];
+			distort = 0;
+		}
 
-		cps_scroll2x = first_scroll2x;
-		cps2_scanline_end = line - 1;
-		cps2_render_scroll2();
+		if (distort)
+		{
+			u16 value, prev_value;
 
-		cps2_scanline_start = line;
-		cps2_scanline_end = save_end;
+			prev_value = scroll2[0].value;
 
-		cps_scroll2x = scroll2x[line];
-		cps2_render_scroll2();
+			for (; line <= cps2_scanline_end; line++)
+			{
+				value = cps_scroll2x + cps_other[(line + otheroffs) & 0x3ff];
 
-		cps2_scanline_start = save_start;
+				if (prev_value == value)
+				{
+					scroll2[block].end++;
+				}
+				else
+				{
+					block++;
+					scroll2[block].value = prev_value = value;
+					scroll2[block].start = line;
+					scroll2[block].end   = line;
+				}
+			}
+
+			if (!cps_raster_enable)
+			{
+				if (block >= 1 && scroll2[0].end - cps2_scanline_start > 16)
+				{
+					line  = ((scroll2[block].end + 1) - scroll2[block].start) >> 1;
+					line += cps2_scanline_start;
+					scroll2[1].value = cps_scroll2x + cps_other[(line + otheroffs) & 0x3ff];
+					scroll2[1].end = cps2_scanline_end;
+					block = 1;
+				}
+				else
+				{
+					line  = ((cps2_scanline_end + 1) - cps2_scanline_start) >> 1;
+					line += cps2_scanline_start;
+					scroll2[0].value = cps_scroll2x + cps_other[(line + otheroffs) & 0x3ff];
+					block = 0;
+				}
+			}
+		}
 	}
 	else
 	{
-		// 全て同じか、ライン毎に変化がある場合
-		cps2_render_scroll2_raster_disabled1(otheroffs);
+		scroll2[0].value = cps_scroll2x;
 	}
+
+	if (!block)
+	{
+		cps_scroll2x = scroll2[0].value;
+		scroll2[0].end = cps2_scanline_end;
+	}
+
+	cps_scroll2_blocks = block + 1;
 }
 
 
@@ -905,40 +792,35 @@ static void cps2_render_scroll2_raster_disabled2(int otheroffs)
   Scroll 3 (32x32 layer)
 ******************************************************************************/
 
-/*------------------------------------------------------
-	スプライトのオフセット取得
-------------------------------------------------------*/
-
-INLINE u32 scroll3_offset(u32 col, u32 row)
-{
-	/* logical (col,row) -> memory offset */
-	return (row & 0x07) + ((col & 0x3f) << 3) + ((row & 0x38) << 6);
-}
+#define scroll3_offset(col, row) (((row) & 0x07) + (((col) & 0x3f) << 3) + (((row) & 0x38) << 6)) << 1
 
 #define SCAN_SCROLL3(blit_func)												\
-	int x, y, sx, sy, offs, code, attr;										\
+	int x, y, sx, sy, offs, code;											\
 	int base = cps2_scroll3_base;											\
 	int logical_col = cps_scroll3x >> 5;									\
 	int logical_row = cps_scroll3y >> 5;									\
 	int scroll_col  = cps_scroll3x & 0x1f;									\
 	int scroll_row  = cps_scroll3y & 0x1f;									\
 	int min_x, max_x, min_y, max_y;											\
+	u8  *pen_usage = cps_pen_usage[TILE32];									\
 																			\
 	min_x = ( 64 + scroll_col) >> 5;										\
-	max_x = (448 + scroll_col) >> 5;										\
+	max_x = (447 + scroll_col) >> 5;										\
 																			\
 	min_y = cps2_scanline_start & ~0x1f;									\
 	min_y = (min_y + scroll_row) >> 5;										\
 	max_y = cps2_scanline_end;												\
 	max_y = (max_y + scroll_row) >> 5;										\
 																			\
-	for (y = min_y; y <= max_y; y++)										\
-	{																		\
-		sy = (y << 5) - scroll_row;											\
+	sy = (min_y << 5) - scroll_row;											\
 																			\
-		for (x = min_x; x <= max_x; x++)									\
+	for (y = min_y; y <= max_y; y++, sy += 32)								\
+	{																		\
+		sx = (min_x << 5) - scroll_col;										\
+																			\
+		for (x = min_x; x <= max_x; x++, sx += 32)							\
 		{																	\
-			offs = scroll3_offset(logical_col + x, logical_row + y) << 1;	\
+			offs = scroll3_offset(logical_col + x, logical_row + y);		\
 			code = cps_scroll3[offs];										\
 																			\
 			switch (cps2_kludge)											\
@@ -957,12 +839,8 @@ INLINE u32 scroll3_offset(u32 col, u32 row)
 			}																\
 			code += base;													\
 																			\
-			if (cps_pen_usage[TILE32][code])								\
-			{																\
-				attr = cps_scroll3[offs + 1];								\
-				sx = (x << 5) - scroll_col;									\
-				blit_func(sx, sy, code, attr);								\
-			}																\
+			if (pen_usage[code])											\
+				blit_func(sx, sy, code, cps_scroll3[offs + 1]);				\
 		}																	\
 	}
 
@@ -985,10 +863,7 @@ static void cps2_render_scroll3(void)
 
 void cps2_scan_scroll3_callback(void)
 {
-	if (cps_layer_enabled[LAYER_SCROLL3])
-	{
-		SCAN_SCROLL3(blit_update_scroll3)
-	}
+	SCAN_SCROLL3(blit_update_scroll3)
 }
 
 
@@ -1000,26 +875,15 @@ void cps2_scan_scroll3_callback(void)
 	レイヤーを描画
 ------------------------------------------------------*/
 
-static void cps2_render_layer(int layer, int distort)
+static void cps2_render_layer(int layer)
 {
 	if (cps_layer_enabled[layer])
 	{
 		switch (layer)
 		{
-		case 1:
-			cps2_render_scroll1();
-			break;
-
-		case 2:
-			if (distort)
-				cps2_render_scroll2_distort();
-			else
-				cps2_render_scroll2();
-			break;
-
-		case 3:
-			cps2_render_scroll3();
-			break;
+		case 1: cps2_render_scroll1(); break;
+		case 2: cps2_render_scroll2(); break;
+		case 3: cps2_render_scroll3(); break;
 		}
 	}
 }
@@ -1117,7 +981,7 @@ void cps2_screenrefresh(int start, int end)
 	u16 layer_ctrl = cps1_port(CPS2_LAYER_CONTROL);
 	u16 video_ctrl = cps1_port(CPS1_VIDEO_CONTROL);
 	u16 pri_ctrl   = cps2_port(CPS2_OBJ_PRI);
-	int i, distort_scroll2, priority, prev_pri;
+	int i, priority, prev_pri;
 	u8  layer[4], pri[4] = {0,};
 	const struct spr_mask_t *mask = NULL;
 
@@ -1127,7 +991,6 @@ void cps2_screenrefresh(int start, int end)
 	blit_partial_start(start, end);
 
 	cps_flip_screen = video_ctrl & 0x8000;
-	distort_scroll2 = video_ctrl & 0x0001;
 
 	cps_scroll1 = cps1_base(CPS1_SCROLL1_BASE, cps2_scroll_mask);
 	cps_scroll2 = cps1_base(CPS1_SCROLL2_BASE, cps2_scroll_mask);
@@ -1178,6 +1041,8 @@ void cps2_screenrefresh(int start, int end)
 		}
 	}
 
+	cps2_check_scroll2_distort(video_ctrl & 1);
+
 	if (mask)
 		cps2_render_object_zb(mask);
 	else
@@ -1195,7 +1060,7 @@ void cps2_screenrefresh(int start, int end)
 					blit_finish_object(prev_pri + 1, priority);
 					prev_pri = priority;
 				}
-				cps2_render_layer(layer[i], distort_scroll2);
+				cps2_render_layer(layer[i]);
 			}
 		}
 	}

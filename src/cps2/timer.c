@@ -28,7 +28,7 @@ static TIMER ALIGN_DATA timer[MAX_TIMER];
 	ƒ[ƒJƒ‹•Ï”
 ******************************************************************************/
 
-static const float time_slice = (int)(1000000.0 / FPS);
+static const float time_slice = 1000000.0 / FPS;
 
 static float base_time;
 static float frame_base;

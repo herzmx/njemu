@@ -9,6 +9,7 @@
 #endif
 
 #define ALIGN_DATA		__attribute__((aligned(16)))
+#define MEM_ALIGN		16
 
 #if defined(BUILD_CPS1PSP)
 
@@ -38,7 +39,7 @@
 #define machine_main	neogeo_main
 
 #define EMU_SYSTEM		MVS
-#define FPS				60.0
+#define FPS				(15625.0 / 264.0)
 #define USE_CACHE		1
 #define GULIST_SIZE		96*1024		// 96KB
 

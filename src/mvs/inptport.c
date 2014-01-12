@@ -406,7 +406,7 @@ static void update_inputport5(void)
 
 	if (neogeo_input_mode)
 	{
-		if (input_flag[TEST_SWITCH] || service_switch) value &= ~0x80;
+		if (input_flag[TEST_SWITCH]) value &= ~0x80;
 	}
 
 	neogeo_port_value[5] = value;
@@ -579,8 +579,6 @@ void update_inputport(void)
 	int i;
 	u32 buttons;
 
-	service_switch = 0;
-
 	update_autofire();
 
 	if (neogeo_ngh == NGH_irrmaze)
@@ -609,14 +607,16 @@ void update_inputport(void)
 			neogeo_port_value[3] = 0xff;
 	}
 
-	if ((buttons & PSP_CTRL_SELECT) && (buttons & PSP_CTRL_LTRIGGER) && (buttons & PSP_CTRL_RTRIGGER))
+	memset(input_flag, 0, sizeof(input_flag));
+
+	if ((buttons & TEST_SWITCH_FLAGS) == TEST_SWITCH_FLAGS)
 	{
-		buttons &= ~(PSP_CTRL_SELECT | PSP_CTRL_LTRIGGER | PSP_CTRL_RTRIGGER);
-		service_switch = 1;
+		buttons &= ~TEST_SWITCH_FLAGS;
+		input_flag[TEST_SWITCH] = 1;
 	}
 
 	for (i = 0; i < MAX_INPUTS; i++)
-		input_flag[i] = (buttons & input_map[i]) != 0;
+		input_flag[i] |= (buttons & input_map[i]) != 0;
 
 	update_inputport0();
 	update_inputport1();

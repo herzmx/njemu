@@ -1615,19 +1615,22 @@ static int convert_rom(char *game_name)
 static int create_raw_cache(char *game_name, int pause)
 {
 	FILE *fp;
-	int i;
-	const char version[8] = "CPS2V08\0";
-	u32 base, block[0x200];
+	int i, offset;
+	const char version[8] = "CPS2V09\0";
+	u32 header_size, aligned_size, block[0x200];
 	char fname[MAX_PATH];
 
 	_chdir("cache");
 
-	base = 8;
-	base += gfx_total_elements[TILE08];
-	base += gfx_total_elements[TILE16];
-	base += gfx_total_elements[TILE32];
-	base += 0x200 * sizeof(u32);
+	header_size = 8;
+	header_size += gfx_total_elements[TILE08];
+	header_size += gfx_total_elements[TILE16];
+	header_size += gfx_total_elements[TILE32];
+	header_size += 0x200 * sizeof(u32);
 
+	aligned_size = (header_size + 0xffff) & ~0xffff;
+
+	offset = aligned_size;
 	for (i = 0; i < 0x200; i++)
 	{
 		if (block_empty[i])
@@ -1636,8 +1639,8 @@ static int create_raw_cache(char *game_name, int pause)
 		}
 		else
 		{
-			block[i] = base;
-			base += 0x10000;
+			block[i] = offset;
+			offset += 0x10000;
 		}
 	}
 
@@ -1651,11 +1654,14 @@ static int create_raw_cache(char *game_name, int pause)
 
 	printf("Create cache file...\n");
 
-	fwrite(version, 1, 8, fp);
-	fwrite(gfx_pen_usage[TILE08], sizeof(u8), gfx_total_elements[TILE08], fp);
-	fwrite(gfx_pen_usage[TILE16], sizeof(u8), gfx_total_elements[TILE16], fp);
-	fwrite(gfx_pen_usage[TILE32], sizeof(u8), gfx_total_elements[TILE32], fp);
-	fwrite(block, sizeof(u32), 0x200, fp);
+	fwrite(version, 1, sizeof(version), fp);
+	fwrite(gfx_pen_usage[TILE08], 1, gfx_total_elements[TILE08], fp);
+	fwrite(gfx_pen_usage[TILE16], 1, gfx_total_elements[TILE16], fp);
+	fwrite(gfx_pen_usage[TILE32], 1, gfx_total_elements[TILE32], fp);
+	fwrite(block, 1, 0x200 * sizeof(u32), fp);
+
+	for (i = header_size; i < aligned_size; i++)
+		fputc(0, fp);
 
 	for (i = 0; i < 0x200; i++)
 	{
@@ -1778,7 +1784,7 @@ int main(int argc, char *argv[])
 	int i, path_found = 0, all = 0, zip = 0, pause = 1, res = 1;
 
 	printf("-------------------------------------------\n");
-	printf(" ROM converter for CPS2 Emulator ver.8\n");
+	printf(" ROM converter for CPS2 Emulator ver.9\n");
 	printf("-------------------------------------------\n\n");
 
 	if (_chdir("cache") != 0)
@@ -1807,7 +1813,7 @@ int main(int argc, char *argv[])
 			{
 				pause = 0;
 			}
-			else if (strchr(argv[i], ':') != NULL)
+			else if (strchr(argv[i], ':') != NULL || strchr(argv[i], '\\') != NULL)
 			{
 				path_found = i;
 			}
@@ -1909,10 +1915,6 @@ int main(int argc, char *argv[])
 
 		printf("path: %s\n", zip_dir);
 		printf("file name: %s\n", game_name);
-		if (zip)
-			printf("cache name: cache\\%s_cache.zip\n", game_name);
-		else
-			printf("cache name: cache\\%s.cache\n", game_name);
 
 		if ((p = strrchr(game_name, '.')) == NULL)
 		{
@@ -1920,6 +1922,11 @@ int main(int argc, char *argv[])
 			goto error;
 		}
 		*p = '\0';
+
+		if (zip)
+			printf("cache name: cache\\%s_cache.zip\n", game_name);
+		else
+			printf("cache name: cache\\%s.cache\n", game_name);
 
 		_chdir(launchDir);
 		if (!convert_rom(game_name))

@@ -11,7 +11,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "emumain.h"
 #include "cz80.h"
+
 
 #define CF					0x01
 #define NF					0x02
@@ -35,21 +37,21 @@
 	グローバル構造体
 ******************************************************************************/
 
-cz80_struc __attribute__((aligned(32))) CZ80;
+cz80_struc ALIGN_DATA CZ80;
 
 
 /******************************************************************************
 	ローカル変数
 ******************************************************************************/
 
-static u8 __attribute__((aligned(32))) SZ[256];
-static u8 __attribute__((aligned(32))) SZP[256];
-static u8 __attribute__((aligned(32))) SZ_BIT[256];
-static u8 __attribute__((aligned(32))) SZHV_inc[256];
-static u8 __attribute__((aligned(32))) SZHV_dec[256];
+static u8 ALIGN_DATA SZ[256];
+static u8 ALIGN_DATA SZP[256];
+static u8 ALIGN_DATA SZ_BIT[256];
+static u8 ALIGN_DATA SZHV_inc[256];
+static u8 ALIGN_DATA SZHV_dec[256];
 #if CZ80_BIG_FLAGS_ARRAY
-static u8 __attribute__((aligned(32))) SZHVC_add[2*256*256];
-static u8 __attribute__((aligned(32))) SZHVC_sub[2*256*256];
+static u8 ALIGN_DATA SZHVC_add[2*256*256];
+static u8 ALIGN_DATA SZHVC_sub[2*256*256];
 #endif
 
 

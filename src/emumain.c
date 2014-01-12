@@ -11,8 +11,10 @@
 
 
 #define FRAMESKIP_LEVELS	12
-#define TICKS_PER_FRAME		(TICKS_PER_SEC / FPS)
 
+#if (EMU_SYSTEM == MVS)
+#define TICKS_PER_FRAME		16896		// 1000000 / 15625 * RASTER_LINES
+#endif
 
 /******************************************************************************
 	ÉOÉçÅ[ÉoÉãïœêî
@@ -159,12 +161,20 @@ void update_screen(void)
 	if (warming_up)
 	{
 		video_wait_vsync();
+#if (EMU_SYSTEM == MVS)
 		last_skipcount0_time = ticker() - FRAMESKIP_LEVELS * TICKS_PER_FRAME;
+#else
+		last_skipcount0_time = ticker() - (int)((float)FRAMESKIP_LEVELS * 1000000.0 / FPS);
+#endif
 		warming_up = 0;
 	}
 
 	if (frameskip_counter == 0)
+#if (EMU_SYSTEM == MVS)
 		this_frame_base = last_skipcount0_time + FRAMESKIP_LEVELS * TICKS_PER_FRAME;
+#else
+		this_frame_base = last_skipcount0_time + (int)((float)FRAMESKIP_LEVELS * 1000000.0 / FPS);
+#endif
 
 	frames_displayed++;
 	frames_since_last_fps++;
@@ -175,7 +185,11 @@ void update_screen(void)
 
 		if (option_speedlimit)
 		{
+#if (EMU_SYSTEM == MVS)
 			TICKER target = this_frame_base + frameskip_counter * TICKS_PER_FRAME;
+#else
+			TICKER target = this_frame_base + (int)((float)frameskip_counter * 1000000.0 / FPS);
+#endif
 
 			while (curr < target)
 			{
@@ -189,10 +203,10 @@ void update_screen(void)
 
 		if (frameskip_counter == 0)
 		{
-			float seconds_elapsed = (float)(curr - last_skipcount0_time) * (1.0 / (float)TICKS_PER_SEC);
+			float seconds_elapsed = (float)(curr - last_skipcount0_time) * (1.0 / 1000000.0);
 			float frames_per_sec = (float)frames_since_last_fps / seconds_elapsed;
 
-			game_speed_percent = (int)(100.0 * frames_per_sec / (float)FPS + 0.5);
+			game_speed_percent = (int)(100.0 * frames_per_sec / FPS + 0.5);
 			frames_per_second = (int)((float)rendered_frames_since_last_fps / seconds_elapsed + 0.5);
 
 			last_skipcount0_time = curr;

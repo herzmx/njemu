@@ -23,7 +23,7 @@ RELEASE = 1
 #------------------------------------------------------------------------------
 
 VERSION_MAJOR = 1
-VERSION_MINOR = 5
+VERSION_MINOR = 6
 VERSION_BUILD = 1
 
 ifdef BUILD_CPS1PSP
@@ -51,7 +51,7 @@ VERSION_STR = $(VERSION_MAJOR).$(VERSION_MINOR)$(VERSION_BUILD)
 
 PSP_EBOOT_TITLE = $(PBPNAME_STR) $(VERSION_STR)
 
-EXTRA_TARGETS = mkdir EBOOT.PBP
+EXTRA_TARGETS = mkdir EBOOT.PBP delelf
 EXTRA_CLEAN = pspclean
 
 
@@ -389,6 +389,12 @@ $(sort $(OBJDIRS)):
 pspclean:
 	@echo Remove all object files and directories.
 	@rm -rd $(OBJ)
+	@rm -rf $(PSP_EBOOT_SFO)
+	@rm -rf $(TARGET).elf
+
+delelf:
+	@rm -rf $(PSP_EBOOT_SFO)
+	@rm -rf $(TARGET).elf
 
 maketree:
 	@echo Making object tree...

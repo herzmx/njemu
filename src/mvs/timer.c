@@ -58,7 +58,7 @@ static CPUINFO ALIGN_DATA cpu[MAX_CPU];
 	ƒ[ƒJƒ‹•Ï”
 ******************************************************************************/
 
-static const int time_slice[3] = { 16666, 16667, 16667 };
+#define time_slice	16896	// = 1000000 / 15625 * RASTER_LINES
 
 static int global_offset;
 static int base_time;
@@ -66,7 +66,6 @@ static int frame_base;
 static int timer_ticks;
 static int timer_left;
 static int active_cpu;
-static u32 current_frame;
 static int scanline;
 
 
@@ -135,9 +134,8 @@ static int getabsolutetime(void)
 void timer_reset(void)
 {
 	global_offset = 0;
-	base_time = 0;
-	frame_base = 0;
-	current_frame = 0;
+	base_time     = 0;
+	frame_base    = 0;
 
 	active_cpu = CPU_NOTACTIVE;
 	memset(&timer, 0, sizeof(timer));
@@ -146,13 +144,13 @@ void timer_reset(void)
 	cpu[CPU_M68000].icount    = &C68K.ICount;
 	cpu[CPU_M68000].cycles    = 0;
 	cpu[CPU_M68000].suspended = 0;
-	cpu[CPU_M68000].cycles_per_usec = 12;
+	cpu[CPU_M68000].cycles_per_usec = 12000000 / 1000000;
 
 	cpu[CPU_Z80].execute   = z80_execute;
 	cpu[CPU_Z80].icount    = &CZ80.ICount;
 	cpu[CPU_Z80].cycles    = 0;
 	cpu[CPU_Z80].suspended = 0;
-	cpu[CPU_Z80].cycles_per_usec = 4;
+	cpu[CPU_Z80].cycles_per_usec = 4000000 / 1000000;
 }
 
 
@@ -279,7 +277,7 @@ static void timer_update_cpu_normal(void)
 	int i, time;
 
 	frame_base = 0;
-	timer_left = (USECS_PER_SCANLINE) * RASTER_LINES;
+	timer_left = time_slice;
 
 	while (timer_left > 0)
 	{
@@ -314,7 +312,7 @@ static void timer_update_cpu_normal(void)
 
 	neogeo_interrupt();
 
-	base_time += time_slice[current_frame % 3];
+	base_time += time_slice;
 	if (base_time >= 1000000)
 	{
 		global_offset++;
@@ -328,8 +326,6 @@ static void timer_update_cpu_normal(void)
 	}
 
 	if (!skip_this_frame()) neogeo_screenrefresh();
-
-	current_frame++;
 }
 
 
@@ -381,7 +377,7 @@ static void timer_update_cpu_raster(void)
 		neogeo_raster_interrupt(scanline, neogeo_driver_type);
 	}
 
-	base_time += time_slice[current_frame % 3];
+	base_time += time_slice;
 	if (base_time >= 1000000)
 	{
 		global_offset++;
@@ -395,8 +391,6 @@ static void timer_update_cpu_raster(void)
 	}
 
 	if (!skip_this_frame()) neogeo_raster_screenrefresh();
-
-	current_frame++;
 }
 
 
@@ -410,7 +404,7 @@ void timer_update_subcpu(void)
 	int i, time;
 
 	frame_base = 0;
-	timer_left = time_slice[current_frame % 3];
+	timer_left = time_slice;
 
 	while (timer_left > 0)
 	{
@@ -440,7 +434,7 @@ void timer_update_subcpu(void)
 		timer_left -= timer_ticks;
 	}
 
-	base_time += time_slice[current_frame % 3];
+	base_time += time_slice;
 	if (base_time >= 1000000)
 	{
 		global_offset++;
@@ -454,8 +448,6 @@ void timer_update_subcpu(void)
 	}
 
 	soundtest_sound_update();
-
-	current_frame++;
 }
 #endif
 
@@ -472,7 +464,6 @@ STATE_SAVE( timer )
 
 	state_save_long(&global_offset, 1);
 	state_save_long(&base_time, 1);
-	state_save_long(&current_frame, 1);
 
 	state_save_long(&cpu[0].suspended, 1);
 	state_save_long(&cpu[1].suspended, 1);
@@ -491,7 +482,6 @@ STATE_LOAD( timer )
 
 	state_load_long(&global_offset, 1);
 	state_load_long(&base_time, 1);
-	state_load_long(&current_frame, 1);
 
 	state_load_long(&cpu[0].suspended, 1);
 	state_load_long(&cpu[1].suspended, 1);

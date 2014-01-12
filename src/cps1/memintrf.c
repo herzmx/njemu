@@ -138,7 +138,7 @@ static int load_rom_cpu1(void)
 	int i;
 	char fname[32], *parent;
 
-	if ((memory_region_cpu1 = memalign(64, memory_length_cpu1)) == NULL)
+	if ((memory_region_cpu1 = memalign(MEM_ALIGN, memory_length_cpu1)) == NULL)
 	{
 		error_memory("REGION_CPU1");
 		return 0;
@@ -175,7 +175,7 @@ static int load_rom_cpu2(void)
 	int i;
 	char fname[32], *parent;
 
-	if ((memory_region_cpu2 = memalign(64, memory_length_cpu2)) == NULL)
+	if ((memory_region_cpu2 = memalign(MEM_ALIGN, memory_length_cpu2)) == NULL)
 	{
 		error_memory("REGION_CPU2");
 		return 0;
@@ -212,7 +212,7 @@ static int load_rom_gfx1(void)
 	int i;
 	char fname[32], *parent;
 
-	if ((memory_region_gfx1 = memalign(64, memory_length_gfx1)) == NULL)
+	if ((memory_region_gfx1 = memalign(MEM_ALIGN, memory_length_gfx1)) == NULL)
 	{
 		error_memory("REGION_GFX1");
 		return 0;
@@ -251,7 +251,7 @@ static int load_rom_sound1(void)
 
 	if (!memory_length_sound1) return 1;
 
-	if ((memory_region_sound1 = memalign(64, memory_length_sound1)) == NULL)
+	if ((memory_region_sound1 = memalign(MEM_ALIGN, memory_length_sound1)) == NULL)
 	{
 		error_memory("REGION_SOUND1");
 		return 0;
@@ -287,7 +287,7 @@ static int load_rom_user1(void)
 {
 	if (memory_length_user1 == 0) return 1;
 
-	if ((memory_region_user1 = memalign(64, memory_length_user1)) == NULL)
+	if ((memory_region_user1 = memalign(MEM_ALIGN, memory_length_user1)) == NULL)
 	{
 		error_memory("REGION_USER1");
 		return 0;

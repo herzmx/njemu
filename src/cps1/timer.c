@@ -55,7 +55,7 @@ static CPUINFO cpu[MAX_CPU];
 	ƒ[ƒJƒ‹•Ï”
 ******************************************************************************/
 
-static const float time_slice = (int)(1000000.0 / FPS);
+static const float time_slice = 1000000.0 / FPS;
 
 static float global_offset;
 static float base_time;

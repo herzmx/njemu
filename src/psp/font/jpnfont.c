@@ -63,7 +63,7 @@ int load_jpnfont(void)
 	fseek(fp, 0, SEEK_SET);
 
 	fontsize += 16;
-	if ((jpnfont = memalign(64, fontsize)) != NULL)
+	if ((jpnfont = memalign(MEM_ALIGN, fontsize)) != NULL)
 	{
 		u32 offset = 0;
 
