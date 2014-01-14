@@ -73,14 +73,8 @@ EXTRA_TARGETS = maketree EBOOT.PBP delelf
 # Utilities
 #------------------------------------------------------------------------------
 
-ifeq ($(PSPDEV),)
 MD = -mkdir
 RM = -rm
-else
-MD = -mkdir.exe
-RM = -rm.exe
-endif
-
 
 #------------------------------------------------------------------------------
 # File include path
@@ -290,10 +284,6 @@ endif
 OBJS = $(MAINOBJS) $(COREOBJS) $(OSOBJS) $(FONTOBJS) $(ICONOBJS) $(ZLIB)
 
 include src/makefiles/build.mak
-
-ifdef BUILD_CPS1PSP
-CC = bin/psp-gcc-4.0.2
-endif
 
 
 #------------------------------------------------------------------------------

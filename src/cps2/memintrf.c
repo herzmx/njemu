@@ -404,12 +404,11 @@ static int load_rom_info(const char *game_name)
 			{
 				if (str_cmp(&buf[1], "REGION(") == 0)
 				{
-					char *size, *type, *flag;
+					char *size, *type;
 
 					strtok(&buf[1], " ");
 					size = strtok(NULL, " ,");
 					type = strtok(NULL, " ,");
-					flag = strtok(NULL, " ");
 
 					if (strcmp(type, "CPU1") == 0)
 					{
