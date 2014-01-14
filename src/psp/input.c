@@ -212,13 +212,12 @@ void pad_wait_press(int msec)
 	else
 	{
 		TICKER curr = ticker();
-		TICKER target, prev;
+		TICKER target;
 
 		target = curr + msec * (TICKS_PER_SEC / 1000);
 
 		while (curr < target)
 		{
-			prev = curr;
 			curr = ticker();
 
 			video_wait_vsync();

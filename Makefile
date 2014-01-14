@@ -75,14 +75,8 @@ EXTRA_TARGETS = maketree EBOOT.PBP delelf
 # Utilities
 #------------------------------------------------------------------------------
 
-ifeq ($(PSPDEV),)
 MD = -mkdir
 RM = -rm
-else
-MD = -mkdir.exe
-RM = -rm.exe
-endif
-
 
 #------------------------------------------------------------------------------
 # File include path
@@ -203,7 +197,7 @@ include src/makefiles/$(TARGET).mak
 CFLAGS = \
 	-O2 \
 	-fomit-frame-pointer \
-	-fstrict-aliasing \
+	-fno-strict-aliasing \
 	-falign-functions=32 \
 	-falign-loops \
 	-falign-labels \

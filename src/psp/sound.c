@@ -11,15 +11,6 @@
 
 
 /******************************************************************************
-	プロトタイプ
-******************************************************************************/
-
-int sceAudio_38553111(unsigned short samples, unsigned short freq, char unknown);
-int sceAudio_5C37C0AE(void);
-int sceAudio_E0727056(int volume, void *buffer);
-
-
-/******************************************************************************
 	ローカル変数
 ******************************************************************************/
 
@@ -66,7 +57,7 @@ static int sound_update_thread(SceSize args, void *argp)
 		else
 			memset(sound_buffer[flip], 0, SOUND_BUFFER_SIZE * 2);
 
-		sceAudio_E0727056(sound_volume, sound_buffer[flip]);
+		sceAudioSRCOutputBlocking(sound_volume, sound_buffer[flip]);
 		flip ^= 1;
 	}
 
@@ -145,9 +136,9 @@ int sound_thread_start(void)
 	memset(sound_buffer[0], 0, sizeof(sound_buffer[0]));
 	memset(sound_buffer[1], 0, sizeof(sound_buffer[1]));
 
-	sceAudio_5C37C0AE();
+	sceAudioSRCChRelease();
 
-	if (sceAudio_38553111(sound->samples, sound->frequency, 2))
+	if (sceAudioSRCChReserve(sound->samples, sound->frequency, 2))
 	{
 		fatalerror(TEXT(COULD_NOT_RESERVE_AUDIO_CHANNEL_FOR_SOUND));
 		return 0;
@@ -157,7 +148,7 @@ int sound_thread_start(void)
 	if (sound_thread < 0)
 	{
 		fatalerror(TEXT(COULD_NOT_START_SOUND_THREAD));
-		sceAudio_5C37C0AE();
+		sceAudioSRCChRelease();
 		return 0;
 	}
 
@@ -187,6 +178,6 @@ void sound_thread_stop(void)
 		sceKernelDeleteThread(sound_thread);
 		sound_thread = -1;
 
-		sceAudio_5C37C0AE();
+		sceAudioSRCChRelease();
 	}
 }

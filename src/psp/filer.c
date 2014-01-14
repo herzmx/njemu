@@ -276,7 +276,7 @@ static int load_zipname(void)
 {
 	FILE *fp;
 	char path[MAX_PATH], buf[256];
-	int size, found = 0;
+	int found = 0;
 
 	if (ui_text_get_language() == LANG_JAPANESE)
 	{
@@ -295,7 +295,6 @@ static int load_zipname(void)
 		return 0;
 
 	fseek(fp, 0, SEEK_END);
-	size = ftell(fp);
 	fseek(fp, 0, SEEK_SET);
 
 	zipname_num = 0;
