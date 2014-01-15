@@ -20,6 +20,7 @@ SAVE_STATE = 1
 COMMAND_LIST = 1
 #UI_32BPP = 1
 RELEASE = 1
+DAVEX_CHEAT = 1
 
 VERSION_MAJOR = 2
 VERSION_MINOR = 2
@@ -58,6 +59,7 @@ endif
 
 ifdef BUILD_NCDZPSP
 TARGET = NCDZPSP
+DAVEX_CHEAT =
 endif
 
 PBPNAME_STR = $(TARGET)
@@ -251,6 +253,12 @@ ifdef RELEASE
 CDEFS += -DRELEASE=1
 else
 CDEFS += -DRELEASE=0
+endif
+
+ifdef DAVEX_CHEAT
+CDEFS += -DDAVEX_CHEAT=1
+else
+CDEFS += -DDAVEX_CHEAT=0
 endif
 
 #------------------------------------------------------------------------------

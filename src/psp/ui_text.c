@@ -550,6 +550,13 @@ static const char *text[3][UI_TEXT_MAX] =
 		"CD-ROM speed limit: Off",
 		"CD-ROM speed limit: On",
 #endif
+
+#if DAVEX_CHEAT
+		"Cheat menu",
+		"Select cheat",
+		"Memory free",
+		"Mem free",
+#endif
 	},
 	/*LANG_JAPANESE*/
 	{
@@ -1087,6 +1094,13 @@ static const char *text[3][UI_TEXT_MAX] =
 		"CD-ROM速度制限: 無効",
 		"CD-ROM速度制限: 有効",
 #endif
+
+#if DAVEX_CHEAT
+		"チートメニュー",
+		"チートを選択します。",
+		"メモリ解放",
+		"メモリ解放設定を変更します。",
+#endif
 	},
 	/*LANG_SPANISH*/
 	{
@@ -1623,6 +1637,13 @@ static const char *text[3][UI_TEXT_MAX] =
 		/* vidhrdw.c */
 		"Limite de velocidad CD-ROM: Apagado",
 		"Limite de velocidad CD-ROM: Encendido",
+#endif
+
+#if DAVEX_CHEAT
+		"Menu de trucos",
+		"Seleccion de trucos",
+		"Liberar memoria",
+		"Mem free",
 #endif
 	}
 };
