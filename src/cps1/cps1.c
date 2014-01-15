@@ -129,6 +129,42 @@ static void cps1_exit(void)
 	show_exit_screen();
 }
 
+/*--------------------------------------------------------
+	Davex cheat support
+--------------------------------------------------------*/
+
+#if DAVEX_CHEAT
+extern int gnum_cheats;
+extern cheat_st* gcheat_game[];
+
+static void apply_cheats(){
+
+	cheat_st *a_cheat = NULL;
+	cheat_option_st *a_cheat_option = NULL;
+	cheat_value_st *a_cheat_value = NULL;
+	int c,j;
+
+	for( c = 0; c < gnum_cheats; c++){ //arreglo de cheats
+		a_cheat = gcheat_game[c];
+		if( a_cheat == NULL) break; //seguro
+
+		if( a_cheat->curr_option == 0) continue;//se asume que el option 0 es el disable
+
+		//Se busca cual es el option habilitado
+		a_cheat_option = a_cheat->cheat_option[ a_cheat->curr_option];
+		if( a_cheat_option == NULL) break; //seguro
+
+		//Se ejecutan todos los value del cheat option
+		for( j = 0; j< a_cheat_option->num_cheat_values; j++){
+			a_cheat_value = a_cheat_option->cheat_value[j];
+
+			if( a_cheat_value == NULL) break;//seguro
+
+			m68000_write_memory_8(a_cheat_value->address, a_cheat_value->value);
+		}
+	}
+}
+#endif
 
 /*--------------------------------------------------------
 	CPS1エミュレーション実行
@@ -152,6 +188,9 @@ static void cps1_run(void)
 				autoframeskip_reset();
 			}
 
+#if DAVEX_CHEAT
+			apply_cheats();
+#endif
 			timer_update_cpu();
 			update_inputport();
 			update_screen();

@@ -441,6 +441,9 @@ static void checkStartupDir(void)
 #if (EMU_SYSTEM != NCDZ)
 	checkDir("nvram");
 #endif
+#if DAVEX_CHEAT
+	checkDir("cheats");
+#endif
 
 	fd = sceIoDopen(startupDir);
 	if (fd >= 0)

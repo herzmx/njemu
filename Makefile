@@ -20,6 +20,7 @@ ADHOC = 1
 SAVE_STATE = 1
 #UI_32BPP = 1
 RELEASE = 1
+DAVEX_CHEAT = 1
 
 VERSION_MAJOR = 2
 VERSION_MINOR = 3
@@ -60,6 +61,7 @@ endif
 ifdef BUILD_NCDZPSP
 TARGET = NCDZPSP
 ADHOC =
+DAVEX_CHEAT =
 endif
 
 PBPNAME_STR = $(TARGET)
@@ -260,6 +262,11 @@ else
 CDEFS += -DRELEASE=0
 endif
 
+ifdef DAVEX_CHEAT
+CDEFS += -DDAVEX_CHEAT=1
+else
+CDEFS += -DDAVEX_CHEAT=0
+endif
 
 #------------------------------------------------------------------------------
 # Linker Flags

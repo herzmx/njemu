@@ -546,7 +546,14 @@ static const char *text[3][UI_TEXT_MAX] =
 		/* memintrf.c */
 		"Checking game ID...\n",
 #endif
+#if DAVEX_CHEAT
+		"Cheat menu",
+		"Select cheat",
+		"Memory free",
+		"Mem free",
+#endif
 		NULL
+
 	},
 	/*LANG_JAPANESE*/
 	{
@@ -1080,7 +1087,14 @@ static const char *text[3][UI_TEXT_MAX] =
 		/* memintrf.c */
 		"ゲームIDをチェック中...\n",
 #endif
+#if DAVEX_CHEAT
+		"チートメニュー",
+		"チートを選択します。",
+		"メモリ解放",
+		"メモリ解放設定を変更します。",
+#endif
 		NULL
+
 	},
 	/*LANG_SPANISH*/
 	{
@@ -1614,7 +1628,14 @@ static const char *text[3][UI_TEXT_MAX] =
 		/* memintrf.c */
 		"Verificando ID del juego...\n",
 #endif
+#if DAVEX_CHEAT
+		"Menu de trucos",
+		"Seleccion de trucos",
+		"Liberar memoria",
+		"Mem free",
+#endif
 		NULL
+
 	}
 };
 
