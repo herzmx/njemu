@@ -397,6 +397,7 @@ enum
 {
 	NEOGEO_PAD = 0,
 	NEOGEO_MVS,
+	NEOGEO_PS,
 	USER_DEFINE
 };
 #endif
@@ -431,7 +432,7 @@ static int menu_keycfg(void)
 #if (EMU_SYSTEM == CPS2)
 	const char *progear_p2[2];
 #elif (EMU_SYSTEM == MVS || EMU_SYSTEM == NCDZ)
-	const char *layout[3];
+	const char *layout[4];
 #endif
 
 #define INCLUDE_KEYCFG_MENU
@@ -459,7 +460,8 @@ static int menu_keycfg(void)
 #elif (EMU_SYSTEM == MVS || EMU_SYSTEM == NCDZ)
 	layout[0] = TEXT(LAYOUT_TYPE1);
 	layout[1] = TEXT(LAYOUT_TYPE2);
-	layout[2] = TEXT(LAYOUT_USER);
+	layout[2] = TEXT(LAYOUT_TYPE3);
+	layout[3] = TEXT(LAYOUT_USER);
 #endif
 
 	i = 0;
@@ -511,6 +513,10 @@ static int menu_keycfg(void)
 	{
 		keycfg[0].value = NEOGEO_MVS;
 	}
+	else if (keycfg[6].value == 7 && keycfg[7].value == 6 && keycfg[8].value == 8 && keycfg[9].value == 5)
+	{
+		keycfg[0].value = NEOGEO_PS;
+	}
 	else
 	{
 		keycfg[0].value = USER_DEFINE;
@@ -540,7 +546,7 @@ static int menu_keycfg(void)
 				if (keycfg[sel].type == KEYCFG_NUMBER && keycfg[sel].value < 10) arrowr = 1;
 				if (keycfg[sel].type == KEYCFG_ANALOG && keycfg[sel].value < 2) arrowr = 1;
 #if (EMU_SYSTEM == MVS || EMU_SYSTEM == NCDZ)
-				if (keycfg[sel].type == KEYCFG_LAYOUT && keycfg[sel].value < 1) arrowr = 1;
+				if (keycfg[sel].type == KEYCFG_LAYOUT && keycfg[sel].value < 2) arrowr = 1;
 #endif
 			}
 
@@ -667,6 +673,13 @@ static int menu_keycfg(void)
 					keycfg[8].value = 6;
 					keycfg[9].value = 5;
 					break;
+
+				case NEOGEO_PS:
+					keycfg[6].value = 7;
+					keycfg[7].value = 6;
+					keycfg[8].value = 8;
+					keycfg[9].value = 5;
+					break;
 				}
 			}
 #endif
@@ -710,6 +723,16 @@ static int menu_keycfg(void)
 					keycfg[8].value = 6;
 					keycfg[9].value = 5;
 				}
+				else if (keycfg[sel].value == 1)
+				{
+					keycfg[sel].value++;
+					update = 1;
+
+					keycfg[6].value = 7;
+					keycfg[7].value = 6;
+					keycfg[8].value = 8;
+					keycfg[9].value = 5;
+				}
 			}
 #endif
 		}
@@ -743,6 +766,10 @@ static int menu_keycfg(void)
 			else if (keycfg[6].value == 7 && keycfg[7].value == 8 && keycfg[8].value == 6 && keycfg[9].value == 5)
 			{
 				keycfg[0].value = NEOGEO_MVS;
+			}
+			else if (keycfg[6].value == 7 && keycfg[7].value == 6 && keycfg[8].value == 8 && keycfg[9].value == 5)
+			{
+				keycfg[0].value = NEOGEO_PS;
 			}
 			else
 			{

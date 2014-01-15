@@ -301,6 +301,7 @@ static const char *text[3][UI_TEXT_MAX] =
 		"Button Layout",
 		"Type 1 (NEOGEO PAD)",
 		"Type 2 (MVS)",
+		"Type 3 (PlaySation)",
 		"User Define",
 #endif
 
@@ -834,6 +835,7 @@ static const char *text[3][UI_TEXT_MAX] =
 		"ボタン配置",
 		"タイプ1 (NEO･GEOパッド)",
 		"タイプ2 (MVS)",
+		"タイプ3 (PlayStation)",
 		"ユーザ定義",
 #endif
 
@@ -1367,6 +1369,7 @@ static const char *text[3][UI_TEXT_MAX] =
 		"Disposicion de botones",
 		"Tipo 1 (NEOGEO PAD)",
 		"Tipo 2 (MVS)",
+		"Tipo 3 (PlayStation)",
 		"Definido por el usuario",
 #endif
 
