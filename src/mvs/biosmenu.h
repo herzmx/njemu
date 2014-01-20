@@ -29,6 +29,9 @@ enum
 	UNI_V20,
 	UNI_V21,
 	UNI_V22,
+	UNI_V23old,
+	UNI_V23,
+	UNI_V30,
 	DEBUG_BIOS,
 
 	BIOS_MAX
