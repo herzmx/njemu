@@ -950,7 +950,7 @@ void file_browser(void)
 	getDir(curr_dir);
 
 #ifdef PSP_SLIM
-	if (devkit_version < 0x03060010 || kuKernelGetModel() != PSP_MODEL_SLIM_AND_LITE)
+	if (devkit_version < 0x03060010 || kuKernelGetModel() == PSP_MODEL_STANDARD)
 	{
 		show_background();
 		small_icon_shadow(6, 3, UI_COLOR(UI_PAL_TITLE), ICON_SYSTEM);

@@ -33,6 +33,7 @@ VERSION_BUILD = 2
 OS = psp
 
 ifdef PSP_SLIM
+PSP_LARGE_MEMORY = 1
 PSP_FW_VERSION = 371
 KERNEL_MODE =
 else
@@ -291,7 +292,7 @@ endif
 
 OBJS = $(MAINOBJS) $(COREOBJS) $(OSOBJS) $(FONTOBJS) $(ICONOBJS) $(ZLIB)
 
-include src/makefiles/build.mak
+include $(PSPSDK)/lib/build.mak
 
 
 #------------------------------------------------------------------------------
