@@ -709,7 +709,8 @@ void update_inputport(void)
 
 			buttons = (*poll_pad)();
 
-			if (readHomeButton())
+			if (systembuttons_available ? readHomeButton() :
+					(buttons & PSP_CTRL_START) && (buttons & PSP_CTRL_SELECT))
 			{
 				buttons = 0;
 				adhoc_paused = adhoc_server + 1;
@@ -751,7 +752,8 @@ void update_inputport(void)
 
 		buttons = (*poll_pad)();
 
-		if (readHomeButton())
+		if (systembuttons_available ? readHomeButton() :
+				(buttons & PSP_CTRL_START) && (buttons & PSP_CTRL_SELECT))
 		{
 			showmenu();
 			setup_autofire();
