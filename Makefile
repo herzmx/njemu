@@ -9,8 +9,8 @@
 #------------------------------------------------------------------------------
 
 #BUILD_CPS1PSP = 1
-BUILD_CPS2PSP = 1
-#BUILD_MVSPSP = 1
+#BUILD_CPS2PSP = 1
+BUILD_MVSPSP = 1
 #BUILD_NCDZPSP = 1
 
 #PSP_SLIM = 1
@@ -18,7 +18,7 @@ BUILD_CPS2PSP = 1
 COMMAND_LIST = 1
 ADHOC = 1
 SAVE_STATE = 1
-#UI_32BPP = 1
+UI_32BPP = 1
 RELEASE = 1
 DAVEX_CHEAT = 1
 
@@ -32,13 +32,15 @@ VERSION_BUILD = 1
 #------------------------------------------------------------------------------
 
 OS = psp
+PSP_FW_VERSION = 150
+BUILD_DIR = 3XX
+EXTRA_TARGETS = maketree
 
 ifdef PSP_SLIM
 PSP_LARGE_MEMORY = 1
 PSP_FW_VERSION = 371
 KERNEL_MODE =
-else
-PSP_FW_VERSION = 150
+BUILD_DIR = SLIM
 endif
 
 ifdef BUILD_CPS1PSP
@@ -46,23 +48,31 @@ BUILD_CPS2PSP=
 BUILD_MVSPSP=
 BUILD_NCDZPSP=
 TARGET = CPS1PSP
+EXTRA_TARGETS += $(BUILD_DIR)/CPS1PSP/EBOOT.PBP
+PSP_EBOOT = $(BUILD_DIR)/CPS1PSP/EBOOT.PBP
 endif
 
 ifdef BUILD_CPS2PSP
 BUILD_MVSPSP=
 BUILD_NCDZPSP=
 TARGET = CPS2PSP
+EXTRA_TARGETS += $(BUILD_DIR)/CPS2PSP/EBOOT.PBP
+PSP_EBOOT = $(BUILD_DIR)/CPS2PSP/EBOOT.PBP
 endif
 
 ifdef BUILD_MVSPSP
 BUILD_NCDZPSP=
 TARGET = MVSPSP
+EXTRA_TARGETS += $(BUILD_DIR)/MVSPSP/EBOOT.PBP
+PSP_EBOOT = $(BUILD_DIR)/MVSPSP/EBOOT.PBP
 endif
 
 ifdef BUILD_NCDZPSP
 TARGET = NCDZPSP
 ADHOC =
 DAVEX_CHEAT =
+EXTRA_TARGETS += $(BUILD_DIR)/NCDZPSP/EBOOT.PBP
+PSP_EBOOT = $(BUILD_DIR)/NCDZPSP/EBOOT.PBP
 endif
 
 PBPNAME_STR = $(TARGET)
@@ -72,7 +82,7 @@ else
 VERSION_STR = $(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_BUILD)
 endif
 
-EXTRA_TARGETS = maketree EBOOT.PBP delelf
+EXTRA_TARGETS += delelf
 
 #------------------------------------------------------------------------------
 # Utilities
@@ -341,4 +351,12 @@ delelf:
 	@$(RM) -f $(TARGET).elf
 
 maketree:
+	@$(MD) -p 3xx/cps1psp
+	@$(MD) -p 3xx/cps2psp
+	@$(MD) -p 3xx/mvspsp
+	@$(MD) -p 3xx/ncdzpsp
+	@$(MD) -p slim/cps1psp
+	@$(MD) -p slim/cps2psp
+	@$(MD) -p slim/mvspsp
+	@$(MD) -p slim/ncdzpsp
 	@$(MD) -p $(subst //,\,$(sort $(OBJDIRS)))
