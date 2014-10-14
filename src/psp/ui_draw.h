@@ -127,6 +127,9 @@ int graphic_font_get_pitch(UINT16 code);
 int ascii_14p_get_gryph(struct font_t *font, UINT16 code);
 int ascii_14p_get_pitch(UINT16 code);
 
+int latin1_14p_get_gryph(struct font_t *font, UINT16 code);
+int latin1_14p_get_pitch(UINT16 code);
+
 int jpn_h14p_get_gryph(struct font_t *font, UINT16 code);
 int jpn_h14p_get_pitch(UINT16 code);
 

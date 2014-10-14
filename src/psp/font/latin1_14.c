@@ -8,8 +8,6 @@
 
 ******************************************************************************/
 
-#ifdef COMMAND_LIST
-
 #include "psp/psp.h"
 
 #define NUM_FONTS	0x80
@@ -349,11 +347,143 @@ static const INT8 ALIGN_DATA latin1_14_skipy[NUM_FONTS] = {
 
 };
 
+static const INT8 ALIGN_DATA latin1_14_pitch[NUM_FONTS] = {
+	 8, // €
+	 5,
+	 3, // ‚
+	 7, // ƒ
+	 6, // „
+	 8, // …
+	 7, // †
+	 7, // ‡
+	 3, // ˆ
+	 8, // ‰
+	 7, // Š
+	 4, // ‹
+	 8, // Œ
+	 5,
+	 8, // Ž
+	 5,
+	 5,
+	 3, // ‘
+	 3, // ’
+	 6, // “
+	 6, // ”
+	 6, // •
+	 6, // –
+	 8, // —
+	 4, // ˜
+	 4, // ™
+	 7, // š
+	 4, // ›
+	 7, // œ
+	 5,
+	 7, // ž
+	 8, // Ÿ
+	 5,
+	 3, // ¡
+	 7, // ¢
+	 8, // £
+	 4, // ¤
+	 8, // ¥
+	 3, // ¦
+	 8, // §
+	 6, // ¨
+	 9, // ©
+	 3, // ª
+	 5, // «
+	 5, // ¬
+	 5,
+	 7, // ®
+	 6, // ¯
+	 3, // °
+	 8, // ±
+	 3, // ²
+	 3, // ³
+	 3, // ´
+	 8, // µ
+	12, // ¶
+	 3, // ·
+	 3, // ¸
+	 6, // ¹
+	 6, // º
+	 5, // »
+	 8, // ¼
+	 8, // ½
+	 8, // ¾
+	 8, // ¿
+	10, // À
+	10, // Á
+	10, // Â
+	10, // Ã
+	10, // Ä
+	10, // Å
+	12, // Æ
+	 8, // Ç
+	 8, // È
+	 8, // É
+	 8, // É
+	 8, // Ë
+	 4, // Ì
+	 4, // Í
+	 4, // Î
+	 4, // Ï
+	 8, // Ð
+	 8, // Ñ
+	 9, // Ò
+	 9, // Ó
+	 9, // Ô
+	 9, // Õ
+	 9, // Ö
+	 8, // ×
+	 9, // Ø
+	 8, // Ù
+	 8, // Ú
+	 8, // Û
+	 8, // Ü
+	 9, // Ý
+	 7, // Þ
+	 8, // ß
+	 7, // à
+	 7, // á
+	 7, // â
+	 7, // ã
+	 7, // ä
+	 7, // å
+	 8, // æ
+	 7, // ç
+	 7, // è
+	 7, // é
+	 7, // ê
+	 7, // ë
+	 4, // ì
+	 4, // í
+	 4, // î
+	 4, // ï
+	 7, // ð
+	 7, // ñ
+	 7, // ò
+	 7, // ó
+	 7, // ô
+	 7, // õ
+	 7, // ö
+	 7, // ÷
+	 7, // ø
+	 7, // ù
+	 7, // ú
+	 7, // û
+	 7, // ü
+	 7, // ý
+	 7, // þ
+	 7  // ÿ
+};
+
 
 /*------------------------------------------------------
 	functions
 ------------------------------------------------------*/
 
+#ifdef COMMAND_LIST
 int latin1_14_get_gryph(struct font_t *font, UINT16 code)
 {
 	if (code < NUM_FONTS)
@@ -370,3 +500,27 @@ int latin1_14_get_gryph(struct font_t *font, UINT16 code)
 }
 
 #endif
+
+int latin1_14p_get_gryph(struct font_t *font, UINT16 code)
+{
+	if (code < NUM_FONTS)
+	{
+		font->data   = &latin1_14[latin1_14_pos[code]];
+		font->width  = latin1_14_width[code];
+		font->height = latin1_14_height[code];
+		font->pitch  = latin1_14_pitch[code];
+		font->skipx  = latin1_14_skipx[code];
+		font->skipy  = latin1_14_skipy[code];
+		return 1;
+	}
+	return 0;
+}
+
+int latin1_14p_get_pitch(UINT16 code)
+{
+	if (code < NUM_FONTS)
+		return latin1_14_pitch[code];
+
+	return latin1_14_pitch[0];
+}
+
